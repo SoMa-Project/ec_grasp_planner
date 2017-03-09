@@ -8,16 +8,26 @@ Proceedings of the IEEE International Conference on Robotics and Automation (ICR
 
 ## Install
 
+```
+catkin build ec_grasp_planner
+```
+
 ### Build Dependencies
 
-
+```
+rosdep install ec_grasp_planner
+```
 
 ### Runtime Dependencies
 
+- ecto_rbo
 
+
+<!--
 ## Structure and Flow of Information
 
 <img src="docs/diagram.png" alt="Diagram" width="200" />
+-->
 
 ## Usage
 
