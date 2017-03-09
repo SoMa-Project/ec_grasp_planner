@@ -31,6 +31,7 @@ rosdep install ec_grasp_planner
 
 ## Usage
 
+```
 planner.py [-h] [--ros_service_call] [--file_output]
                   [--grasp {any,edge_grasp,wall_grasp,surface_grasp}]
 
@@ -44,6 +45,7 @@ optional arguments:
                         hybrid_automaton.xml. (default: False)
   --grasp {any,edge_grasp,wall_grasp,surface_grasp}
                         which grasp type to use (default: any)
+```
 
 ## Examples
 
