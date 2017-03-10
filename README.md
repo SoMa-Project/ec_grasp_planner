@@ -31,13 +31,17 @@ rosdep install ec_grasp_planner
 #### For Running the Gazebo Example
 
 - Get Gazebo multi-robot simulator, version 2.2.6:
+```bash
   sudo apt-get install ros-indigo-gazebo-*
+```
 
 - Get iiwa_stack:
+```
   git clone https://github.com/SalvoVirga/iiwa_stack.git
   roscd iiwa/..
   git checkout 94670d70b9bfbf0920c7de539012c805734fdbc5
   catkin build iiwa
+```
 
 ### Runtime Dependencies
 
