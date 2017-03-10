@@ -33,10 +33,15 @@ catkin build ec_grasp_planner
 rosdep install ec_grasp_planner
 ```
 
+
+### Runtime Dependencies
+
+- ecto_rbo
+
 #### For Running the Gazebo Example
 
 - Get Gazebo multi-robot simulator, version 2.2.6:
-```bash
+```
   sudo apt-get install ros-indigo-gazebo-*
 ```
 
@@ -48,9 +53,16 @@ rosdep install ec_grasp_planner
   catkin build iiwa
 ```
 
-### Runtime Dependencies
-
-- ecto_rbo
+- Get soma_wp4_5_examples and link robot files from iiwa_stack:
+```
+  git clone https://github.com/SoMa-Project/soma_wp4_5_examples.git
+  catkin build ex8_HA_manager
+  IIWA_STACK=`rospack find iiwa_description`
+  HA_MANAGER=`rospack find ex8_HA_manager`
+  ln -s $HA_MANAGER/iiwa_description/launch/iiwa7_kinect_ft_upload.launch_ $IIWA_STACK/launch/iiwa7_kinect_ft_upload.launch
+  ln -s $HA_MANAGER/iiwa_description/urdf/iiwa7_kinect_ft.xacro_ $IIWA_STACK/urdf/iiwa7_kinect_ft.xacro
+  ln -s $HA_MANAGER/iiwa_description/urdf/iiwa7_kinect_ft.urdf.xacro_ $IIWA_STACK/urdf/iiwa7_kinect_ft.urdf.xacro
+```
 
 ---
 
@@ -77,7 +89,7 @@ optional arguments:
 ## Examples  <a name="examples"></a>
 
 ```
-roslaunch iiwa_gazebo iiwa_gazebo.launch
+roslaunch iiwa_gazebo iiwa_gazebo.launch model:=iiwa7_kinect_ft
 roslaunch trik_controller iiwa.launch
 rosrun ecto_rbo_yaml plasm_yaml_ros_node.py demo_vision.yaml --debug
 
