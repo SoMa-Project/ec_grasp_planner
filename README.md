@@ -21,11 +21,23 @@ Proceedings of the IEEE International Conference on Robotics and Automation (ICR
 catkin build ec_grasp_planner
 ```
 
-### Build Dependencies
+### Build-Time Dependencies
 
+#### General
 ```
 rosdep install ec_grasp_planner
 ```
+
+#### For Running the Gazebo Example
+
+- Get Gazebo multi-robot simulator, version 2.2.6:
+  sudo apt-get install ros-indigo-gazebo-*
+
+- Get iiwa_stack:
+  git clone https://github.com/SalvoVirga/iiwa_stack.git
+  roscd iiwa/..
+  git checkout 94670d70b9bfbf0920c7de539012c805734fdbc5
+  catkin build iiwa
 
 ### Runtime Dependencies
 
@@ -62,3 +74,9 @@ rosrun ecto_rbo_yaml plasm_yaml_ros_node.py demo_vision.yaml --debug
 
 rosrun ec_grasp_planner planner.py --grasp surface_grasp --ros_service_call
 ```
+
+***
+
+## TODOs
+
+[ ] How to modify hand-specific information
