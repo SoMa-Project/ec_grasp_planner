@@ -88,10 +88,16 @@ optional arguments:
 
 ## Examples  <a name="examples"></a>
 
+### Kuka Arm in Gazebo simulation with TRIK controller
 ```
+# ensure rosparam set use_sim_time 1
 roslaunch iiwa_gazebo iiwa_gazebo.launch model:=iiwa7_kinect_ft
 roslaunch trik_controller iiwa.launch
+
 rosrun ecto_rbo_yaml plasm_yaml_ros_node.py demo_vision.yaml --debug
+
+# to check the potential grasps
+rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
 
 rosrun ec_grasp_planner planner.py --grasp surface_grasp --ros_service_call
 ```
