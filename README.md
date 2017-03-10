@@ -1,8 +1,13 @@
 # Grasp Planner based on Environmental Constraint Exploitation
 
+1. [Background](#background)
+2. [Install](#install)
+3. [Usage](#usage)
+4. [Examples](#examples)
+
 ---
 
-## Background
+## Background <a name="background"></a>
 This is based on:
 
 Clemens Eppner and Oliver Brock. "[Planning Grasp Strategies That Exploit Environmental Constraints](http://www.robotics.tu-berlin.de/fileadmin/fg170/Publikationen_pdf/eppner_icra2015.pdf)"  
@@ -15,7 +20,7 @@ Proceedings of the IEEE International Conference on Robotics and Automation (ICR
 
 ---
 
-## Install
+## Install <a name="install"></a>
 
 ```
 catkin build ec_grasp_planner
@@ -49,7 +54,7 @@ rosdep install ec_grasp_planner
 
 ---
 
-## Usage
+## Usage <a name="usage"></a>
 
 ```
 planner.py [-h] [--ros_service_call] [--file_output]
@@ -69,7 +74,7 @@ optional arguments:
 
 ---
 
-## Examples
+## Examples  <a name="examples"></a>
 
 ```
 roslaunch iiwa_gazebo iiwa_gazebo.launch
