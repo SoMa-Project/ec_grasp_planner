@@ -370,7 +370,7 @@ def main(**args):
         # get geometry graph
         graph = rospy.wait_for_message('geometry_graph', Graph)
         
-        print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len((graph.edges)))
+        print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
         
         # identify potential goal nodes (based on grasp type)
         goal_node_ids = [i for i, n in enumerate(graph.nodes) if n.foo in args['grasp']]
