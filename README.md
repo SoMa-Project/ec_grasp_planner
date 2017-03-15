@@ -33,6 +33,10 @@ catkin build ec_grasp_planner
 rosdep install ec_grasp_planner
 ```
 
+Get [PyDDL](https://github.com/garydoranjr/pyddl):
+```
+pip install -e git+https://github.com/garydoranjr/pyddl.git#egg=pyddl
+```
 
 ### Runtime Dependencies
 
