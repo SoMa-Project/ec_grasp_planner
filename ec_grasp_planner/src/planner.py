@@ -33,6 +33,8 @@ from pregrasp_msgs.msg import GraspStrategy
 
 from geometry_graph_msgs.msg import Graph
 
+import pyddl
+
 import hatools.components as ha
 import hatools.cookbook as cookbook
 
@@ -361,6 +363,94 @@ def find_all_paths(start_node_id, goal_node_ids, graph):
 def hybrid_automaton_from_grasp(grasp):
     return []
 
+def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_id = None, verbose = False):
+    locations = ['l'+str(i) for i in range(len(graph.nodes))]
+    
+    connections = [('connected', 'l'+str(e.node_id_start), 'l'+str(e.node_id_end)) for e in graph.edges]
+    grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label.endswith('Grasp')]
+        
+    # define possible actions
+    domain = pyddl.Domain((
+        pyddl.Action(
+            'move_hand',
+            parameters=(
+                ('location', 'from'),
+                ('location', 'to'),
+            ),
+            preconditions=(
+                ('hand_at', 'from'),
+                ('connected', 'from', 'to'),
+            ),
+            effects=(
+                pyddl.neg(('hand_at', 'from')),
+                ('hand_at', 'to'),
+            ),
+        ),
+        pyddl.Action(
+            'move_object',
+            parameters=(
+                ('location', 'from'),
+                ('location', 'to'),
+            ),
+            preconditions=(
+                ('hand_at', 'from'),
+                ('object_at', 'from'),
+                ('connected', 'from', 'to'),
+            ),
+            effects=(
+                pyddl.neg(('hand_at', 'from')),
+                pyddl.neg(('object_at', 'from')),
+                ('hand_at', 'to'),
+                ('object_at', 'to'),
+            ),
+        ),
+        pyddl.Action(
+            'grasp_object',
+            parameters=(
+                ('location', 'l'),
+            ),
+            preconditions=(
+                ('hand_at', 'l'),
+                ('object_at', 'l'),
+                ('is_grasping_location', 'l')
+            ),
+            effects=(
+                ('grasped', 'object'),
+            ),
+        ),
+    ))
+    
+    goal = (('grasped', 'object'))
+    if goal_node_ids is not None:
+        goal=(
+            ('grasped', 'object'),
+            ('hand_at', 'l'+str(goal_node_id)),
+            ('object_at', 'l'+str(goal_node_id)),
+        )
+    
+    # each node in the graph is a location
+    problem = pyddl.Problem(
+        domain,
+        {
+            'location': locations,
+        },
+        init=[
+            ('hand_at', 'l'+str(hand_start_node_id)),
+            ('object_at', 'l'+str(object_start_node_id)),
+        ] + connections + grasping_locations,
+        goal=goal
+    )
+
+    plan = pyddl.planner(problem, verbose=verbose)
+    if plan is None:
+        print('No Plan!')
+    else:
+        for action in plan:
+            print(action)
+    
+    return plan
+
+
 def main(**args):
     rospy.init_node('ec_planner')
 
@@ -373,7 +463,7 @@ def main(**args):
         print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
         
         # identify potential goal nodes (based on grasp type)
-        goal_node_ids = [i for i, n in enumerate(graph.nodes) if n.foo in args['grasp']]
+        goal_node_ids = [i for i, n in enumerate(graph.nodes) if n.label in args['grasp']]
         
         if len(goal_node_ids) > 0:
             # get all paths that end in goal_ids
