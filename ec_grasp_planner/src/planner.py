@@ -371,61 +371,68 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame):
     wall_force = -11.0
     angle_of_attack = math.radians(69.0)
     
-    curree = userdata.motion_params_in['frames'][0]
+    curree = object_frame # TODO
     #curree = np.dot(curree, tra.rotation_matrix(self.experimental_params[userdata.counter_in], [1, 0, 0]))
     curree = np.dot(curree, tra.rotation_matrix(angle_of_attack, [1, 0, 0]))
     goal = np.dot(tra.translation_matrix([0, 0, -0.3]), curree)
     
     control_sequence = []
     
-    control_sequence.append(ha.HTransformControlMode(curree, name = 'reposition', controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
-    control_sequence.append(ha.FramePoseSwitch('reposition', 'go_down', controller = 'GoToCartesianConfig', epsilon = '0.02'))
-    control_sequence.append(ha.HTransformControlMode(goal, name = 'go_down', controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
-    control_sequence.append(ha.ForceTorqueSwitch('go_down', 'slide', goal = np.array([0, 0, downward_force, 0, 0, 0]), norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
-    control_sequence.append(ha.ControlMode(name = 'slide').set(ha.NakamuraControlSet().add(ha.ForceHTransformController(desired_distance = 0.25, desired_displacement=tra.translation_matrix([sliding_speed, 0, 0]), force_gradient=tra.translation_matrix([0, 0, 0.005]), desired_force_dimension=np.array([0, 0, 1, 0, 0, 0])))))
-    control_sequence.append(ha.ForceTorqueSwitch('slide', 'close_hand', goal = np.array([wall_force, 0, 0, 0, 0, 0]), norm_weights = np.array([1, 0, 0, 0, 0, 0]), jump_criterion = "THRESH_LOWER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
-    control_sequence.append(ha.GravityCompensationMode(name = 'close_hand'))
+    control_sequence.append(ha.HTransformControlMode(curree, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
+    control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.02'))
+    control_sequence.append(ha.HTransformControlMode(goal, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
+    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]), norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
+    control_sequence.append(ha.ControlMode().set(ha.NakamuraControlSet().add(ha.ForceHTransformController(desired_distance = 0.25, desired_displacement=tra.translation_matrix([sliding_speed, 0, 0]), force_gradient=tra.translation_matrix([0, 0, 0.005]), desired_force_dimension=np.array([0, 0, 1, 0, 0, 0])))))
+    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([wall_force, 0, 0, 0, 0, 0]), norm_weights = np.array([1, 0, 0, 0, 0, 0]), jump_criterion = "THRESH_LOWER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
+    control_sequence.append(ha.GravityCompensationMode())
     hand_closing_time = 2.5
     control_sequence[-1].controlset.add(ha.RBOHandController(goal = np.array([[1,0]]*6), valve_opening = np.array([[0,hand_closing_time]]*6), goal_is_relative = '1'))
-    control_sequence.append(ha.TimeSwitch('close_hand', 'retract', duration = 1.0 + hand_closing_time))
-    control_sequence.append(ha.HTransformControlMode(curree, name = 'retract', controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
-    control_sequence.append(ha.FramePoseSwitch('retract', 'finished', controller = 'GoToCartesianConfig', epsilon = '0.01'))
-    control_sequence.append(ha.GravityCompensationMode(name = 'finished'))
+    control_sequence.append(ha.TimeSwitch('', '', duration = 1.0 + hand_closing_time))
+    control_sequence.append(ha.HTransformControlMode(curree, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
+    control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.01'))
+    control_sequence.append(ha.GravityCompensationMode())
     
     return cookbook.sequence_of_modes_and_switches(control_sequence)
 
 def create_edge_grasp(object_frame, support_surface_frame, edge_frame):
     # python ec_grasps.py --anglesliding -10.0 --inflation 0.02 --speed 0.04 --force 4.0 --grasp edge_grasp --edgedistance -0.007 edge_chewinggum/
-    
+    edge_distance_factor = -0.007
+    distance = 0. # TODO
+    downward_force = 4.0
+    sliding_speed = 0.04
+    angle_of_sliding = math.radians(-10.)
+
     initial_cspace_goal = np.array([0.910306, -0.870773, -2.36991, 2.23058, -0.547684, -0.989835, 0.307618])
 
     curree = userdata.motion_params_in['frames'][0]
-    curree = np.dot(curree, tra.rotation_matrix(self.experimental_params['angle_of_sliding'], [1, 0, 0]))
+    curree = np.dot(curree, tra.rotation_matrix(angle_of_sliding, [1, 0, 0]))
     goal = np.dot(tra.translation_matrix([0, 0, -0.3]), curree)
     hand_closing_time = 3.0
     
     control_sequence = []
-    control_sequence.append(ha.HTransformControlMode(curree, name = 'reposition', controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
-    control_sequence.append(ha.FramePoseSwitch('reposition', 'go_down', controller = 'GoToCartesianConfig', epsilon = '0.001'))
-    control_sequence.append(ha.HTransformControlMode(goal, name = 'go_down', controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
-    control_sequence.append(ha.ForceTorqueSwitch('go_down', 'slide', goal = np.array([0, 0, self.experimental_params['downward_force'], 0, 0, 0]), norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
-    control_sequence.append(ha.ControlMode(name = 'slide').set(ha.NakamuraControlSet().add(ha.ForceHTransformController(desired_distance = 0.25, desired_displacement=tra.translation_matrix([0, -self.experimental_params['sliding_speed'], 0]), force_gradient=tra.translation_matrix([0, 0, 0.005]), desired_force_dimension=np.array([0, 0, 1, 0, 0, 0])))))
-    control_sequence.append(ha.FrameDisplacementSwitch('slide', 'close_hand', epsilon = str(self.experimental_params['edge_distance_factor'] + userdata.motion_params_in['frames'][-1]), negate = '1', goal = np.array([0, 0, 0]), goal_is_relative = '1', jump_criterion = "NORM_L2", frame_id = 'EE'))
-    control_sequence.append(ha.GravityCompensationMode(name = 'close_hand'))
+    control_sequence.append(ha.HTransformControlMode(curree, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
+    control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.001'))
+    control_sequence.append(ha.HTransformControlMode(goal, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
+    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]), norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
+    control_sequence.append(ha.ControlMode().set(ha.NakamuraControlSet().add(ha.ForceHTransformController(desired_distance = 0.25, desired_displacement=tra.translation_matrix([0, -sliding_speed, 0]), force_gradient=tra.translation_matrix([0, 0, 0.005]), desired_force_dimension=np.array([0, 0, 1, 0, 0, 0])))))
+    control_sequence.append(ha.FrameDisplacementSwitch('', '', epsilon = str(edge_distance_factor + distance), negate = '1', goal = np.array([0, 0, 0]), goal_is_relative = '1', jump_criterion = "NORM_L2", frame_id = 'EE'))
+    control_sequence.append(ha.GravityCompensationMode())
     control_sequence[-1].controlset.add(ha.RBOHandController(goal = np.array([[0,0],[0,0],[1,0],[1,0],[1,0],[1,0]]), valve_opening = np.array([[0,hand_closing_time], [0,hand_closing_time], [0,hand_closing_time], [0,hand_closing_time], [0,hand_closing_time], [0,hand_closing_time]]), goal_is_relative = '1'))
-    control_sequence.append(ha.TimeSwitch('close_hand', 'retract', duration = 1.0 + hand_closing_time))
-    control_sequence.append(ha.HTransformControlMode(tra.translation_matrix([0, 0, -0.1]), name = 'retract', controller_name = 'GoToCartesianConfig', goal_is_relative='1'))
-    control_sequence.append(ha.FramePoseSwitch('retract', 'finished', controller = 'GoToCartesianConfig', epsilon = '0.001', goal_is_relative = '1'))
-    control_sequence.append(ha.GravityCompensationMode(name = 'finished'))
+    control_sequence.append(ha.TimeSwitch('', '', duration = 1.0 + hand_closing_time))
+    control_sequence.append(ha.HTransformControlMode(tra.translation_matrix([0, 0, -0.1]), controller_name = 'GoToCartesianConfig', goal_is_relative='1'))
+    control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.001', goal_is_relative = '1'))
+    control_sequence.append(ha.GravityCompensationMode())
     
     return cookbook.sequence_of_modes_and_switches(control_sequence)
 
 def create_surface_grasp(object_frame, support_surface_frame):
     # python ec_grasps.py --anglesliding 0.0 --inflation 0.33 --force 7.0 --grasp surface_grasp test_folder
+    angle_of_sliding = 0.0
+    downward_force = 7.
     
-    goals = userdata.motion_params_in['frames']
+    goals = object_frame # TODO 
     goals = [np.dot(g, tra.translation_matrix([0, 0.02, 0])) for g in goals]
-    goals = [np.dot(g, tra.rotation_matrix(self.experimental_params['angle_of_sliding'], [1, 0, 0])) for g in goals]
+    goals = [np.dot(g, tra.rotation_matrix(angle_of_sliding, [1, 0, 0])) for g in goals]
     
     initial_cspace_goal = np.array([0.910306, -0.870773, -2.36991, 2.23058, -0.547684, -0.989835, 0.307618])
 
@@ -438,14 +445,14 @@ def create_surface_grasp(object_frame, support_surface_frame):
     hand_closing_time = np.max(valve_opening_times)#3.0 # special palm prototype
     
     control_sequence = []
-    control_sequence.append(ha.HTransformControlMode(np.hstack(goals), name = 'move_into_table', controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
-    control_sequence.append(ha.ForceTorqueSwitch('move_into_table', 'close_hand', goal = np.array([0, 0, self.experimental_params['downward_force'], 0, 0, 0]), norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
-    control_sequence.append(ha.ControlMode(name = 'close_hand').set(ha.NakamuraControlSet().add(ha.ForceHTransformController(desired_distance = 0.0, desired_displacement=tra.translation_matrix([0, 0, 0]), force_gradient=tra.translation_matrix([0, 0, 0.005]), desired_force_dimension=np.array([0, 0, 1, 0, 0, 0])))))
+    control_sequence.append(ha.HTransformControlMode(np.hstack(goals), controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
+    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]), norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
+    control_sequence.append(ha.ControlMode().set(ha.NakamuraControlSet().add(ha.ForceHTransformController(desired_distance = 0.0, desired_displacement=tra.translation_matrix([0, 0, 0]), force_gradient=tra.translation_matrix([0, 0, 0.005]), desired_force_dimension=np.array([0, 0, 1, 0, 0, 0])))))
     control_sequence[-1].controlset.add(ha.RBOHandController(goal = np.array([[1,0],[1,0],[1,0],[1,0],[1,0],[1,0]]), valve_opening = valve_opening_times, goal_is_relative = '1'))
-    control_sequence.append(ha.TimeSwitch('close_hand', 'retract', duration = 1.0 + hand_closing_time))
-    control_sequence.append(ha.HTransformControlMode(goals[0], name = 'retract', controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
-    control_sequence.append(ha.FramePoseSwitch('retract', 'finished', controller = 'GoToCartesianConfig', epsilon = '0.001'))
-    control_sequence.append(ha.GravityCompensationMode(name = 'finished'))
+    control_sequence.append(ha.TimeSwitch('', '', duration = 1.0 + hand_closing_time))
+    control_sequence.append(ha.HTransformControlMode(goals[0], controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
+    control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.001'))
+    control_sequence.append(ha.GravityCompensationMode())
             
     return cookbook.sequence_of_modes_and_switches(control_sequence)
 
@@ -457,43 +464,16 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph):
     grasp_frame = grasp_frames[grasp_type]
     
     # instantiate every motion relative to the object frame
-    object_pose = tra.translation_matrix([0, 0, 0])
+    object_frame = tra.translation_matrix([0, 0, 0])
     
-    # now go back in the sequence
-    for m in reversed(motion_sequence):
-        if m.name.startswith('grasp'):
-            pass
-        elif m.name.startswith('move_object'):
-            pass
-        else:
-            pass
-    
-    # turn last two actions into grasp
-    last_node = int(motion_sequence[-1].sig[1][1:])
-    if graph.nodes[last_node].label.startswith('Surface'):
-        pass
-    elif graph.nodes[last_node].label.startswith('Wall'):
-        
-        
-        sim_close_hand = ha.HTransformControlMode(np.eye(4), completion_times=np.array([1.]), name = 'close_hand', controller_name = 'GoToCartesianConfig', goal_is_relative='1')
-        sim_close_hand.controlset.add(ha.RBOHandController(goal=np.vstack([[0]*6, [1]*6]).T, valve_opening=np.vstack([[0.]*6, [2.]*6]).T))
-        
-        
-    elif graph.nodes[last_node].label.startswith('Edge'):
-        pass
+    if grasp_type == 'EdgeGrasp':
+        return create_edge_grasp(object_frame, support_surface_frame)
+    elif grasp_type == 'WallGrasp':
+        return create_wall_grasp(object_frame, support_surface_frame)
+    elif grasp_type == 'SurfaceGrasp':
+        return create_surface_grasp(object_frame, support_surface_frame)
     else:
-        raise "Unknown Grasp Type!"
-    
-    myha = hatools.cookbook.goto_cartesian(tra.translation_matrix([0, -0.2, 0]), completion_times=np.array([5.]), goal_is_relative='2')
-    goto = myha.modes_and_switches[0]
-    goal = tra.translation_matrix([-0.3, 0, .0])
-    ft_switch = ha.ForceTorqueSwitch('Goto', 'go_forward', goal = np.array([-450, 0, 100, 0, 0, 0]), norm_weights = np.array([1, 0, 0, 0, 0, 0]), jump_criterion = "THRESH_LOWER_BOUND", frame_id = 'odom', goal_is_relative = '1')
-    
-    time_switch = ha.TimeSwitch('close_hand', 'go_to_origin', duration = 2.0)
-    go_to_origin = ha.HTransformControlMode(np.dot(tra.translation_matrix([x*0.001 for x in initial_pose[:3]]), _tf.quaternion_matrix(_tools._sofa2tf(initial_pose[3:]))), completion_times=np.array([2.]), name = 'go_to_origin', goal_is_relative = '0')
-    
-    
-    return []
+        raise "Unknown grasp type: ", grasp_type
 
 def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_id = None, verbose = False):
     locations = ['l'+str(i) for i in range(len(graph.nodes))]
@@ -620,6 +600,9 @@ def main(**args):
         with open('hybrid_automaton.xml', 'w') as outfile:
             outfile.write(ha.xml())
     
+    if args['rviz_visualization']:
+        pass # TODO
+    
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Turn path in graph into hybrid automaton.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -631,7 +614,8 @@ if __name__ == '__main__':
     grasp_choices = ["any", "edge_grasp", "wall_grasp", "surface_grasp"]
     parser.add_argument('--grasp', choices=grasp_choices, default=grasp_choices[0],
                         help='which grasp type to use')
-
+    parser.add_argument('--rviz_visualization', action='store_true', default = False,
+                        help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
     args = parser.parse_args()
     
     if args['grasp'] == 'any':
