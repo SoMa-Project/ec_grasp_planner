@@ -32,9 +32,11 @@ catkin build ec_grasp_planner
 
 ### Minimal Dependencies <a name="minimaldependencies"></a>
 
-%```
-%rosdep install ec_grasp_planner
-%```
+<!--
+```
+rosdep install ec_grasp_planner
+```
+-->
 
 * Clone the ROS stack [ecto_rbo](https://github.com/SoMa-Project/vision.git) in your catkin workspace and build it:
 ```
