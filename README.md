@@ -2,8 +2,8 @@
 
 1. [Background](#background)
 2. [Install](#install)
-  2.1 [Minimal Dependencies](#minimaldependencies)
-  2.2 [Dependencies For Running the Gazebo Example](#gazebodependencies)
+   1. [Minimal Dependencies](#minimaldependencies)
+   2. [Dependencies For Running the Gazebo Example](#gazebodependencies)
 3. [Usage](#usage)
 4. [Examples](#examples)
 
