@@ -4,10 +4,9 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /TF1
-        - /TF1/Frames1
         - /TF1/Tree1
         - /PointCloud21/Status1
+        - /MarkerArray2
       Splitter Ratio: 0.755814
     Tree Height: 583
   - Class: rviz/Selection
@@ -94,7 +93,7 @@ Visualization Manager:
         wall:
           Value: true
         world:
-          Value: false
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: false
@@ -162,12 +161,19 @@ Visualization Manager:
       Use rainbow: true
       Value: true
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /geometry_graph_marker
       Name: MarkerArray
       Namespaces:
-        arrows: true
-        text: true
+        {}
+      Queue Size: 100
+      Value: false
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /planned_grasp_path
+      Name: MarkerArray
+      Namespaces:
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
@@ -194,7 +200,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 4.17331
+      Distance: 4.86878
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
@@ -206,10 +212,10 @@ Visualization Manager:
         Z: 0.0153952
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.669797
+      Pitch: 0.549797
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.28987
+      Yaw: 3.43987
     Saved: ~
 Window Geometry:
   Displays:
