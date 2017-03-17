@@ -2,6 +2,8 @@
 
 1. [Background](#background)
 2. [Install](#install)
+  2.1 [Minimal Dependencies](#minimaldependencies)
+  2.2 [Dependencies For Running the Gazebo Example](#gazebodependencies)
 3. [Usage](#usage)
 4. [Examples](#examples)
 
@@ -28,7 +30,7 @@ Clone this repository into your catkin workspace, satisfy the minimal dependenci
 catkin build ec_grasp_planner
 ```
 
-### Minimal Dependencies
+### Minimal Dependencies <a name="minimaldependencies"></a>
 
 %```
 %rosdep install ec_grasp_planner
@@ -44,7 +46,7 @@ catkin build ecto_rbo
 pip install -e git+https://github.com/garydoranjr/pyddl.git#egg=pyddl
 ```
 
-### Dependencies For Running the Gazebo Example
+### Dependencies For Running the Gazebo Example <a name="gazebodependencies"></a>
 
 * Get Gazebo multi-robot simulator, version 2.2.6:
 ```
