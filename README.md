@@ -22,34 +22,36 @@ Proceedings of the IEEE International Conference on Robotics and Automation (ICR
 
 ## Install <a name="install"></a>
 
+This code was tested with [ROS indigo](http://wiki.ros.org/indigo) under Ubuntu 14.04.5 (LTS).
+Clone this repository into your catkin workspace, satisfy the minimal dependencies listed below, and build the ROS package:
 ```
 catkin build ec_grasp_planner
 ```
 
-### Build-Time Dependencies
+### Minimal Dependencies
 
-#### General
+%```
+%rosdep install ec_grasp_planner
+%```
+
+* Clone the ROS stack [ecto_rbo](https://github.com/SoMa-Project/vision.git) in your catkin workspace and build it:
 ```
-rosdep install ec_grasp_planner
+catkin build ecto_rbo
 ```
 
-Get [PyDDL](https://github.com/garydoranjr/pyddl):
+* Get [PyDDL](https://github.com/garydoranjr/pyddl):
 ```
 pip install -e git+https://github.com/garydoranjr/pyddl.git#egg=pyddl
 ```
 
-### Runtime Dependencies
+### Dependencies For Running the Gazebo Example
 
-- ecto_rbo
-
-#### For Running the Gazebo Example
-
-- Get Gazebo multi-robot simulator, version 2.2.6:
+* Get Gazebo multi-robot simulator, version 2.2.6:
 ```
   sudo apt-get install ros-indigo-gazebo-*
 ```
 
-- Get iiwa_stack:
+* Get iiwa_stack:
 ```
   git clone https://github.com/SalvoVirga/iiwa_stack.git
   roscd iiwa/..
@@ -57,7 +59,7 @@ pip install -e git+https://github.com/garydoranjr/pyddl.git#egg=pyddl
   catkin build iiwa
 ```
 
-- Get soma_wp4_5_examples and link robot files from iiwa_stack:
+* Get soma_wp4_5_examples and link robot files from iiwa_stack:
 ```
   git clone https://github.com/SoMa-Project/soma_wp4_5_examples.git
   catkin build ex8_HA_manager
