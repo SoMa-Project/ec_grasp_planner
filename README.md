@@ -1,15 +1,15 @@
 # Grasp Planner based on Environmental Constraint Exploitation
 
-1. [Background](#background)
+1. [Overview](#overview)
 2. [Install](#install)
-   1. [Minimal Dependencies](#minimaldependencies)
+   2.1. [Minimal Dependencies](#minimaldependencies)
    2. [Dependencies For Running the Gazebo Example](#gazebodependencies)
 3. [Usage](#usage)
 4. [Examples](#examples)
 
 ---
 
-## Background <a name="background"></a>
+## Overview <a name="overview"></a>
 This is based on:
 
 Clemens Eppner and Oliver Brock. "[Planning Grasp Strategies That Exploit Environmental Constraints](http://www.robotics.tu-berlin.de/fileadmin/fg170/Publikationen_pdf/eppner_icra2015.pdf)"  
