@@ -669,7 +669,7 @@ def main(**args):
         with open('hybrid_automaton.xml', 'w') as outfile:
             outfile.write(ha.xml())
     
-    if args['rviz_visualization']:
+    if args['rviz']:
         print "Press Cntrl-C to stop sending visualization_msgs/MarkerArray on topic '/planned_grasp_path' ..."
         publish_rviz_markers(rviz_frames, robot_base_frame)
         rospy.spin()
@@ -685,7 +685,7 @@ if __name__ == '__main__':
     grasp_choices = ["any", "EdgeGrasp", "WallGrasp", "SurfaceGrasp"]
     parser.add_argument('--grasp', choices=grasp_choices, default=grasp_choices[0],
                         help='which grasp type to use')
-    parser.add_argument('--rviz_visualization', action='store_true', default = False,
+    parser.add_argument('--rviz', action='store_true', default = False,
                         help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
     args = parser.parse_args()
     

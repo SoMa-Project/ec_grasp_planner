@@ -15,6 +15,9 @@
 ---
 
 ## Overview <a name="overview"></a>
+
+<img src="docs/example1.png" alt="Diagram" width="300" />
+
 This is based on:
 
 Clemens Eppner and Oliver Brock. "[Planning Grasp Strategies That Exploit Environmental Constraints](http://www.robotics.tu-berlin.de/fileadmin/fg170/Publikationen_pdf/eppner_icra2015.pdf)"  
@@ -109,12 +112,12 @@ optional arguments:
 This example shows a minimal ...
 
 ```
-rosrun ecto_rbo_yaml plasm_yaml_ros_node.py demo_TODO.yaml --debug
+rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example1.yaml
 
 # start visualization
 rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
 
-rosrun ec_grasp_planner planner.py --grasp surface_grasp --rviz_visualization
+rosrun ec_grasp_planner planner.py --grasp surface_grasp --rviz
 ```
 
 ### Planning Based on Continuous RGB-D Input   <a name="example2"></a>
@@ -129,7 +132,7 @@ rosrun ecto_rbo_yaml plasm_yaml_ros_node.py demo_TODO.yaml --debug
 
 rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
 
-rosrun ec_grasp_planner planner.py --grasp surface_grasp --rviz_visualization
+rosrun ec_grasp_planner planner.py --grasp surface_grasp --rviz
 ```
 
 ### Kuka Arm in Gazebo Simulation with TRIK Controller  <a name="example3"></a>
@@ -146,7 +149,7 @@ rosrun ecto_rbo_yaml plasm_yaml_ros_node.py demo_vision.yaml --debug
 # to check the potential grasps
 rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
 
-rosrun ec_grasp_planner planner.py --grasp surface_grasp --ros_service_call
+rosrun ec_grasp_planner planner.py --grasp surface_grasp --ros_service_call --rviz
 ```
 
 ***
