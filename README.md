@@ -123,7 +123,7 @@ rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data
 rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example1.rviz
 
 # select which type of grasp you want
-rosrun ec_grasp_planner planner.py --grasp surface_grasp --rviz
+rosrun ec_grasp_planner planner.py --rviz --robot_base_frame camera_rgb_optical_frame --grasp WallGrasp 
 ```
 
 In RViz you should be able to see the geometry graph:

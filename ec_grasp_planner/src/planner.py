@@ -502,7 +502,7 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
     locations = ['l'+str(i) for i in range(len(graph.nodes))]
     
     connections = [('connected', 'l'+str(e.node_id_start), 'l'+str(e.node_id_end)) for e in graph.edges]
-    grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels]
+    grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
         
     # define possible actions
     domain = pyddl.Domain((
@@ -685,6 +685,8 @@ if __name__ == '__main__':
     grasp_choices = ["any", "EdgeGrasp", "WallGrasp", "SurfaceGrasp"]
     parser.add_argument('--grasp', choices=grasp_choices, default=grasp_choices[0],
                         help='which grasp type to use')
+    parser.add_argument('--grasp_id', type=int, default=-1,
+                        help='Which grasp to use. Ignores any values < 0.')
     parser.add_argument('--rviz', action='store_true', default = False,
                         help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
     parser.add_argument('--camera_frame', type=str, default = 'camera_rgb_optical_frame',
@@ -698,5 +700,9 @@ if __name__ == '__main__':
         args.grasp = grasp_choices[1:]
     else:
         args.grasp = [args.grasp]
+    
+    if args.grasp_id >= 0:
+        tmp = [g + '_' + str(args.grasp_id) for g in args.grasp]
+        args.grasp = tmp
     
     main(**vars(args))

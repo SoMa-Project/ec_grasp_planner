@@ -250,14 +250,14 @@ tf_send_object:
   source_frame: camera_rgb_optical_frame
   target_frame: object
   
-create_edge_grasps:
-  type: ecto_rbo_grasping::CreateGrasps
-  inputs:
-    header: msg_to_pcl/header
-    positions: calculate_centroids/centroids
-    approach_vectors: wrap_in_vector_table/vector
-  strategy: 0  # PUSH
-  pregrasp_configuration: 3 # HOOK
+#create_edge_grasps:
+#  type: ecto_rbo_grasping::CreateGrasps
+#  inputs:
+#    header: msg_to_pcl/header
+#    positions: calculate_centroids/centroids
+#    approach_vectors: wrap_in_vector_table/vector
+#  strategy: 0  # PUSH
+#  pregrasp_configuration: 3 # HOOK
 planar_manifolds:
   type: ecto::pcl::PclCellWithNormals<ecto_rbo_grasping::ManifoldsPlanar>
   inputs:
@@ -294,7 +294,7 @@ edge_grasp_planner:
   inputs:
     positioning_pregrasp_messages: positioning_motions/positioning_pregrasp_messages
     positioning_motion_manifolds: positioning_motions/positioning_manifolds
-    pushing_pregrasp_messages: create_edge_grasps/pregrasp_messages
+    pushing_pregrasp_messages: planar_manifolds/pushing_pregrasp_messages
     pushing_motion_manifolds: planar_manifolds/manifolds
     surface_pregrasp_messages: create_top_down_grasps/pregrasp_messages
     surface_grasp_manifolds: planar_manifolds/manifolds
