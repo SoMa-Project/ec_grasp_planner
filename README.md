@@ -40,6 +40,7 @@ rosdep install ec_grasp_planner
 
 * Clone the ROS stack [ecto_rbo](https://github.com/SoMa-Project/vision.git) in your catkin workspace and build it:
 ```
+git clone https://github.com/SoMa-Project/vision.git
 catkin build ecto_rbo
 ```
 
@@ -55,7 +56,7 @@ pip install -e git+https://github.com/garydoranjr/pyddl.git#egg=pyddl
   sudo apt-get install ros-indigo-gazebo-*
 ```
 
-* Get iiwa_stack:
+* Get [iiwa_stack](https://github.com/SalvoVirga/iiwa_stack.git):
 ```
   git clone https://github.com/SalvoVirga/iiwa_stack.git
   roscd iiwa/..
@@ -63,12 +64,12 @@ pip install -e git+https://github.com/garydoranjr/pyddl.git#egg=pyddl
   catkin build iiwa
 ```
 
-* Get soma_wp4_5_examples and link robot files from iiwa_stack:
+* Get [hybrid_automaton_manager_kuka](https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git) and link robot files from iiwa_stack:
 ```
-  git clone https://github.com/SoMa-Project/soma_wp4_5_examples.git
-  catkin build ex8_HA_manager
+  git clone https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git
+  catkin build hybrid_automaton_manager_kuka
   IIWA_STACK=`rospack find iiwa_description`
-  HA_MANAGER=`rospack find ex8_HA_manager`
+  HA_MANAGER=`rospack find hybrid_automaton_manager_kuka`
   ln -s $HA_MANAGER/iiwa_description/launch/iiwa7_kinect_ft_upload.launch_ $IIWA_STACK/launch/iiwa7_kinect_ft_upload.launch
   ln -s $HA_MANAGER/iiwa_description/urdf/iiwa7_kinect_ft.xacro_ $IIWA_STACK/urdf/iiwa7_kinect_ft.xacro
   ln -s $HA_MANAGER/iiwa_description/urdf/iiwa7_kinect_ft.urdf.xacro_ $IIWA_STACK/urdf/iiwa7_kinect_ft.urdf.xacro
@@ -98,7 +99,38 @@ optional arguments:
 
 ## Examples  <a name="examples"></a>
 
+### Plan based on given PCD input
+
+This example shows a minimal ...
+
+```
+rosrun ecto_rbo_yaml plasm_yaml_ros_node.py demo_TODO.yaml --debug
+
+# start visualization
+rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
+
+rosrun ec_grasp_planner planner.py --grasp surface_grasp --rviz_visualization
+```
+
+### Planning based RGB-D input 
+
+This example shows how to use the planner with an RGB-Depth sensor like Kinect or Asus Xtion.
+
+```
+roslaunch openni2_launch openni2.launch depth_registration:=true
+rosrun dynamic_reconfigure dynparam set /camera/driver depth_mode 5
+
+rosrun ecto_rbo_yaml plasm_yaml_ros_node.py demo_TODO.yaml --debug
+
+rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
+
+rosrun ec_grasp_planner planner.py --grasp surface_grasp --rviz_visualization
+```
+
 ### Kuka Arm in Gazebo simulation with TRIK controller
+
+This example shows the execution of a planned hybrid automaton motion.
+
 ```
 # ensure rosparam set use_sim_time 1
 roslaunch iiwa_gazebo iiwa_gazebo.launch model:=iiwa7_kinect_ft
