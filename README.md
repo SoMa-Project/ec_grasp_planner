@@ -115,7 +115,7 @@ This example shows a planned grasp in RViz based on a PCD file.
 rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example1.yaml
 
 # start visualization
-rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
+rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example1.rviz
 
 # select which type of grasp you want
 rosrun ec_grasp_planner planner.py --grasp surface_grasp --rviz
