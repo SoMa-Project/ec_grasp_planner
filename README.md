@@ -7,10 +7,10 @@
    1. [Minimal Dependencies](#minimaldependencies)
    2. [Dependencies For Running the Gazebo Example](#gazebodependencies)
 3. [Usage](#usage)
+4. [Examples](#examples)
    1. [Planning Based on PCD Input](#example1)
    2. [Planning Based on Continuous RGB-D Input](#example2)
    3. [Kuka Arm in Gazebo Simulation with TRIK Controller](#example3)
-4. [Examples](#examples)
 
 ---
 
