@@ -601,7 +601,7 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
     
     return plan
 
-def publish_rviz_markers(frames, frame_id):
+def publish_rviz_markers(frames, frame_id, cfg):
     from visualization_msgs.msg import MarkerArray
     from visualization_msgs.msg import Marker
     marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
@@ -620,7 +620,7 @@ def publish_rviz_markers(frames, frame_id):
         msg.lifetime = rospy.Duration()
         msg.color.r = msg.color.g = msg.color.b = msg.color.a = 0
         msg.mesh_use_embedded_materials = True
-        msg.mesh_resource = "package://ec_grasp_planner/data/softhand_right_colored.dae"
+        msg.mesh_resource = cfg["mesh_file"]
         msg.scale.x = msg.scale.y = msg.scale.z = .1
         #msg.mesh_resource = mesh_resource 
         msg.pose = homogenous_tf_to_pose_msg(f)
@@ -654,9 +654,6 @@ def main(**args):
         # get geometry graph
         graph = rospy.wait_for_message('geometry_graph', Graph)
         
-        #for i, g in enumerate(graph.nodes):
-        #    print i, g.label
-        
         graph.header.stamp = rospy.Time.now() + rospy.Duration(0.5)
         
         tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(5.0))
@@ -667,7 +664,9 @@ def main(**args):
         
         print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
         
-        grasp_path = find_a_path(0, 1, graph, args['grasp'], verbose = True)
+        hand_node_id = [n.label for n in graph.nodes].index("Positioning")
+        object_node_id = [n.label for n in graph.nodes].index("Slide")
+        grasp_path = find_a_path(hand_node_id, object_node_id, graph, args['grasp'], verbose = True)
         
         # identify potential goal nodes (based on grasp type)
         #goal_node_ids = [i for i, n in enumerate(graph.nodes) if n.label in args['grasp']]
@@ -682,6 +681,9 @@ def main(**args):
         rospy.sleep(0.3)
     
     # Turn grasp into hybrid automaton
+    import yaml
+    with open(args['hand_cfg_file'], 'r') as ymlfile:
+        cfg = yaml.load(ymlfile)
     ha, rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base)
     
     # call a service
@@ -696,7 +698,7 @@ def main(**args):
     
     if args['rviz']:
         print "Press Cntrl-C to stop sending visualization_msgs/MarkerArray on topic '/planned_grasp_path' ..."
-        publish_rviz_markers(rviz_frames, robot_base_frame)
+        publish_rviz_markers(rviz_frames, robot_base_frame, cfg)
         #rospy.spin()
     
 
@@ -718,6 +720,8 @@ if __name__ == '__main__':
                         help='Name of the robot base frame.')
     parser.add_argument('--object_frame', type=str, default = 'object',
                         help='Name of the object frame.')
+    parser.add_argument('--hand_cfg_file', type=str, default = 'data/hands/rbo_hand2.yaml',
+                        help='Config file for hand and arm-specific properties.')
     
     args = parser.parse_args()
     
