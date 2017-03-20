@@ -1,10 +1,15 @@
 # Grasp Planner based on Environmental Constraint Exploitation
 
+## Table of Contents
+
 1. [Overview](#overview)
 2. [Install](#install)
    1. [Minimal Dependencies](#minimaldependencies)
    2. [Dependencies For Running the Gazebo Example](#gazebodependencies)
 3. [Usage](#usage)
+   1. [Planning Based on PCD Input](#example1)
+   2. [Planning Based on Continuous RGB-D Input](#example2)
+   3. [Kuka Arm in Gazebo Simulation with TRIK Controller](#example3)
 4. [Examples](#examples)
 
 ---
@@ -99,7 +104,7 @@ optional arguments:
 
 ## Examples  <a name="examples"></a>
 
-### Plan based on given PCD input
+### Planning Based on PCD Input  <a name="example1"></a>
 
 This example shows a minimal ...
 
@@ -112,7 +117,7 @@ rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
 rosrun ec_grasp_planner planner.py --grasp surface_grasp --rviz_visualization
 ```
 
-### Planning based RGB-D input 
+### Planning Based on Continuous RGB-D Input   <a name="example2"></a>
 
 This example shows how to use the planner with an RGB-Depth sensor like Kinect or Asus Xtion.
 
@@ -127,7 +132,7 @@ rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
 rosrun ec_grasp_planner planner.py --grasp surface_grasp --rviz_visualization
 ```
 
-### Kuka Arm in Gazebo simulation with TRIK controller
+### Kuka Arm in Gazebo Simulation with TRIK Controller  <a name="example3"></a>
 
 This example shows the execution of a planned hybrid automaton motion.
 
