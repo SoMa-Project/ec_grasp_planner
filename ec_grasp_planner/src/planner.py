@@ -31,6 +31,8 @@ from subprocess import call
 from hybrid_automaton_msgs import srv
 from hybrid_automaton_msgs.msg import HAMState
 
+from std_msgs.msg import Header
+
 from pregrasp_msgs.msg import GraspStrategyArray
 from pregrasp_msgs.msg import GraspStrategy
 
@@ -379,6 +381,14 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame):
     curree = np.dot(curree, tra.rotation_matrix(angle_of_attack, [1, 0, 0]))
     goal = np.dot(tra.translation_matrix([0, 0, -0.3]), curree)
     
+    rviz_frames = []
+    rot = tra.rotation_matrix(angle_of_attack, [1, 0, 0])
+    goal1 = np.copy(wall_frame)
+    goal1[:3,3] = tra.translation_from_matrix(object_frame)
+    rviz_frames.append(goal1.dot(tra.translation_matrix([0, 0, 0.2])).dot(rot))
+    rviz_frames.append(goal1.dot(rot))
+    rviz_frames.append(np.dot(wall_frame, rot))
+        
     control_sequence = []
     
     control_sequence.append(ha.HTransformControlMode(curree, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
@@ -395,7 +405,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame):
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.01'))
     control_sequence.append(ha.GravityCompensationMode())
     
-    return cookbook.sequence_of_modes_and_switches(control_sequence)
+    return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
 
 def create_edge_grasp(object_frame, support_surface_frame, edge_frame):
     # python ec_grasps.py --anglesliding -10.0 --inflation 0.02 --speed 0.04 --force 4.0 --grasp edge_grasp --edgedistance -0.007 edge_chewinggum/
@@ -412,6 +422,14 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame):
     goal = np.dot(tra.translation_matrix([0, 0, -0.3]), curree)
     hand_closing_time = 3.0
     
+    rviz_frames = []
+    rot = tra.rotation_matrix(angle_of_sliding, [1, 0, 0])
+    goal1 = np.copy(edge_frame)
+    goal1[:3,3] = tra.translation_from_matrix(object_frame)
+    rviz_frames.append(goal1.dot(tra.translation_matrix([0, 0, -0.2])).dot(rot))
+    rviz_frames.append(goal1.dot(rot))
+    rviz_frames.append(edge_frame.dot(rot))
+    
     control_sequence = []
     control_sequence.append(ha.HTransformControlMode(curree, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.001'))
@@ -426,7 +444,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame):
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.001', goal_is_relative = '1'))
     control_sequence.append(ha.GravityCompensationMode())
     
-    return cookbook.sequence_of_modes_and_switches(control_sequence)
+    return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
 
 def create_surface_grasp(object_frame, support_surface_frame):
     # python ec_grasps.py --anglesliding 0.0 --inflation 0.33 --force 7.0 --grasp surface_grasp test_folder
@@ -447,6 +465,13 @@ def create_surface_grasp(object_frame, support_surface_frame):
                                     [ 0. ,  3.5]])
     hand_closing_time = np.max(valve_opening_times)#3.0 # special palm prototype
     
+    rviz_frames = []
+    rot = tra.rotation_matrix(angle_of_sliding, [1, 0, 0])
+    goal1 = np.copy(support_surface_frame)
+    goal1[:3,3] = tra.translation_from_matrix(object_frame)
+    rviz_frames.append(goal1.dot(tra.translation_matrix([0, 0, -0.2])).dot(rot))
+    rviz_frames.append(goal1.dot(rot))
+    
     control_sequence = []
     control_sequence.append(ha.HTransformControlMode(np.hstack(goals), controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
     control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]), norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
@@ -457,7 +482,7 @@ def create_surface_grasp(object_frame, support_surface_frame):
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.001'))
     control_sequence.append(ha.GravityCompensationMode())
             
-    return cookbook.sequence_of_modes_and_switches(control_sequence)
+    return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
 
 def transform_msg_to_homogenous_tf(msg):
     return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]), tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
@@ -469,32 +494,29 @@ def homogenous_tf_to_pose_msg(htf):
 def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
 
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame):
+def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
     
     grasp_type = graph.nodes[int(motion_sequence[-1].sig[1][1:])].label
     #grasp_frame = grasp_frames[grasp_type]
     
-    # instantiate every motion relative to the object frame
-    object_frame = tra.translation_matrix([0, 0, 0])
-    
     if grasp_type == 'EdgeGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
         edge_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         edge_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(edge_frame_node.transform))
-        return create_edge_grasp(object_frame, support_surface_frame, edge_frame), [support_surface_frame, edge_frame]
+        return create_edge_grasp(T_object_in_base, support_surface_frame, edge_frame)
     elif grasp_type == 'WallGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
         wall_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         wall_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(wall_frame_node.transform))
-        return create_wall_grasp(object_frame, support_surface_frame, wall_frame), [support_surface_frame, wall_frame]
+        return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame)
     elif grasp_type == 'SurfaceGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-        return create_surface_grasp(object_frame, support_surface_frame), [object_frame, support_surface_frame]
+        return create_surface_grasp(T_object_in_base, support_surface_frame)
     else:
         raise "Unknown grasp type: ", grasp_type
 
@@ -598,7 +620,7 @@ def publish_rviz_markers(frames, frame_id):
         msg.lifetime = rospy.Duration()
         msg.color.r = msg.color.g = msg.color.b = msg.color.a = 0
         msg.mesh_use_embedded_materials = True
-        msg.mesh_resource = "package://soft_hand_description/meshes/softhand_right_colored.dae"
+        msg.mesh_resource = "package://ec_grasp_planner/data/softhand_right_colored.dae"
         msg.scale.x = msg.scale.y = msg.scale.z = .1
         #msg.mesh_resource = mesh_resource 
         msg.pose = homogenous_tf_to_pose_msg(f)
@@ -609,7 +631,7 @@ def publish_rviz_markers(frames, frame_id):
     while not rospy.is_shutdown():
         marker_pub.publish(markers)
         r.sleep()
-    
+
 
 def main(**args):
     rospy.init_node('ec_planner')
@@ -618,9 +640,11 @@ def main(**args):
     
     camera_frame = args['camera_frame']
     robot_base_frame = args['robot_base_frame']
+    object_frame = args['object_frame']
     
     # make sure those frames exist and we can transform between them
-    tf_listener.waitForTransform(camera_frame, robot_base_frame, rospy.Time.now(), rospy.Duration(10.0))
+    tf_listener.waitForTransform(camera_frame, object_frame, rospy.Time(), rospy.Duration(10.0))
+    tf_listener.waitForTransform(camera_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
     
     #p.header.stamp = rospy.Time()
     #p_robotbaseframe = tf_listener.transformPose(robot_base_frame, p)
@@ -640,6 +664,9 @@ def main(**args):
         tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(5.0))
         graph_in_base = tf_listener.asMatrix(robot_base_frame, graph.header)
         
+        tf_listener.waitForTransform(robot_base_frame, object_frame, graph.header.stamp, rospy.Duration(5.0))
+        object_in_base = tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), object_frame))
+        
         print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
         
         grasp_path = find_a_path(0, 1, graph, args['grasp'], verbose = True)
@@ -657,7 +684,7 @@ def main(**args):
         rospy.sleep(0.3)
     
     # Turn grasp into hybrid automaton
-    ha, rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base)
+    ha, rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base)
     
     # call a service
     if args['ros_service_call']:
@@ -684,15 +711,17 @@ if __name__ == '__main__':
                         help='Whether to write the hybrid automaton to a file called hybrid_automaton.xml.')
     grasp_choices = ["any", "EdgeGrasp", "WallGrasp", "SurfaceGrasp"]
     parser.add_argument('--grasp', choices=grasp_choices, default=grasp_choices[0],
-                        help='which grasp type to use')
+                        help='Which grasp type to use.')
     parser.add_argument('--grasp_id', type=int, default=-1,
-                        help='Which grasp to use. Ignores any values < 0.')
+                        help='Which specific grasp to use. Ignores any values < 0.')
     parser.add_argument('--rviz', action='store_true', default = False,
                         help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
     parser.add_argument('--camera_frame', type=str, default = 'camera_rgb_optical_frame',
                         help='Name of the camera frame.')
     parser.add_argument('--robot_base_frame', type=str, default = 'world',
                         help='Name of the robot base frame.')
+    parser.add_argument('--object_frame', type=str, default = 'object',
+                        help='Name of the object frame.')
     
     args = parser.parse_args()
     
