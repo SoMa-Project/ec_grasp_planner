@@ -638,13 +638,11 @@ def main(**args):
     
     tf_listener = tf.TransformListener()
     
-    camera_frame = args['camera_frame']
     robot_base_frame = args['robot_base_frame']
     object_frame = args['object_frame']
     
     # make sure those frames exist and we can transform between them
-    tf_listener.waitForTransform(camera_frame, object_frame, rospy.Time(), rospy.Duration(10.0))
-    tf_listener.waitForTransform(camera_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
+    tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
     
     #p.header.stamp = rospy.Time()
     #p_robotbaseframe = tf_listener.transformPose(robot_base_frame, p)
@@ -716,8 +714,6 @@ if __name__ == '__main__':
                         help='Which specific grasp to use. Ignores any values < 0.')
     parser.add_argument('--rviz', action='store_true', default = False,
                         help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
-    parser.add_argument('--camera_frame', type=str, default = 'camera_rgb_optical_frame',
-                        help='Name of the camera frame.')
     parser.add_argument('--robot_base_frame', type=str, default = 'world',
                         help='Name of the robot base frame.')
     parser.add_argument('--object_frame', type=str, default = 'object',
