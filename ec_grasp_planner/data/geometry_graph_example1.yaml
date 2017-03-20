@@ -3,7 +3,7 @@ msg_to_pcl:
   inputs:
     {}
 #  format: 3
-  filename: /home/clemens/experimental_data/icra2016/wall/banana/2016Sep09_11-27-58_before_fixed.pcd
+  filename: eval(os.path.join(rospack.get_path("ec_grasp_planner"), "data/banana.pcd"))
 create_tf:
   type: ecto_rbo_pcl::CreateTF
   position: [0, 0, 0]
