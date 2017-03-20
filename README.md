@@ -89,7 +89,7 @@ pip install -e git+https://github.com/garydoranjr/pyddl.git#egg=pyddl
 
 ```
 planner.py [-h] [--ros_service_call] [--file_output]
-                  [--grasp {any,edge_grasp,wall_grasp,surface_grasp}]
+                  [--grasp {any,EdgeGrasp,WallGrasp,SurfaceGrasp}] [--rviz]
 
 Execute grasp strategy by turning a path in the geometry graph into a hybrid automaton.
 
@@ -99,8 +99,11 @@ optional arguments:
                         called /update_hybrid_automaton. (default: False)
   --file_output         Whether to write the hybrid automaton to a file called
                         hybrid_automaton.xml. (default: False)
-  --grasp {any,edge_grasp,wall_grasp,surface_grasp}
+  --grasp {any,EdgeGrasp,WallGrasp,SurfaceGrasp}
                         which grasp type to use (default: any)
+  --rviz                Whether to send marker messages that can be seen in
+                        RViz and represent the chosen grasping motion.
+                        (default: False)
 ```
 
 ---
@@ -112,6 +115,8 @@ optional arguments:
 This example shows a planned grasp in RViz based on a PCD file.
 
 ```
+roscore
+
 rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example1.yaml
 
 # start visualization
@@ -120,6 +125,10 @@ rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example1.r
 # select which type of grasp you want
 rosrun ec_grasp_planner planner.py --grasp surface_grasp --rviz
 ```
+
+In RViz you should be able to see the geometry graph:
+
+<img src="docs/example1.png" alt="Diagram" width="300" />
 
 ### Planning Based on Continuous RGB-D Input   <a name="example2"></a>
 

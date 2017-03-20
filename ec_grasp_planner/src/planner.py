@@ -490,7 +490,7 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
         wall_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         wall_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(wall_frame_node.transform))
-        return create_wall_grasp(object_frame, wall_frame), [support_surface_frame, wall_frame]
+        return create_wall_grasp(object_frame, support_surface_frame, wall_frame), [support_surface_frame, wall_frame]
     elif grasp_type == 'SurfaceGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
@@ -498,11 +498,11 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
     else:
         raise "Unknown grasp type: ", grasp_type
 
-def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_id = None, verbose = False):
+def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_labels, verbose = False):
     locations = ['l'+str(i) for i in range(len(graph.nodes))]
     
     connections = [('connected', 'l'+str(e.node_id_start), 'l'+str(e.node_id_end)) for e in graph.edges]
-    grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label.endswith('Grasp')]
+    grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels]
         
     # define possible actions
     domain = pyddl.Domain((
@@ -555,14 +555,6 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_id = 
         ),
     ))
     
-    goal = (('grasped', 'object'))
-    if goal_node_id is not None:
-        goal=(
-            ('grasped', 'object'),
-            ('hand_at', 'l'+str(goal_node_id)),
-            ('object_at', 'l'+str(goal_node_id)),
-        )
-    
     # each node in the graph is a location
     problem = pyddl.Problem(
         domain,
@@ -573,7 +565,9 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_id = 
             ('hand_at', 'l'+str(hand_start_node_id)),
             ('object_at', 'l'+str(object_start_node_id)),
         ] + connections + grasping_locations,
-        goal=goal
+        goal=(
+            ('grasped', 'object'),
+        )
     )
 
     plan = pyddl.planner(problem, verbose=verbose)
@@ -588,16 +582,17 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_id = 
 def publish_rviz_markers(frames, frame_id):
     from visualization_msgs.msg import MarkerArray
     from visualization_msgs.msg import Marker
-    marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=True)
+    marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
     markers = MarkerArray()
     
     timestamp = rospy.Time.now()
     
-    for f in frames:
+    for i, f in enumerate(frames):
         msg = Marker()
         msg.header.stamp = timestamp
         msg.header.frame_id = frame_id
         msg.frame_locked = True # False
+        msg.id = i
         msg.type = Marker.MESH_RESOURCE
         msg.action = Marker.ADD
         msg.lifetime = rospy.Duration()
@@ -610,20 +605,22 @@ def publish_rviz_markers(frames, frame_id):
         
         markers.markers.append(msg)
     
-    marker_pub.publish(markers)
+    r = rospy.Rate(5);
+    while not rospy.is_shutdown():
+        marker_pub.publish(markers)
+        r.sleep()
+    
 
 def main(**args):
     rospy.init_node('ec_planner')
     
     tf_listener = tf.TransformListener()
     
-    camera_frame = 'camera_rgb_optical_frame'
-    robot_base_frame = 'world'
+    camera_frame = args['camera_frame']
+    robot_base_frame = args['robot_base_frame']
     
     # make sure those frames exist and we can transform between them
     tf_listener.waitForTransform(camera_frame, robot_base_frame, rospy.Time.now(), rospy.Duration(10.0))
-    assert(tf_listener.frameExists(camera_frame))
-    assert(tf_listener.frameExists(robot_base_frame))
     
     #p.header.stamp = rospy.Time()
     #p_robotbaseframe = tf_listener.transformPose(robot_base_frame, p)
@@ -634,25 +631,28 @@ def main(**args):
     while grasp_path is None:
         # get geometry graph
         graph = rospy.wait_for_message('geometry_graph', Graph)
+        
+        #for i, g in enumerate(graph.nodes):
+        #    print i, g.label
+        
         graph.header.stamp = rospy.Time.now() + rospy.Duration(0.5)
         
         tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(5.0))
         graph_in_base = tf_listener.asMatrix(robot_base_frame, graph.header)
-                
+        
         print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
         
-        # identify potential goal nodes (based on grasp type)
-        goal_node_ids = [i for i, n in enumerate(graph.nodes) if n.label in args['grasp']]
+        grasp_path = find_a_path(0, 1, graph, args['grasp'], verbose = True)
         
-        if len(goal_node_ids) > 0:
+        # identify potential goal nodes (based on grasp type)
+        #goal_node_ids = [i for i, n in enumerate(graph.nodes) if n.label in args['grasp']]
+        #if len(goal_node_ids) > 0:
             # get all paths that end in goal_ids
             #paths = find_all_paths(0, goal_node_ids, graph)
             #if len(paths) > 0:
             #    grasp_path = paths[0]
             #    break
             #grasp_path = find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_id = None, verbose = False):
-            grasp_path = find_a_path(0, 2, graph, goal_node_id = 2, verbose = True)
-            
         
         rospy.sleep(0.3)
     
@@ -672,7 +672,7 @@ def main(**args):
     if args['rviz']:
         print "Press Cntrl-C to stop sending visualization_msgs/MarkerArray on topic '/planned_grasp_path' ..."
         publish_rviz_markers(rviz_frames, robot_base_frame)
-        rospy.spin()
+        #rospy.spin()
     
 
 if __name__ == '__main__':
@@ -687,6 +687,11 @@ if __name__ == '__main__':
                         help='which grasp type to use')
     parser.add_argument('--rviz', action='store_true', default = False,
                         help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
+    parser.add_argument('--camera_frame', type=str, default = 'camera_rgb_optical_frame',
+                        help='Name of the camera frame.')
+    parser.add_argument('--robot_base_frame', type=str, default = 'world',
+                        help='Name of the robot base frame.')
+    
     args = parser.parse_args()
     
     if args.grasp == 'any':
