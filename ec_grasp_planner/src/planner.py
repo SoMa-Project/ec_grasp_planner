@@ -40,6 +40,10 @@ from geometry_graph_msgs.msg import Graph
 
 import pyddl
 
+import rospkg
+rospack = rospkg.RosPack()
+pkg_path = rospack.get_path('ec_grasp_planner')
+sys.path.append(pkg_path + '/../hybrid-automaton-tools-py/')
 import hatools.components as ha
 import hatools.cookbook as cookbook
 

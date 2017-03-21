@@ -90,6 +90,9 @@ Now, you can clone this repository into your catkin workspace and build the ROS 
 
 ```
 catkin clone https://github.com/SoMa-Project/ec_grasp_planner.git
+cd ec_grasp_planner
+git submodule init
+git submodule update
 catkin build ec_grasp_planner
 ```
 
