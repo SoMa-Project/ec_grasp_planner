@@ -6,6 +6,7 @@
 2. [Install](#install)
    1. [Minimal Dependencies](#minimaldependencies)
    2. [Dependencies For Running the Gazebo Example](#gazebodependencies)
+   3. [Grasp Planner](#planner)
 3. [Usage](#usage)
 4. [Examples](#examples)
    1. [Planning Based on PCD Input](#example1)
@@ -83,7 +84,7 @@ git clone https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git
   ln -s $HA_MANAGER/iiwa_description/urdf/iiwa7_kinect_ft.urdf.xacro_ $IIWA_STACK/urdf/iiwa7_kinect_ft.urdf.xacro
 ```
 
-### Grasp Planner
+### Grasp Planner <a name="planner"></a>
 
 Now, you can clone this repository into your catkin workspace and build the ROS package:
 
