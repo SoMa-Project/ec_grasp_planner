@@ -371,22 +371,17 @@ def find_all_paths(start_node_id, goal_node_ids, graph):
     
     return final_solutions
 
-def create_wall_grasp(object_frame, support_surface_frame, wall_frame):
-    # Good values
-    # python ec_grasps.py --angle 69.0 --inflation .29 --speed 0.04 --force 3. --wallforce -11.0 --positionx 0.0 --grasp wall_grasp wall_chewinggum
+def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params):   
+    downward_force = handarm_params['wall_grasp']['table_force']
+    sliding_speed = handarm_params['wall_grasp']['sliding_speed']
+    wall_force = handarm_params['wall_grasp']['wall_force']
+    angle_of_attack = handarm_params['wall_grasp']['angle_of_attack']
     
-    downward_force = 3.
-    sliding_speed = 0.04
-    wall_force = -11.0
-    angle_of_attack = math.radians(69.0)
-    
-    curree = object_frame # TODO
-    #curree = np.dot(curree, tra.rotation_matrix(self.experimental_params[userdata.counter_in], [1, 0, 0]))
-    curree = np.dot(curree, tra.rotation_matrix(angle_of_attack, [1, 0, 0]))
+    rot = tra.rotation_matrix(angle_of_attack, [1, 0, 0])
+    curree = np.dot(object_frame, rot)
     goal = np.dot(tra.translation_matrix([0, 0, -0.3]), curree)
     
     rviz_frames = []
-    rot = tra.rotation_matrix(angle_of_attack, [1, 0, 0])
     goal1 = np.copy(wall_frame)
     goal1[:3,3] = tra.translation_from_matrix(object_frame)
     rviz_frames.append(goal1.dot(tra.translation_matrix([0, 0, 0.2])).dot(rot))
@@ -404,20 +399,19 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame):
     control_sequence.append(ha.GravityCompensationMode())
     hand_closing_time = 2.5
     control_sequence[-1].controlset.add(ha.RBOHandController(goal = np.array([[1,0]]*6), valve_times = np.array([[0,hand_closing_time]]*6), goal_is_relative = '1'))
-    control_sequence.append(ha.TimeSwitch('', '', duration = 1.0 + hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('', '', duration = 1. + hand_closing_time))
     control_sequence.append(ha.HTransformControlMode(curree, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.01'))
     control_sequence.append(ha.GravityCompensationMode())
     
     return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
 
-def create_edge_grasp(object_frame, support_surface_frame, edge_frame):
-    # python ec_grasps.py --anglesliding -10.0 --inflation 0.02 --speed 0.04 --force 4.0 --grasp edge_grasp --edgedistance -0.007 edge_chewinggum/
-    edge_distance_factor = -0.007
-    distance = 0. # TODO
-    downward_force = 4.0
-    sliding_speed = 0.04
-    angle_of_sliding = math.radians(-10.)
+def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_params):
+    edge_distance_factor = handarm_params['edge_grasp']['edge_distance_factor']
+    distance = handarm_params['edge_grasp']['distance']
+    downward_force = handarm_params['edge_grasp']['downward_force']
+    sliding_speed = handarm_params['edge_grasp']['sliding_speed']
+    angle_of_sliding = handarm_params['edge_grasp']['angle_of_sliding']
 
     initial_cspace_goal = np.array([0.910306, -0.870773, -2.36991, 2.23058, -0.547684, -0.989835, 0.307618])
 
@@ -450,12 +444,11 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame):
     
     return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
 
-def create_surface_grasp(object_frame, support_surface_frame):
-    # python ec_grasps.py --anglesliding 0.0 --inflation 0.33 --force 7.0 --grasp surface_grasp test_folder
-    angle_of_sliding = 0.0
-    downward_force = 7.
+def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
+    angle_of_sliding = handarm_params['surface_grasp']['angle_of_sliding']
+    downward_force = handarm_params['surface_grasp']['downward_force']
     
-    goals = object_frame # TODO 
+    goals = object_frame
     goals = [np.dot(g, tra.translation_matrix([0, 0.02, 0])) for g in goals]
     goals = [np.dot(g, tra.rotation_matrix(angle_of_sliding, [1, 0, 0])) for g in goals]
     
@@ -467,7 +460,7 @@ def create_surface_grasp(object_frame, support_surface_frame):
                                     [ 0. ,  5.],
                                     [ 0. ,  2.],
                                     [ 0. ,  3.5]])
-    hand_closing_time = np.max(valve_opening_times)#3.0 # special palm prototype
+    hand_closing_time = np.max(valve_opening_times) + 1.
     
     rviz_frames = []
     rot = tra.rotation_matrix(angle_of_sliding, [1, 0, 0])
@@ -481,7 +474,7 @@ def create_surface_grasp(object_frame, support_surface_frame):
     control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]), norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
     control_sequence.append(ha.ControlMode('').set(ha.NakamuraControlSet().add(ha.ForceHTransformController(desired_distance = 0.0, desired_displacement=tra.translation_matrix([0, 0, 0]), force_gradient=tra.translation_matrix([0, 0, 0.005]), desired_force_dimension=np.array([0, 0, 1, 0, 0, 0])))))
     control_sequence[-1].controlset.add(ha.RBOHandController(goal = np.array([[1,0],[1,0],[1,0],[1,0],[1,0],[1,0]]), valve_times = valve_opening_times, goal_is_relative = '1'))
-    control_sequence.append(ha.TimeSwitch('', '', duration = 1.0 + hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('', '', duration = hand_closing_time))
     control_sequence.append(ha.HTransformControlMode(goals[0], controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.001'))
     control_sequence.append(ha.GravityCompensationMode())
@@ -498,7 +491,7 @@ def homogenous_tf_to_pose_msg(htf):
 def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
 
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base):
+def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
     
@@ -510,17 +503,17 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
         edge_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         edge_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(edge_frame_node.transform))
-        return create_edge_grasp(T_object_in_base, support_surface_frame, edge_frame)
+        return create_edge_grasp(T_object_in_base, support_surface_frame, edge_frame, handarm_params)
     elif grasp_type == 'WallGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
         wall_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         wall_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(wall_frame_node.transform))
-        return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame)
+        return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame, handarm_params)
     elif grasp_type == 'SurfaceGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-        return create_surface_grasp(T_object_in_base, support_surface_frame)
+        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params)
     else:
         raise "Unknown grasp type: ", grasp_type
 
