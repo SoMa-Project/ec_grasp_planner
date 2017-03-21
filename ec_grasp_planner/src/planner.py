@@ -47,7 +47,7 @@ sys.path.append(pkg_path + '/../hybrid-automaton-tools-py/')
 import hatools.components as ha
 import hatools.cookbook as cookbook
 
-import hand_parameters
+import handarm_parameters
 
 def get_numpy_matrix(listener, pose):
     return listener.fromTranslationRotation((pose.position.x, pose.position.y, pose.position.z),
@@ -327,7 +327,7 @@ class ReturnToStart(smach.State):
         #print self.return_ha.xml()
         self.call_ha(self.return_ha.xml())
         return 'done'
-
+    
 #def is_goal_node(strategy_type, grasp_type):
 #    return (strategy_type == GraspStrategy.STRATEGY_WALL_GRASP or
 #            strategy_type == GraspStrategy.STRATEGY_SQUEEZE or
@@ -605,7 +605,7 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
     
     return plan
 
-def publish_rviz_markers(frames, frame_id, cfg):
+def publish_rviz_markers(frames, frame_id, handarm_params):
     from visualization_msgs.msg import MarkerArray
     from visualization_msgs.msg import Marker
     marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
@@ -624,8 +624,8 @@ def publish_rviz_markers(frames, frame_id, cfg):
         msg.lifetime = rospy.Duration()
         msg.color.r = msg.color.g = msg.color.b = msg.color.a = 0
         msg.mesh_use_embedded_materials = True
-        msg.mesh_resource = cfg["mesh_file"]
-        msg.scale.x = msg.scale.y = msg.scale.z = .1
+        msg.mesh_resource = handarm_params["mesh_file"]
+        msg.scale.x = msg.scale.y = msg.scale.z = handarm_params["mesh_file_scale"]
         #msg.mesh_resource = mesh_resource 
         msg.pose = homogenous_tf_to_pose_msg(f)
         
@@ -639,6 +639,8 @@ def publish_rviz_markers(frames, frame_id, cfg):
 
 def main(**args):
     rospy.init_node('ec_planner')
+    
+    handarm_params = handarm_parameters.__dict__[args['handarm']]()
     
     tf_listener = tf.TransformListener()
     
@@ -685,9 +687,6 @@ def main(**args):
         rospy.sleep(0.3)
     
     # Turn grasp into hybrid automaton
-    import yaml
-    with open(pkg_path + '/' + args['hand_cfg_file'], 'r') as ymlfile:
-        cfg = yaml.load(ymlfile)
     ha, rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base)
     
     # call a service
@@ -702,7 +701,7 @@ def main(**args):
     
     if args['rviz']:
         print "Press Cntrl-C to stop sending visualization_msgs/MarkerArray on topic '/planned_grasp_path' ..."
-        publish_rviz_markers(rviz_frames, robot_base_frame, cfg)
+        publish_rviz_markers(rviz_frames, robot_base_frame, handarm_params)
         #rospy.spin()
     
 
@@ -724,8 +723,8 @@ if __name__ == '__main__':
                         help='Name of the robot base frame.')
     parser.add_argument('--object_frame', type=str, default = 'object',
                         help='Name of the object frame.')
-    parser.add_argument('--hand_cfg_file', type=str, default = 'data/hands/rbo_hand2.yaml',
-                        help='Config file for hand and arm-specific properties.')
+    parser.add_argument('--handarm', type=str, default = 'RBOHand2WAM',
+                        help='Python class that contains configuration parameters for hand and arm-specific properties.')
     
     args = parser.parse_args()
     

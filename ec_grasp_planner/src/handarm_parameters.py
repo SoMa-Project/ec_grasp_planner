@@ -8,12 +8,19 @@ import hatools.components as ha
 # python ec_grasps.py --anglesliding -10.0 --inflation 0.02 --speed 0.04 --force 4.0 --grasp edge_grasp --edgedistance -0.007 edge_chewinggum/
 # python ec_grasps.py --anglesliding 0.0 --inflation 0.33 --force 7.0 --grasp surface_grasp test_folder
 
-grasps = {
-    'WallGrasp': {
-        'jump_condition': ha.ForceTorqueSwitch('slide', 'close_hand', goal = np.array([-10, 0, 0, 0, 0, 0]), norm_weights = np.array([1, 0, 0, 0, 0, 0]), jump_criterion = "THRESH_LOWER_BOUND", frame_id = 'odom', goal_is_relative = '1'),
-    },
-    'EdgeGrasp': {
-    },
-    'SurfaceGrasp': {
-    },
-}
+class BaseHandArm(dict):
+    def __init__(self):
+        self['mesh_file'] = "Unknown"
+        self['mesh_file_scale'] = 1.
+
+class RBOHand2(BaseHandArm):
+    def __init__(self):
+        super(RBOHand2, self).__init__()
+        self['mesh_file'] = "package://ec_grasp_planner/data/softhand_right_colored.dae"
+        self['mesh_file_scale'] = 0.1
+
+
+class RBOHand2WAM(RBOHand2):
+    def __init__(self, **kwargs):
+        super(RBOHand2WAM, self).__init__()
+
