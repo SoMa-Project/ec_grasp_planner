@@ -184,7 +184,7 @@ roslaunch trik_controller iiwa.launch
 rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example3.yaml --debug
 
 # to check the potential grasps
-rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example3.rviz
+rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
 
 rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rviz --handarm RBOHand2Kuka
 ```
