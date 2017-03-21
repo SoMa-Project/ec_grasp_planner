@@ -33,10 +33,6 @@ Proceedings of the IEEE International Conference on Robotics and Automation (ICR
 ## Install <a name="install"></a>
 
 This code was tested with [ROS indigo](http://wiki.ros.org/indigo) under Ubuntu 14.04.5 (LTS).
-Clone this repository into your catkin workspace, satisfy the minimal dependencies listed below, and build the ROS package:
-```
-catkin build ec_grasp_planner
-```
 
 ### Minimal Dependencies <a name="minimaldependencies"></a>
 
@@ -57,6 +53,11 @@ catkin build ecto_rbo
 pip install -e git+https://github.com/garydoranjr/pyddl.git#egg=pyddl
 ```
 
+* Get the ROS package hybrid_automaton_msgs from [hybrid_automaton_manager_kuka](https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git):
+```
+git clone https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git
+```
+
 ### Dependencies For Running the Gazebo Example <a name="gazebodependencies"></a>
 
 * Get Gazebo multi-robot simulator, version 2.2.6:
@@ -72,9 +73,8 @@ pip install -e git+https://github.com/garydoranjr/pyddl.git#egg=pyddl
   catkin build iiwa
 ```
 
-* Get [hybrid_automaton_manager_kuka](https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git) and link robot files from iiwa_stack:
+* Build the [hybrid_automaton_manager_kuka](https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git) and link robot files from iiwa_stack:
 ```
-  git clone https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git
   catkin build hybrid_automaton_manager_kuka
   IIWA_STACK=`rospack find iiwa_description`
   HA_MANAGER=`rospack find hybrid_automaton_manager_kuka`
@@ -82,6 +82,16 @@ pip install -e git+https://github.com/garydoranjr/pyddl.git#egg=pyddl
   ln -s $HA_MANAGER/iiwa_description/urdf/iiwa7_kinect_ft.xacro_ $IIWA_STACK/urdf/iiwa7_kinect_ft.xacro
   ln -s $HA_MANAGER/iiwa_description/urdf/iiwa7_kinect_ft.urdf.xacro_ $IIWA_STACK/urdf/iiwa7_kinect_ft.urdf.xacro
 ```
+
+### Grasp Planner
+
+Now, you can clone this repository into your catkin workspace and build the ROS package:
+
+```
+catkin clone https://github.com/SoMa-Project/ec_grasp_planner.git
+catkin build ec_grasp_planner
+```
+
 
 ---
 
@@ -117,7 +127,7 @@ This example shows a planned grasp in RViz based on a PCD file.
 ```
 roscore
 
-rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example1.yaml
+rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example1.yaml --debug
 
 # start visualization
 rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example1.rviz
@@ -138,11 +148,11 @@ This example shows how to use the planner with an RGB-Depth sensor like Kinect o
 roslaunch openni2_launch openni2.launch depth_registration:=true
 rosrun dynamic_reconfigure dynparam set /camera/driver depth_mode 5
 
-rosrun ecto_rbo_yaml plasm_yaml_ros_node.py demo_TODO.yaml --debug
+rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example2.yaml --debug
 
-rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
+rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example2.rviz
 
-rosrun ec_grasp_planner planner.py --grasp surface_grasp --rviz
+rosrun ec_grasp_planner planner.py --grasp EdgeGrasp --rviz
 ```
 
 ### Kuka Arm in Gazebo Simulation with TRIK Controller  <a name="example3"></a>
@@ -154,12 +164,12 @@ This example shows the execution of a planned hybrid automaton motion.
 roslaunch iiwa_gazebo iiwa_gazebo.launch model:=iiwa7_kinect_ft
 roslaunch trik_controller iiwa.launch
 
-rosrun ecto_rbo_yaml plasm_yaml_ros_node.py demo_vision.yaml --debug
+rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example3.yaml --debug
 
 # to check the potential grasps
-rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
+rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example3.rviz
 
-rosrun ec_grasp_planner planner.py --grasp surface_grasp --ros_service_call --rviz
+rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rviz
 ```
 
 ***
