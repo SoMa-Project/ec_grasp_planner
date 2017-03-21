@@ -103,9 +103,12 @@ catkin build ec_grasp_planner
 
 ```
 planner.py [-h] [--ros_service_call] [--file_output]
-                  [--grasp {any,EdgeGrasp,WallGrasp,SurfaceGrasp}] [--rviz]
+                [--grasp {any,EdgeGrasp,WallGrasp,SurfaceGrasp}]
+                [--grasp_id GRASP_ID] [--rviz]
+                [--robot_base_frame ROBOT_BASE_FRAME]
+                [--object_frame OBJECT_FRAME] [--handarm HANDARM]
 
-Execute grasp strategy by turning a path in the geometry graph into a hybrid automaton.
+Turn path in graph into hybrid automaton.
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -114,10 +117,20 @@ optional arguments:
   --file_output         Whether to write the hybrid automaton to a file called
                         hybrid_automaton.xml. (default: False)
   --grasp {any,EdgeGrasp,WallGrasp,SurfaceGrasp}
-                        which grasp type to use (default: any)
+                        Which grasp type to use. (default: any)
+  --grasp_id GRASP_ID   Which specific grasp to use. Ignores any values < 0.
+                        (default: -1)
   --rviz                Whether to send marker messages that can be seen in
                         RViz and represent the chosen grasping motion.
                         (default: False)
+  --robot_base_frame ROBOT_BASE_FRAME
+                        Name of the robot base frame. (default: world)
+  --object_frame OBJECT_FRAME
+                        Name of the object frame. (default: object)
+  --handarm HANDARM     Python class that contains configuration parameters
+                        for hand and arm-specific properties. (default:
+                        RBOHand2WAM)
+
 ```
 
 ---
@@ -173,7 +186,7 @@ rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data
 # to check the potential grasps
 rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example3.rviz
 
-rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rviz
+rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rviz --handarm RBOHand2Kuka
 ```
 
 ***
