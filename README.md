@@ -24,10 +24,11 @@ This is based on:
 Clemens Eppner and Oliver Brock. "[Planning Grasp Strategies That Exploit Environmental Constraints](http://www.robotics.tu-berlin.de/fileadmin/fg170/Publikationen_pdf/eppner_icra2015.pdf)"  
 Proceedings of the IEEE International Conference on Robotics and Automation (ICRA), pp. 4947 - 4952, 2015.
 
+<!--
 ### Structure and Flow of Information
 
 <img src="docs/diagram.png" alt="Diagram" width="200" />
-
+-->
 
 ---
 
@@ -79,9 +80,9 @@ git clone https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git
   catkin build hybrid_automaton_manager_kuka
   IIWA_STACK=`rospack find iiwa_description`
   HA_MANAGER=`rospack find hybrid_automaton_manager_kuka`
-  ln -s $HA_MANAGER/iiwa_description/launch/iiwa7_kinect_ft_upload.launch_ $IIWA_STACK/launch/iiwa7_kinect_ft_upload.launch
-  ln -s $HA_MANAGER/iiwa_description/urdf/iiwa7_kinect_ft.xacro_ $IIWA_STACK/urdf/iiwa7_kinect_ft.xacro
-  ln -s $HA_MANAGER/iiwa_description/urdf/iiwa7_kinect_ft.urdf.xacro_ $IIWA_STACK/urdf/iiwa7_kinect_ft.urdf.xacro
+  ln -s $HA_MANAGER/../iiwa_description/launch/iiwa7_kinect_ft_upload.launch_ $IIWA_STACK/launch/iiwa7_kinect_ft_upload.launch
+  ln -s $HA_MANAGER/../iiwa_description/urdf/iiwa7_kinect_ft.xacro_ $IIWA_STACK/urdf/iiwa7_kinect_ft.xacro
+  ln -s $HA_MANAGER/../iiwa_description/urdf/iiwa7_kinect_ft.urdf.xacro_ $IIWA_STACK/urdf/iiwa7_kinect_ft.urdf.xacro
 ```
 
 ### Grasp Planner <a name="planner"></a>
@@ -190,7 +191,3 @@ rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rvi
 ```
 
 ***
-
-## TODOs
-
-[ ] How to modify hand-specific information

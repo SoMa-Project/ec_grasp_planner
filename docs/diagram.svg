@@ -2,6 +2,7 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
+   xmlns:osb="http://www.openswatchbook.org/uri/2009/osb"
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -17,6 +18,14 @@
    sodipodi:docname="diagram.svg">
   <defs
      id="defs4">
+    <linearGradient
+       id="linearGradient4185"
+       osb:paint="solid">
+      <stop
+         style="stop-color:#ffffff;stop-opacity:1;"
+         offset="0"
+         id="stop4187" />
+    </linearGradient>
     <marker
        inkscape:stockid="EmptyTriangleOutL"
        orient="auto"
@@ -117,6 +126,20 @@
          style="fill:#ffffff;fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
          transform="matrix(0.8,0,0,0.8,-4.8,0)" />
     </marker>
+    <marker
+       inkscape:stockid="EmptyTriangleOutL"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="EmptyTriangleOutL-7-8"
+       style="overflow:visible">
+      <path
+         inkscape:connector-curvature="0"
+         id="path3985-9-1"
+         d="m 5.77,0 -8.65,5 0,-10 8.65,5 z"
+         style="fill:#ffffff;fill-rule:evenodd;stroke:#000000;stroke-width:1pt"
+         transform="matrix(0.8,0,0,0.8,-4.8,0)" />
+    </marker>
   </defs>
   <sodipodi:namedview
      id="base"
@@ -126,16 +149,16 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1.4"
-     inkscape:cx="190.75905"
-     inkscape:cy="797.96392"
+     inkscape:cx="360.04476"
+     inkscape:cy="890.82106"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
-     inkscape:window-width="1666"
-     inkscape:window-height="1028"
+     inkscape:window-width="1855"
+     inkscape:window-height="1176"
      inkscape:window-x="65"
      inkscape:window-y="24"
-     inkscape:window-maximized="0" />
+     inkscape:window-maximized="1" />
   <metadata
      id="metadata7">
     <rdf:RDF>
@@ -144,7 +167,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -157,8 +180,8 @@
        id="rect2985"
        width="200.81529"
        height="155.81529"
-       x="22.353872"
-       y="17.311678"
+       x="30.925285"
+       y="50.168823"
        inkscape:export-filename="/home/clemens/catkin_ws/src/ec_grasp_planner/docs/diagram.png"
        inkscape:export-xdpi="300"
        inkscape:export-ydpi="300" />
@@ -167,14 +190,14 @@
        id="rect2985-3"
        width="138.57536"
        height="107.52249"
-       x="53.473839"
-       y="230.02951"
+       x="316.33096"
+       y="77.172371"
        inkscape:export-filename="/home/clemens/catkin_ws/src/ec_grasp_planner/docs/diagram.png"
        inkscape:export-xdpi="300"
        inkscape:export-ydpi="300" />
     <path
        style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#EmptyTriangleOutL);display:inline"
-       d="m 122.76152,173.12697 0,56.90254"
+       d="m 231.74058,129.20465 84.59038,0.95045"
        id="path3819"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0"
@@ -199,17 +222,6 @@
          id="tspan5401"
          x="127.14289"
          y="203.07649">geometry_graph_msgs::Graph</tspan></text>
-    <path
-       style="color:#000000;fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;marker-end:url(#EmptyTriangleOutL);visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
-       d="m 122.69166,337.552 -0.0898,69.0959"
-       id="path5427"
-       inkscape:connector-type="polyline"
-       inkscape:connector-curvature="0"
-       inkscape:connection-start="#rect2985-3"
-       inkscape:connection-start-point="d4"
-       inkscape:export-filename="/home/clemens/catkin_ws/src/ec_grasp_planner/docs/diagram.png"
-       inkscape:export-xdpi="300"
-       inkscape:export-ydpi="300" />
     <text
        xml:space="preserve"
        style="font-size:12px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
@@ -252,5 +264,46 @@
          id="tspan5475-6"
          x="50.374802"
          y="98.362877">rosrun ecto_rbo_yaml ...</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       id="rect2985-3-3"
+       width="138.94295"
+       height="42.890076"
+       x="562.67139"
+       y="36.274273"
+       inkscape:export-filename="/home/clemens/catkin_ws/src/ec_grasp_planner/docs/diagram.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"
+       ry="0" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#EmptyTriangleOutL-7)"
+       d="M 454.90633,110.35613 562.67139,78.351384"
+       id="path3179"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect2985-3"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#rect2985-3-3"
+       inkscape:connection-end-point="d4" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       id="rect2985-3-7"
+       width="138.57536"
+       height="107.52249"
+       x="567.14087"
+       y="134.31523"
+       inkscape:export-filename="/home/clemens/catkin_ws/src/ec_grasp_planner/docs/diagram.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;color:#000000;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;marker:none;marker-end:url(#EmptyTriangleOutL-7);visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       d="m 454.90633,146.71966 112.23454,25.57077"
+       id="path4227"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0"
+       inkscape:connection-start="#rect2985-3"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#rect2985-3-7"
+       inkscape:connection-end-point="d4" />
   </g>
 </svg>
