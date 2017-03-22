@@ -1,31 +1,15 @@
-#ros_pc_subscriber:
-#  type: ecto_sensor_msgs::Subscriber_PointCloud2
-#  queue_size: 2
-#  topic_name: /camera/depth_registered/points
-#msg_to_pcl:
-#  type: ecto_rbo_pcl::Message2PointCloud
-#  inputs:
-#    input: ros_pc_subscriber/output
-#  #format: 0
+ros_pc_subscriber:
+  type: ecto_sensor_msgs::Subscriber_PointCloud2
+  queue_size: 2
+  topic_name: /camera/depth_registered/points
 msg_to_pcl:
-  type: ecto_rbo_pcl::PCDReader
+  type: ecto_rbo_pcl::Message2PointCloud
   inputs:
-    {}
-#  format: 3
-#  filename: /home/clemens/experimental_data/icra2016/wall/gamepad/2016Sep09_12-14-25_before_fixed.pcd
-  #filename: /home/clemens/experimental_data/icra2016/wall/mead/2016Sep13_22-45-40_before_fixed.pcd
-  filename: /home/clemens/experimental_data/icra2016/wall/banana/2016Sep09_11-27-58_before_fixed.pcd
-#  filename: /home/clemens/experimental_data/runX/wallgrasps/controller0-obj0-pose0/setup/saveobj_00000.obj.scaled.obj.pcd
-#  filename: /home/clemens/experimental_data/runXsubset/wallgrasps/controller0-obj0-pose0/setup/saveobj_00000.obj.scaled.obj.pcd
-#  filename: /home/clemens/experimental_data/simulateonly_00000.obj.pcd
+    input: ros_pc_subscriber/output
 create_tf:
   type: ecto_rbo_pcl::CreateTF
   position: [0, 0, 0]
   rotation_xyzw: [0, 0, 0, 1]
-#  position: [ 0.03015453, -0.04351279,  0.55775093]
-#  rotation_xyzw: [ 0.71833985,  0.50824078, -0.19391165, -0.43367897]
-#  position: [ 0.03015453, -0.04351279,  0.55775093]
-#  rotation_xyzw: [ 0.71833985,  0.50824078, -0.19391165, -0.43367897]
 tf_send_camera:
   type: ecto_rbo_pcl::BroadcastTF
   inputs:
