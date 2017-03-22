@@ -108,11 +108,10 @@ git clone https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git
 ```
 
 
-* Get [hybrid_automaton_library](https://github.com/tu-rbo/hybrid-automaton-library.git) and install following the readme instructions.
+* Get [hybrid_automaton_library](https://github.com/tu-rbo/hybrid-automaton-library.git) and install it by following the readme instructions.
 
 
-* Before you continue, please make sure that you have installed a TRIK controller, e.g. [trik_controller](https://github.com/SoMa-Project/trik_controller.git)
-following the installation instructions.
+* Before you continue, please make sure that you have installed a TRIK controller, e.g. [trik_controller](https://github.com/SoMa-Project/trik_controller.git).
 
 
 
