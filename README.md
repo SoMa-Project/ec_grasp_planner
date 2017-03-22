@@ -102,7 +102,7 @@ git clone https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git
 * Get [iiwa_stack](https://github.com/SalvoVirga/iiwa_stack.git):
 ```
   git clone https://github.com/SalvoVirga/iiwa_stack.git
-  roscd iiwa/..
+  cd iiwa_stack
   git checkout 94670d70b9bfbf0920c7de539012c805734fdbc5
   catkin build iiwa
 ```
