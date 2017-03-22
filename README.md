@@ -54,16 +54,14 @@ You might need to add the following packages to your ros installation before you
 ```
 sudo apt-get install ros-indigo-ecto*
 ```
-The package depends on CGAL. To solve the dependency:
+The package depends on [CGAL]. To solve the dependency:
 ```
 sudo apt-get install libcgal-dev
 ```
 
-You will also have to install Wild Magic from www.geometrictools.com
-https://www.geometrictools.com/Downloads/WildMagic5p14.zip (from
-https://www.geometrictools.com/Downloads/Downloads.html)
+You will also have to install [Wild Magic](https://www.geometrictools.com/Downloads/WildMagic5p14.zip) (from https://www.geometrictools.com/Downloads/Downloads.html)
 
-Following the installation instructions listed here: https://www.geometrictools.com/Downloads/Wm5p14InstallationRelease.pdf
+Following the installation instructions listed here: [instructions](https://www.geometrictools.com/Downloads/Wm5p14InstallationRelease.pdf)
 or simply download and execute:
 ```
 make CFG=ReleaseDynamic -f makefile.wm5
@@ -73,7 +71,7 @@ And export the respective WP5_PATH
 export WP5_PATH=WP5_PATH=/your_path/GeometricTools/WildMagic5/SDK
 ```
 
-You will also need to install GDIAM. Download the old version libgdiam-1.01.tar.gz and follow the building instructions:
+You will also need to install [GDIAM]. Download the old version libgdiam-1.01.tar.gz and follow the building instructions:
 ```
 tar -xzf libgdiam-1.0.1.tar.gz 
 ~/$ cd libgdiam/
@@ -112,10 +110,10 @@ git clone https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git
 ```
 
 
-* Get [hybrid_automaton_library] (https://github.com/tu-rbo/hybrid-automaton-library.git) and install following the readme instructions.
+* Get [hybrid_automaton_library](https://github.com/tu-rbo/hybrid-automaton-library.git) and install following the readme instructions.
 
 
-* Before you continue, please make sure that you have installed a TRIK controller, e.g. [trik_controller] (https://github.com/SoMa-Project/trik_controller.git)
+* Before you continue, please make sure that you have installed a TRIK controller, e.g. [trik_controller](https://github.com/SoMa-Project/trik_controller.git)
 following the install instructions.
 
 
