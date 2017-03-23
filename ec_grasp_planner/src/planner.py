@@ -673,7 +673,7 @@ def main(**args):
         rospy.sleep(0.3)
     
     # Turn grasp into hybrid automaton
-    ha, rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base)
+    ha, rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base, handarm_params)
     
     # call a service
     if args['ros_service_call']:
