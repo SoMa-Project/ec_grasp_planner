@@ -47,7 +47,7 @@ class RBOHand2WAM(RBOHand2):
 
 class RBOHand2Kuka(RBOHand2):
     def __init__(self, **kwargs):
-        super(RBOHand2WAM, self).__init__()
+        super(RBOHand2Kuka, self).__init__()
         
         self['surface_grasp']['initial_goal'] = np.array([0, 0, 0, 0, 0, 0])
         self['surface_grasp']['pose'] = tra.translation_matrix([0, 0, 0])
