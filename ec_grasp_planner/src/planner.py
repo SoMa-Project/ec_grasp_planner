@@ -617,9 +617,19 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
         
         markers.markers.append(msg)
     
+    br = tf.TransformBroadcaster()
+
     r = rospy.Rate(5);
     while not rospy.is_shutdown():
         marker_pub.publish(markers)
+        
+        for i, f in enumerate(frames):
+            br.sendTransform(tra.translation_from_matrix(f),
+                        tra.quaternion_from_matrix(f),
+                        rospy.Time.now(),
+                        "dgb_frame_" + str(i),
+                        frame_id)
+        
         r.sleep()
 
 

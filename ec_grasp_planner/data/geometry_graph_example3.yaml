@@ -306,7 +306,7 @@ create_top_down_grasps:
     roll_vectors: bbox_to_axis/vectors
   strategy: 10  # SQUEEZE
   pregrasp_configuration: 2 # SPHERE
-  roll_offset: -1.5707963267948966   #3.141592653589793
+  roll_offset: 0 #-1.5707963267948966   #3.141592653589793
 
 #merge_strategies:
 #  type: ecto_rbo_grasping::MergeGraspStrategies
