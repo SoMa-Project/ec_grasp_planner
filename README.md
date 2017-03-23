@@ -187,7 +187,7 @@ This example shows the execution of a planned hybrid automaton motion.
 
 ```
 # ensure rosparam set use_sim_time 1
-roslaunch iiwa_gazebo iiwa_gazebo.launch model:=iiwa7_kinect_ft
+roslaunch iiwa_gazebo iiwa_gazebo_examples.launch model:=iiwa7_kinect_ft world:=iiwa_ex3
 roslaunch trik_controller iiwa.launch
 rosservice call /disable
 rosrun hybrid_automaton_manager_kuka hybrid_automaton_manager_kuka
