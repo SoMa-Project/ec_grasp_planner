@@ -450,7 +450,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
     hand_pose = handarm_params['surface_grasp']['pose']
     downward_force = handarm_params['surface_grasp']['downward_force']
     valve_pattern = handarm_params['surface_grasp']['valve_pattern']
-    hand_closing_time = np.max(valve_opening_times) + 1.
+    hand_closing_time = np.max(valve_pattern) + 1.
     
     rviz_frames = []
     goal = np.copy(support_surface_frame)
