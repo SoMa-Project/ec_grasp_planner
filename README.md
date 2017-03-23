@@ -189,6 +189,8 @@ This example shows the execution of a planned hybrid automaton motion.
 # ensure rosparam set use_sim_time 1
 roslaunch iiwa_gazebo iiwa_gazebo.launch model:=iiwa7_kinect_ft
 roslaunch trik_controller iiwa.launch
+rosservice call /disable
+rosrun hybrid_automaton_manager_kuka hybrid_automaton_manager_kuka
 
 rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example3.yaml --debug
 
