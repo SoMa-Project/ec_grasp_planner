@@ -186,7 +186,8 @@ rosrun ec_grasp_planner planner.py --grasp EdgeGrasp --rviz
 This example shows the execution of a planned hybrid automaton motion.
 
 ```
-# ensure rosparam set use_sim_time 1
+roscore
+rosparam set use_sim_time 1
 roslaunch iiwa_gazebo iiwa_gazebo_examples.launch model:=iiwa7_kinect_ft world:=iiwa_ex3
 roslaunch trik_controller iiwa.launch
 rosservice call /disable
@@ -195,7 +196,7 @@ rosrun hybrid_automaton_manager_kuka hybrid_automaton_manager_kuka
 rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example3.yaml --debug
 
 # to check the potential grasps
-rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
+rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example3.rviz
 
 rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rviz --handarm RBOHand2Kuka
 ```
