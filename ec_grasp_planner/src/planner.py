@@ -617,6 +617,24 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
         
         markers.markers.append(msg)
     
+    for f1, f2 in zip(frames, frames[1:]):
+        msg = Marker()
+        msg.header.stamp = timestamp
+        msg.header.frame_id = frame_id
+        msg.frame_locked = True # False
+        msg.id = markers.markers[-1].id + 1
+        msg.action = Marker.ADD
+        msg.lifetime = rospy.Duration()
+        msg.type = Marker.ARROW
+        msg.color.g = msg.color.b = 0
+        msg.color.r = msg.color.a = 1
+        msg.scale.x = 0.01 # shaft diameter
+        msg.scale.y = 0.03 # head diameter
+        msg.points.append(homogenous_tf_to_pose_msg(f1).position)
+        msg.points.append(homogenous_tf_to_pose_msg(f2).position)
+        
+        markers.markers.append(msg)
+    
     br = tf.TransformBroadcaster()
 
     r = rospy.Rate(5);
@@ -658,10 +676,10 @@ def main(**args):
         
         graph.header.stamp = rospy.Time.now() + rospy.Duration(0.5)
         
-        tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(5.0))
+        tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(10.0))
         graph_in_base = tf_listener.asMatrix(robot_base_frame, graph.header)
         
-        tf_listener.waitForTransform(robot_base_frame, object_frame, graph.header.stamp, rospy.Duration(5.0))
+        tf_listener.waitForTransform(robot_base_frame, object_frame, graph.header.stamp, rospy.Duration(10.0))
         object_in_base = tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), object_frame))
         
         print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
