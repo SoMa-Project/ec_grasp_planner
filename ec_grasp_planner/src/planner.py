@@ -444,7 +444,9 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     
     return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
 
+# CURRENT SURFACE GRASP CREATION
 def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
+    print 'hi\n'
     initial_cspace_goal = handarm_params['surface_grasp']['initial_goal']
     pregrasp_pose = handarm_params['surface_grasp']['pregrasp_pose']
     hand_pose = handarm_params['surface_grasp']['pose']
@@ -467,7 +469,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
     control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]), norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
     control_sequence.append(ha.ControlMode('').set(ha.NakamuraControlSet().add(ha.ForceHTransformController(desired_distance = 0.0, desired_displacement=tra.translation_matrix([0, 0, 0]), force_gradient=tra.translation_matrix([0, 0, 0.005]), desired_force_dimension=np.array([0, 0, 1, 0, 0, 0])))))
     #control_sequence[-1].controlset.add(ha.RBOHandController(goal = valve_pattern[0], valve_times = valve_pattern[1], goal_is_relative = '1'))
-    control_sequence.append(ha.TimeSwitch('', '', duration = hand_closing_time))
+    control_sequence[-1].controlset.add(ha.FeixGraspSoftHandController(grasp_strength=10.0, grasp_type=1))
+    control_sequence.append(ha.TimeSwitch('', '', duration = 10))
     control_sequence.append(ha.HTransformControlMode(goals[0], controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.001'))
     control_sequence.append(ha.GravityCompensationMode())
