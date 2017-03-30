@@ -1,0 +1,46 @@
+<HybridAutomaton current_control_mode="Mode1" name="Sequence">
+  <ControlMode name="Mode0">
+    <ControlSet type="rxControlSet">
+      <Controller a_max="[0,0]" interpolation_type="cubic" name="GoToJointConfig" v_max="[7,1]0.200000;0.200000;0.200000;0.200000;0.200000;0.200000;0.200000" goal_is_relative="0" goal="[7,1]0.503036;0.585747;0.128301;1.8116720;0.190204;-0.9113930;0.133436" reinterpolation="0" priority="0" kp="[7,1]300.000000;200.000000;150.000000;20.000000;10.000000;10.000000;5.000000" kv="[7,1]2.000000;4.000000;2.000000;0.800000;0.200000;0.200000;0.150000" completion_times="[0,0]" type="InterpolatedJointController"/>
+    </ControlSet>
+  </ControlMode>
+  <ControlSwitch source="Mode0" name="JointConfigurationSwitch" target="Mode1">
+    <JumpCondition goal_is_relative="0" epsilon="0.12217304764" norm_weights="[7,1]1.000000;1.000000;1.000000;1.000000;1.000000;1.000000;1.000000" controller="GoToJointConfig" negate="0" jump_criterion="NORM_L_INF">
+      <Sensor type="JointConfigurationSensor"/>
+    </JumpCondition>
+  </ControlSwitch>
+  <ControlMode name="Mode1">
+    <ControlSet js_kd="[7,1]2.000000;4.000000;2.000000;0.800000;0.200000;0.200000;0.020000" js_kp="[7,1]300.000000;200.000000;150.000000;20.000000;10.000000;10.000000;10.000000" type="NakamuraControlSet" name="nakamura_set">
+      <Controller a_max="[0,0]" interpolation_type="cubic" name="GoToCartesianConfig" v_max="[2,1]0.250000;0.080000" goal_is_relative="0" goal="[4,4]-0.076096,0.997096,0.003148,0.527946;0.995468,0.076151,-0.056954,0.062037;-0.057028,-0.001200,-0.998372,-0.043465;0.000000,0.000000,0.000000,1.000000" reinterpolation="0" operational_frame="EE" priority="1" kp="[6,1]0.000000;0.000000;0.000000;0.000000;0.000000;0.000000" kv="[6,1]10.000000;10.000000;10.000000;10.000000;10.000000;10.000000" completion_times="[0,0]" type="InterpolatedHTransformController"/>
+    </ControlSet>
+  </ControlMode>
+  <ControlSwitch source="Mode1" name="ForceTorqueSwitch" target="Mode3">
+    <JumpCondition goal_is_relative="1" goal="[6,1]-7.000;0.000000;-7.000000;0.000000;0.000000;0.000000" epsilon="0.0" norm_weights="[6,1]1.000000;0.000000;0.000000;0.000000;0.000000;0.000000" negate="0" jump_criterion="THRESH_LOWER_BOUND">
+      <Sensor frame_id="odom" type="ForceTorqueSensor"/>
+    </JumpCondition>
+  </ControlSwitch>
+  <ControlMode name="Mode2">
+    <ControlSet js_kd="[7,1]2.000000;4.000000;2.000000;0.800000;0.200000;0.200000;0.020000" js_kp="[7,1]300.000000;200.000000;150.000000;20.000000;10.000000;10.000000;10.000000" type="NakamuraControlSet" name="nakamura_set">
+      <Controller a_max="[0,0]" desired_force_dimension="[6,1]0.000000;0.000000;1.000000;0.000000;0.000000;0.000000" interpolation_type="linear" desired_displacement="[4,4]1.000000,0.000000,0.000000,0.000000;0.000000,1.000000,0.000000,0.000000;0.000000,0.000000,1.000000,0.000000;0.000000,0.000000,0.000000,1.000000" desired_min_force="-0.5" name="slide" desired_distance="0.0" v_max="[0,0]" goal_is_relative="1" goal="[4,4]1.000000,0.000000,0.000000,0.000000;0.000000,1.000000,0.000000,0.000000;0.000000,0.000000,1.000000,0.000000;0.000000,0.000000,0.000000,1.000000" force_gradient="[4,4]1.000000,0.000000,0.000000,0.000000;0.000000,1.000000,0.000000,0.000000;0.000000,0.000000,1.000000,0.005000;0.000000,0.000000,0.000000,1.000000" reinterpolation="0" operational_frame="EE" priority="0" kp="[7,1]0.000000;0.000000;0.000000;0.000000;0.000000;0.000000;0.000000" kv="[6,1]10.000000;10.000000;10.000000;10.000000;10.000000;10.000000" completion_times="[0,0]" type="ForceHTransformController" desired_max_force="0.5"/>
+      <Controller a_max="[2,1]0.000000;0.000000" grasp_type="1" grasp_strength="10.0" name="move_fingers" v_max="[2,1]0.000000;0.000000" goal_is_relative="0" goal="[2,1]0.000000;0.000000" reinterpolation="0" priority="0" kp="[2,1]0.000000;0.000000" kv="[2,1]0.000000;0.000000" completion_times="[0,0]" type="FeixGraspSoftHandController"/>
+    </ControlSet>
+  </ControlMode>
+  <ControlSwitch source="Mode2" name="TimeSwitch" target="Mode3">
+    <JumpCondition goal_is_relative="1" goal="[1,1]10.000000" epsilon="0" norm_weights="[0,0]" negate="0" jump_criterion="THRESH_UPPER_BOUND">
+      <Sensor type="ClockSensor"/>
+    </JumpCondition>
+  </ControlSwitch>
+  <ControlMode name="Mode3">
+    <ControlSet js_kd="[7,1]2.000000;4.000000;2.000000;0.800000;0.200000;0.200000;0.020000" js_kp="[7,1]300.000000;200.000000;150.000000;20.000000;10.000000;10.000000;10.000000" type="NakamuraControlSet" name="nakamura_set">
+      <Controller a_max="[0,0]" interpolation_type="cubic" name="GoToCartesianConfig" v_max="[2,1]0.250000;0.080000" goal_is_relative="0" goal="[4,4]-0.076096,0.997096,0.003148,0.527946;0.995468,0.076151,-0.056954,0.062037;-0.057028,-0.001200,-0.998372,0.043465;0.000000,0.000000,0.000000,1.000000" reinterpolation="0" operational_frame="EE" priority="1" kp="[6,1]0.000000;0.000000;0.000000;0.000000;0.000000;0.000000" kv="[6,1]10.000000;10.000000;10.000000;10.000000;10.000000;10.000000" completion_times="[0,0]" type="InterpolatedHTransformController"/>
+    </ControlSet>
+  </ControlMode>
+  <ControlSwitch source="Mode3" name="FramePoseSwitch" target="Mode4">
+    <JumpCondition goal_is_relative="0" epsilon="0.001" norm_weights="[2,1]0.100000;1.000000" controller="GoToCartesianConfig" negate="0" jump_criterion="NORM_TRANSFORM">
+      <Sensor frame_id="EE" type="FramePoseSensor"/>
+    </JumpCondition>
+  </ControlSwitch>
+  <ControlMode name="Mode4">
+    <ControlSet type="rxControlSet"/>
+  </ControlMode>
+</HybridAutomaton>

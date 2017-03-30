@@ -1,0 +1,7 @@
+<HybridAutomaton current_control_mode="Mode0" name="Sequence">
+    <ControlMode name="Mode0">
+        <ControlSet type="rxControlSet">
+            <Controller a_max="[0,0]" interpolation_type="cubic" name="GoToJointConfig" v_max="[7,1]0.200000;0.200000;0.200000;0.200000;0.200000;0.200000;0.200000" goal_is_relative="0" goal="[7,1]0.515739;0.722804;-0.0598616;2.0869;0.26149;0.877473;-0.114971" reinterpolation="0" priority="0" kp="[7,1]300.000000;200.000000;150.000000;20.000000;10.000000;10.000000;5.000000" kv="[7,1]2.000000;4.000000;2.000000;0.800000;0.200000;0.200000;0.150000" completion_times="[0,0]" type="InterpolatedJointController" />
+        </ControlSet>
+    </ControlMode>
+</HybridAutomaton>

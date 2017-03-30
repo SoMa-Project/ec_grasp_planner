@@ -28,10 +28,12 @@ class RBOHand2WAM(RBOHand2):
     def __init__(self, **kwargs):
         super(RBOHand2WAM, self).__init__()
         
-        self['surface_grasp']['initial_goal'] = np.array([0.910306, -0.870773, -2.36991, 2.23058, -0.547684, -0.989835, 0.307618])
+        #self['surface_grasp']['initial_goal'] = np.array([0.910306, -0.870773, -2.36991, 2.23058, -0.547684, -0.989835, 0.307618])
+        #self['surface_grasp']['initial_goal'] = np.array([0.503036, 0.585747, 0.128301, 2.11672, 0.190204, -1.11393, 0.233436])
+	self['surface_grasp']['initial_goal'] = np.array([0.503036, 0.585747, 0.128301, 1.8116720, 0.190204, -0.9113930, 0.133436])
         self['surface_grasp']['pose'] = tra.translation_matrix([0, 0, 0])
-        self['surface_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.2])
-        self['surface_grasp']['downward_force'] = 7.
+        self['surface_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.25]) # dgb0 or dgb1? assumed offset for dgb0 //above object position
+        self['surface_grasp']['downward_force'] = -2.5
         self['surface_grasp']['valve_pattern'] = (np.array([[ 0. ,  4.1], [ 0. ,  0.1], [ 0. ,  5. ], [ 0. ,  5.], [ 0. ,  2.], [ 0. ,  3.5]]), np.array([[1,0]]*6))
         
         self['wall_grasp']['table_force'] = 3.
