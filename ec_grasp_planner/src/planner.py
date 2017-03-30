@@ -466,7 +466,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
     control_sequence = []
 #    control_sequence.append(ha.JointControlMode(initial_cspace_goal, controller_name = 'GoToJointConfig'))
 #    control_sequence.append(ha.JointConfigurationSwitch('', '', controller = 'GoToJointConfig', epsilon = str(math.radians(7.))))
-    control_sequence.append(ha.HTransformControlMode(np.hstack(goals), controller_name = 'GoToCartesianConfig', goal_is_relative='0', null_space_posture = True))
+    control_sequence.append(ha.HTransformControlMode(np.hstack(goals), controller_name = 'GoToCartesianConfig', goal_is_relative='0', null_space_posture = False))
 
     control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([downward_force, 0, 0, 0, 0, 0]), norm_weights = np.array([1, 0, 0, 0, 0, 0]), jump_criterion = "THRESH_LOWER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
     control_sequence.append(ha.ControlMode('').set(ha.NakamuraControlSet().add(ha.ForceHTransformController(desired_distance = 0.0, desired_displacement=tra.translation_matrix([0, 0, 0]), force_gradient=tra.translation_matrix([0, 0, 0.005]), desired_force_dimension=np.array([0, 0, 1, 0, 0, 0])))))
