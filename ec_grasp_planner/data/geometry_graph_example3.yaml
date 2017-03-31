@@ -148,7 +148,7 @@ filter_object_by_size:
   filter_criterion: 1
   max_distance: 0.2
   min_size: 120
-  max_size: 5000
+  max_size: 2000
 filter_closest_object:
   type: ecto::pcl::PclCell<ecto_rbo_pcl::ExtractClosestCluster>
   inputs:
