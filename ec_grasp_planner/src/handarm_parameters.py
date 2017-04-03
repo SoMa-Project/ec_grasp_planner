@@ -29,42 +29,56 @@ class RBOHand2WAM(RBOHand2):
         super(RBOHand2WAM, self).__init__()
         
         self['surface_grasp']['initial_goal'] = np.array([0.910306, -0.870773, -2.36991, 2.23058, -0.547684, -0.989835, 0.307618])
-        self['surface_grasp']['pose'] = tra.translation_matrix([0, 0, 0])
         self['surface_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.2])
+        self['surface_grasp']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]))
         self['surface_grasp']['downward_force'] = 7.
         self['surface_grasp']['valve_pattern'] = (np.array([[ 0. ,  4.1], [ 0. ,  0.1], [ 0. ,  5. ], [ 0. ,  5.], [ 0. ,  2.], [ 0. ,  3.5]]), np.array([[1,0]]*6))
         
+        self['wall_grasp']['initial_goal'] = np.array([0.910306, -0.870773, -2.36991, 2.23058, -0.547684, -0.989835, 0.307618])
+        self['wall_grasp']['pregrasp_pose'] = tra.translation_matrix([-0.2, 0, 0])
+        self['wall_grasp']['hand_object_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.1]), tra.rotation_matrix(math.radians(-69.0), [1, 0, 0]), tra.euler_matrix(0, math.pi / 2., math.pi / 2.))
+        self['wall_grasp']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.]), tra.rotation_matrix(math.radians(-69.0), [1, 0, 0]), tra.euler_matrix(0, math.pi / 2., math.pi / 2.))
+        self['wall_grasp']['postgrasp_pose'] = tra.translation_matrix([-0.1, 0, -0.1])
         self['wall_grasp']['table_force'] = 3.
         self['wall_grasp']['sliding_speed'] = 0.04
         self['wall_grasp']['wall_force'] = -11.0
-        self['wall_grasp']['angle_of_attack'] = math.radians(69.0)
+        self['wall_grasp']['valve_pattern'] = (np.array([[1,0]]*6), np.array([[0, 2.5]]*6))
         
-        self['edge_grasp']['edge_distance_factor'] = -0.007
-        self['edge_grasp']['distance'] = 0.
+        self['edge_grasp']['initial_goal'] = np.array([0.910306, -0.870773, -2.36991, 2.23058, -0.547684, -0.989835, 0.307618])
+        self['edge_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.3])
+        self['edge_grasp']['hand_object_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.05]), tra.rotation_matrix(math.radians(10.), [1, 0, 0]), tra.euler_matrix(0, 0, -math.pi / 2.))
+        self['edge_grasp']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, -0.05, 0]), tra.rotation_matrix(math.radians(10.), [1, 0, 0]), tra.euler_matrix(0, 0, -math.pi / 2.))
+        self['edge_grasp']['postgrasp_pose'] = tra.translation_matrix([0, 0, -0.1])
         self['edge_grasp']['downward_force'] = 4.0
         self['edge_grasp']['sliding_speed'] = 0.04
-        self['edge_grasp']['angle_of_sliding'] = math.radians(-10.)
+        self['edge_grasp']['valve_pattern'] = (np.array([[0,0],[0,0],[1,0],[1,0],[1,0],[1,0]]), np.array([[0, 3.0]]*6))
 
 class RBOHand2Kuka(RBOHand2):
     def __init__(self, **kwargs):
         super(RBOHand2Kuka, self).__init__()
         
         self['surface_grasp']['initial_goal'] = np.array([-0.05864322834179703, 0.4118988657714642, -0.05864200146127985, -1.6887810963180838, -0.11728653060066829, -0.8237944986945402, 0])
-        #[-0.05864319407846175, 0.5766581592731841, -0.41049970582905093, -0.7002267282972259, 0.3518577791947308, 0.6178477409765168, 0])
-        self['surface_grasp']['pose'] = tra.translation_matrix([0, 0, 0])
         self['surface_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.2])
+        self['surface_grasp']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]))
         self['surface_grasp']['downward_force'] = 7.
         self['surface_grasp']['valve_pattern'] = (np.array([[ 0. ,  4.1], [ 0. ,  0.1], [ 0. ,  5. ], [ 0. ,  5.], [ 0. ,  2.], [ 0. ,  3.5]]), np.array([[1,0]]*6))
         
+        self['wall_grasp']['initial_goal'] = np.array([-0.006732293343088003, 0.44862315666582386, -0.82419548039534, -1.1710313279336022, 1.0578411443466278, 1.647228541451713, 1.3889329077205828])
+        self['wall_grasp']['pregrasp_pose'] = tra.translation_matrix([-0.1, 0, 0])
+        self['wall_grasp']['hand_object_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.1]), tra.rotation_matrix(math.radians(-69.0), [1, 0, 0]), tra.euler_matrix(0, math.pi / 2., math.pi / 2.))
+        self['wall_grasp']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.]), tra.rotation_matrix(math.radians(-69.0), [1, 0, 0]), tra.euler_matrix(0, math.pi / 2., math.pi / 2.))
+        self['wall_grasp']['postgrasp_pose'] = tra.translation_matrix([-0.1, 0, -0.1])
         self['wall_grasp']['table_force'] = 3.
         self['wall_grasp']['sliding_speed'] = 0.04
         self['wall_grasp']['wall_force'] = -11.0
-        self['wall_grasp']['angle_of_attack'] = math.radians(69.0)
+        self['wall_grasp']['valve_pattern'] = (np.array([[1,0]]*6), np.array([[0, 2.5]]*6))
         
-        self['edge_grasp']['edge_distance_factor'] = -0.007
-        self['edge_grasp']['distance'] = 0.
+        self['edge_grasp']['initial_goal'] = np.array([-0.05864322834179703, 0.4118988657714642, -0.05864200146127985, -1.6887810963180838, -0.11728653060066829, -0.8237944986945402, 0])
+        self['edge_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.3])
+        self['edge_grasp']['hand_object_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.05]), tra.rotation_matrix(math.radians(10.), [1, 0, 0]), tra.euler_matrix(0, 0, -math.pi / 2.))
+        self['edge_grasp']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, -0.05, 0]), tra.rotation_matrix(math.radians(10.), [1, 0, 0]), tra.euler_matrix(0, 0, -math.pi / 2.))
+        self['edge_grasp']['postgrasp_pose'] = tra.translation_matrix([0, 0, -0.1])
         self['edge_grasp']['downward_force'] = 4.0
         self['edge_grasp']['sliding_speed'] = 0.04
-        self['edge_grasp']['angle_of_sliding'] = math.radians(-10.)
-        
+        self['edge_grasp']['valve_pattern'] = (np.array([[0,0],[0,0],[1,0],[1,0],[1,0],[1,0]]), np.array([[0, 3.0]]*6))
         

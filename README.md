@@ -215,8 +215,8 @@ roscore
 rosparam set use_sim_time 1
 
 # start the simulation environment
-roslaunch iiwa_gazebo iiwa_gazebo_examples.launch model:=iiwa7_kinect_ft world:=iiwa_ex3
-roslaunch trik_controller iiwa.launch
+roslaunch iiwa_gazebo iiwa_gazebo_examples.launch model:=iiwa7_kinect_ft world:=iiwa_fullEx
+roslaunch trik_controller iiwa.launch enabled_on_start:=false vel:=4 tvel:=4 rvel:=4 accel:=3
 rosservice call /disable
 rosrun hybrid_automaton_manager_kuka hybrid_automaton_manager_kuka
 

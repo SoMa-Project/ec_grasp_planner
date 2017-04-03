@@ -148,7 +148,7 @@ filter_object_by_size:
   filter_criterion: 1
   max_distance: 0.2
   min_size: 120
-  max_size: 20000
+  max_size: 5000
 filter_closest_object:
   type: ecto::pcl::PclCell<ecto_rbo_pcl::ExtractClosestCluster>
   inputs:
@@ -162,45 +162,16 @@ calculate_centroids:
   inputs:
     input: crop_box/output
     clusters: filter_closest_object/closest_cluster
-tf_to_vector_table_negated:
-  type: ecto_rbo_pcl::TF2Vector
-  inputs:
-    transform: table_fits/transform_biggest
-  column_index: 2
-  negate: true
 tf_to_vector_table:
   type: ecto_rbo_pcl::TF2Vector
   inputs:
     transform: table_fits/transform_biggest
   column_index: 2
   negate: false
-tf_to_vector_wall:
-  type: ecto_rbo_pcl::TF2Vector
-  inputs:
-    transform: wall_fit/transform_biggest
-  column_index: 2
-  negate: false
-wrap_in_vector_table_negated:
-  type: ecto_rbo_pcl::WrapVector3fInVector
-  inputs:
-    input: tf_to_vector_table_negated/vector
 wrap_in_vector_table:
   type: ecto_rbo_pcl::WrapVector3fInVector
   inputs:
     input: tf_to_vector_table/vector
-wrap_in_vector_wall:
-  type: ecto_rbo_pcl::WrapVector3fInVector
-  inputs:
-    input: tf_to_vector_wall/vector
-create_wall_grasps:
-  type: ecto_rbo_grasping::CreateGrasps
-  inputs:
-    header: msg_to_pcl/header
-    positions: calculate_centroids/centroids
-    approach_vectors: wrap_in_vector_table_negated/vector
-    roll_vectors: wrap_in_vector_wall/vector
-  strategy: 11  # APPROACH_THEN_SQUEEZE
-  pregrasp_configuration: 3 # HOOK
 
 #cylinder_fits:
 #  type: ecto::pcl::PclCellWithNormals<ecto_rbo_pcl::CylinderFits>

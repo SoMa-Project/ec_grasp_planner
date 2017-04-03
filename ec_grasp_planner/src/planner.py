@@ -49,131 +49,96 @@ import hatools.cookbook as cookbook
 
 import handarm_parameters
 
-def find_all_paths(start_node_id, goal_node_ids, graph):
-    solutions = []
-    intermediate_solutions = []
-    final_solutions = []
+def distance_between_points_on_plane(a, b, plane_as_transform):
+    # project a and b onto plane
+    tmp = tra.inverse_matrix(plane_as_transform)
+    a_hat = np.dot(tmp, a)
+    b_hat = np.dot(tmp, b)
     
-    p1 = [start_node_id]
-    intermediate_solutions.append(p1)
+    # set z to zero
+    a_hat[2] = b_hat[2] = 0.
     
-    graph_edges = [(e.node_id_start, e.node_id_end) for e in graph.edges]
-    
-    while True:
-        solutions = intermediate_solutions;
-        intermediate_solutions = []
-        
-        for p in solutions:
-            node_index = p[-1]
-            #if is_goal_node(nodes[node_index].strategy, nodes[node_index].pregrasp_configuration):
-            if node_index in goal_node_ids:
-                final_solutions.append(p)
-            else:
-                # go through all neighbors and add for each one a new path
-                for j in range(len(graph.nodes)):
-                    if j in p: #(std::find(p.begin(), p.end(), j) != p.end())
-                        continue
-                    
-                    if (node_index, j) in graph_edges:
-                        new_p = list(p)
-                        new_p.append(j)
-                        intermediate_solutions.append(new_p)
-        
-        if len(intermediate_solutions) == 0:
-            break
-    
-    print("No. of solution paths: {}".format(len(final_solutions)));
-    
-    return final_solutions
+    # return Euclidean distance
+    return np.linalg.norm(a_hat - b_hat)
 
-def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params):   
+def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params):
+    initial_cspace_goal = handarm_params['wall_grasp']['initial_goal']
     downward_force = handarm_params['wall_grasp']['table_force']
     sliding_speed = handarm_params['wall_grasp']['sliding_speed']
     wall_force = handarm_params['wall_grasp']['wall_force']
-    angle_of_attack = handarm_params['wall_grasp']['angle_of_attack']
+    valve_pattern = handarm_params['wall_grasp']['valve_pattern']
+    hand_closing_time =  np.max(valve_pattern) + 1.
     
-    rot = tra.rotation_matrix(angle_of_attack, [1, 0, 0])
-    curree = np.dot(object_frame, rot)
-    goal = np.dot(tra.translation_matrix([0, 0, -0.3]), curree)
+    goals = []
+    goal = np.copy(wall_frame)
+    goal[:3,3] = tra.translation_from_matrix(object_frame)
+    goals.append(tra.concatenate_matrices(goal, handarm_params['wall_grasp']['hand_object_pose'], handarm_params['wall_grasp']['pregrasp_pose']))
+    goals.append(tra.concatenate_matrices(goal, handarm_params['wall_grasp']['hand_object_pose']))
+    goals.append(tra.concatenate_matrices(wall_frame, handarm_params['wall_grasp']['grasp_pose']))
     
-    rviz_frames = []
-    goal1 = np.copy(wall_frame)
-    goal1[:3,3] = tra.translation_from_matrix(object_frame)
-    rviz_frames.append(goal1.dot(tra.translation_matrix([0, 0, 0.2])).dot(rot))
-    rviz_frames.append(goal1.dot(rot))
-    rviz_frames.append(np.dot(wall_frame, rot))
-        
     control_sequence = []
-    
-    control_sequence.append(ha.HTransformControlMode(curree, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
+    control_sequence.append(ha.JointControlMode(initial_cspace_goal, controller_name = 'GoToJointConfig'))
+    control_sequence.append(ha.JointConfigurationSwitch('', '', controller = 'GoToJointConfig', epsilon = str(math.radians(7.))))
+    control_sequence.append(ha.HTransformControlMode(goals[0], controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.02'))
-    control_sequence.append(ha.HTransformControlMode(goal, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
+    control_sequence.append(ha.HTransformControlMode(goals[1], controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
     control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]), norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
     control_sequence.append(ha.ControlMode('').set(ha.NakamuraControlSet().add(ha.ForceHTransformController(desired_distance = 0.25, desired_displacement=tra.translation_matrix([sliding_speed, 0, 0]), force_gradient=tra.translation_matrix([0, 0, 0.005]), desired_force_dimension=np.array([0, 0, 1, 0, 0, 0])))))
     control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([wall_force, 0, 0, 0, 0, 0]), norm_weights = np.array([1, 0, 0, 0, 0, 0]), jump_criterion = "THRESH_LOWER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
     control_sequence.append(ha.GravityCompensationMode())
-    hand_closing_time = 2.5
-    control_sequence[-1].controlset.add(ha.RBOHandController(goal = np.array([[1,0]]*6), valve_times = np.array([[0,hand_closing_time]]*6), goal_is_relative = '1'))
-    control_sequence.append(ha.TimeSwitch('', '', duration = 1. + hand_closing_time))
-    control_sequence.append(ha.HTransformControlMode(curree, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
+    control_sequence[-1].controlset.add(ha.RBOHandController(goal = valve_pattern[0], valve_times = valve_pattern[1], goal_is_relative = '1'))
+    control_sequence.append(ha.TimeSwitch('', '', duration = hand_closing_time))
+    control_sequence.append(ha.HTransformControlMode(handarm_params['wall_grasp']['postgrasp_pose'], controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.01'))
     control_sequence.append(ha.GravityCompensationMode())
     
-    return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
+    return cookbook.sequence_of_modes_and_switches(control_sequence), goals
 
 def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_params):
-    edge_distance_factor = handarm_params['edge_grasp']['edge_distance_factor']
-    distance = handarm_params['edge_grasp']['distance']
+    initial_cspace_goal = handarm_params['edge_grasp']['initial_goal']
     downward_force = handarm_params['edge_grasp']['downward_force']
     sliding_speed = handarm_params['edge_grasp']['sliding_speed']
-    angle_of_sliding = handarm_params['edge_grasp']['angle_of_sliding']
-
-    initial_cspace_goal = np.array([0.910306, -0.870773, -2.36991, 2.23058, -0.547684, -0.989835, 0.307618])
-
-    curree = object_frame # TODO 
-    curree = np.dot(curree, tra.rotation_matrix(angle_of_sliding, [1, 0, 0]))
-    goal = np.dot(tra.translation_matrix([0, 0, -0.3]), curree)
-    hand_closing_time = 3.0
+    valve_pattern = handarm_params['edge_grasp']['valve_pattern']
+    hand_closing_time = np.max(valve_pattern) + 1.
     
-    rviz_frames = []
-    rot = tra.rotation_matrix(angle_of_sliding, [1, 0, 0])
-    goal1 = np.copy(edge_frame)
-    goal1[:3,3] = tra.translation_from_matrix(object_frame)
-    rviz_frames.append(goal1.dot(tra.translation_matrix([0, 0, -0.2])).dot(rot))
-    rviz_frames.append(goal1.dot(rot))
-    rviz_frames.append(edge_frame.dot(rot))
+    goals = []
+    goal = np.copy(edge_frame)
+    goal[:3,3] = tra.translation_from_matrix(object_frame)
+    goals.append(tra.concatenate_matrices(goal, handarm_params['edge_grasp']['hand_object_pose'], handarm_params['edge_grasp']['pregrasp_pose']))
+    goals.append(tra.concatenate_matrices(goal, handarm_params['edge_grasp']['hand_object_pose']))
+    goals.append(tra.concatenate_matrices(edge_frame, handarm_params['edge_grasp']['grasp_pose']))
+    distance = distance_between_points_on_plane(goals[1][:,3], goals[2][:,3], support_surface_frame)
     
     control_sequence = []
-    control_sequence.append(ha.HTransformControlMode(curree, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
+    control_sequence.append(ha.JointControlMode(initial_cspace_goal, controller_name = 'GoToJointConfig'))
+    control_sequence.append(ha.JointConfigurationSwitch('', '', controller = 'GoToJointConfig', epsilon = str(math.radians(7.))))
+    control_sequence.append(ha.HTransformControlMode(goals[0], controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.001'))
-    control_sequence.append(ha.HTransformControlMode(goal, controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
+    control_sequence.append(ha.HTransformControlMode(goals[1], controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
     control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]), norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
     control_sequence.append(ha.ControlMode('').set(ha.NakamuraControlSet().add(ha.ForceHTransformController(desired_distance = 0.25, desired_displacement=tra.translation_matrix([0, -sliding_speed, 0]), force_gradient=tra.translation_matrix([0, 0, 0.005]), desired_force_dimension=np.array([0, 0, 1, 0, 0, 0])))))
-    control_sequence.append(ha.FrameDisplacementSwitch('', '', epsilon = str(edge_distance_factor + distance), negate = '1', goal = np.array([0, 0, 0]), goal_is_relative = '1', jump_criterion = "NORM_L2", frame_id = 'EE'))
+    control_sequence.append(ha.FrameDisplacementSwitch('', '', epsilon = str(distance), negate = '1', goal = np.array([0, 0, 0]), goal_is_relative = '1', jump_criterion = "NORM_L2", frame_id = 'EE'))
     control_sequence.append(ha.GravityCompensationMode())
-    control_sequence[-1].controlset.add(ha.RBOHandController(goal = np.array([[0,0],[0,0],[1,0],[1,0],[1,0],[1,0]]), valve_times = np.array([[0,hand_closing_time], [0,hand_closing_time], [0,hand_closing_time], [0,hand_closing_time], [0,hand_closing_time], [0,hand_closing_time]]), goal_is_relative = '1'))
-    control_sequence.append(ha.TimeSwitch('', '', duration = 1.0 + hand_closing_time))
-    control_sequence.append(ha.HTransformControlMode(tra.translation_matrix([0, 0, -0.1]), controller_name = 'GoToCartesianConfig', goal_is_relative='1'))
+    control_sequence[-1].controlset.add(ha.RBOHandController(goal = valve_pattern[0], valve_times = valve_pattern[1], goal_is_relative = '1'))
+    control_sequence.append(ha.TimeSwitch('', '', duration = hand_closing_time))
+    control_sequence.append(ha.HTransformControlMode(handarm_params['edge_grasp']['postgrasp_pose'], controller_name = 'GoToCartesianConfig', goal_is_relative='1'))
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.001', goal_is_relative = '1'))
     control_sequence.append(ha.GravityCompensationMode())
     
-    return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
+    return cookbook.sequence_of_modes_and_switches(control_sequence), goals
 
 def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
     initial_cspace_goal = handarm_params['surface_grasp']['initial_goal']
-    pregrasp_pose = handarm_params['surface_grasp']['pregrasp_pose']
-    hand_pose = handarm_params['surface_grasp']['pose']
     downward_force = handarm_params['surface_grasp']['downward_force']
     valve_pattern = handarm_params['surface_grasp']['valve_pattern']
     hand_closing_time = np.max(valve_pattern) + 1.
     
-    rviz_frames = []
-    goal = np.copy(support_surface_frame)
+    goals = []
+    #goal = np.copy(support_surface_frame)
+    goal = np.copy(object_frame)
     goal[:3,3] = tra.translation_from_matrix(object_frame)
-    rviz_frames.append(goal.dot(pregrasp_pose).dot(hand_pose))
-    rviz_frames.append(goal.dot(tra.translation_matrix([0, 0, 0.1])).dot(hand_pose))
-    
-    goals = rviz_frames
+    goals.append(tra.concatenate_matrices(goal, handarm_params['surface_grasp']['grasp_pose'], handarm_params['surface_grasp']['pregrasp_pose']))
+    goals.append(tra.concatenate_matrices(goal, handarm_params['surface_grasp']['grasp_pose']))
     
     control_sequence = []
     control_sequence.append(ha.JointControlMode(initial_cspace_goal, controller_name = 'GoToJointConfig'))
@@ -181,13 +146,13 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
     control_sequence.append(ha.HTransformControlMode(np.hstack(goals), controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
     control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]), norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
     control_sequence.append(ha.ControlMode('').set(ha.NakamuraControlSet().add(ha.ForceHTransformController(desired_distance = 0.0, desired_displacement=tra.translation_matrix([0, 0, 0]), force_gradient=tra.translation_matrix([0, 0, 0.005]), desired_force_dimension=np.array([0, 0, 1, 0, 0, 0])))))
-    #control_sequence[-1].controlset.add(ha.RBOHandController(goal = valve_pattern[0], valve_times = valve_pattern[1], goal_is_relative = '1'))
+    control_sequence[-1].controlset.add(ha.RBOHandController(goal = valve_pattern[0], valve_times = valve_pattern[1], goal_is_relative = '1'))
     control_sequence.append(ha.TimeSwitch('', '', duration = hand_closing_time))
     control_sequence.append(ha.HTransformControlMode(goals[0], controller_name = 'GoToCartesianConfig', goal_is_relative='0'))
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoToCartesianConfig', epsilon = '0.001'))
     control_sequence.append(ha.GravityCompensationMode())
             
-    return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
+    return cookbook.sequence_of_modes_and_switches(control_sequence), goals
 
 def transform_msg_to_homogenous_tf(msg):
     return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]), tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
