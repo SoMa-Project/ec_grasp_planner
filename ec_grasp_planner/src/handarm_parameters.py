@@ -59,19 +59,18 @@ class RBOHand2Kuka(RBOHand2):
         
         self['surface_grasp']['initial_goal'] = np.array([-0.05864322834179703, 0.4118988657714642, -0.05864200146127985, -1.6887810963180838, -0.11728653060066829, -0.8237944986945402, 0])
         self['surface_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.2])
-        self['surface_grasp']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]))
+        self['surface_grasp']['hand_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(0.), [0, 0, 1]))
         self['surface_grasp']['downward_force'] = 7.
         self['surface_grasp']['valve_pattern'] = (np.array([[ 0. ,  4.1], [ 0. ,  0.1], [ 0. ,  5. ], [ 0. ,  5.], [ 0. ,  2.], [ 0. ,  3.5]]), np.array([[1,0]]*6))
         
-        self['wall_grasp']['initial_goal'] = np.array([-0.006732293343088003, 0.44862315666582386, -0.82419548039534, -1.1710313279336022, 1.0578411443466278, 1.647228541451713, 1.3889329077205828])
-        self['wall_grasp']['pregrasp_pose'] = tra.translation_matrix([-0.1, 0, 0])
-        self['wall_grasp']['hand_object_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.1]), tra.rotation_matrix(math.radians(-69.0), [1, 0, 0]), tra.euler_matrix(0, math.pi / 2., math.pi / 2.))
-        self['wall_grasp']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.]), tra.rotation_matrix(math.radians(-69.0), [1, 0, 0]), tra.euler_matrix(0, math.pi / 2., math.pi / 2.))
-        self['wall_grasp']['postgrasp_pose'] = tra.translation_matrix([-0.1, 0, -0.1])
-        self['wall_grasp']['table_force'] = 3.
-        self['wall_grasp']['sliding_speed'] = 0.04
-        self['wall_grasp']['wall_force'] = -11.0
-        self['wall_grasp']['valve_pattern'] = (np.array([[1,0]]*6), np.array([[0, 2.5]]*6))
+        self['wall_grasp']['pregrasp_pose'] = tra.translation_matrix([0.05, 0, -0.2])
+        self['wall_grasp']['table_force'] = 7.
+        self['wall_grasp']['sliding_speed'] = 0.1
+        self['wall_grasp']['up_speed'] = 0.1
+        self['wall_grasp']['down_speed'] = 0.1
+        self['wall_grasp']['wall_force'] = 10.0
+        self['wall_grasp']['angle_of_attack'] = 1.0 #radians
+        self['wall_grasp']['object_lift_time'] = 4.5
         
         self['edge_grasp']['initial_goal'] = np.array([-0.05864322834179703, 0.4118988657714642, -0.05864200146127985, -1.6887810963180838, -0.11728653060066829, -0.8237944986945402, 0])
         self['edge_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.3])
