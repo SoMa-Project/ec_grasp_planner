@@ -205,10 +205,11 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
     #grasp_frame = grasp_frames[grasp_type]
     
     if grasp_type == 'EdgeGrasp':
-        support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
-        support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-        edge_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
-        edge_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(edge_frame_node.transform))
+        raise "Edge grasp is not supported yet"
+        #support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
+        #support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
+        #edge_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
+        #edge_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(edge_frame_node.transform))
         return create_edge_grasp(T_object_in_base, support_surface_frame, edge_frame, handarm_params)
     elif grasp_type == 'WallGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
@@ -436,7 +437,8 @@ if __name__ == '__main__':
                         help='Whether to send the hybrid automaton to a ROS service called /update_hybrid_automaton.')
     parser.add_argument('--file_output', action='store_true', default = False,
                         help='Whether to write the hybrid automaton to a file called hybrid_automaton.xml.')
-    grasp_choices = ["any", "EdgeGrasp", "WallGrasp", "SurfaceGrasp"]
+    #grasp_choices = ["any", "EdgeGrasp", "WallGrasp", "SurfaceGrasp"]
+    grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
     parser.add_argument('--grasp', choices=grasp_choices, default=grasp_choices[0],
                         help='Which grasp type to use.')
     parser.add_argument('--grasp_id', type=int, default=-1,
