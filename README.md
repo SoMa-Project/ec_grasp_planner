@@ -210,19 +210,21 @@ Depending on your input the result in RViz could look like this:
 This example shows the execution of a planned hybrid automaton motion in the Gazebo simulator.
 
 ```
-# make sure the simulation time is used
+# Step 1: make sure the simulation time is used
+# To replace steps 1 and 2, (and faster setup/collision models) use launchGazebo.launch from h_a_manager_kuka
 roscore
 rosparam set use_sim_time 1
 
-# start the simulation environment
+# Step 2: start the simulation environment 
 roslaunch iiwa_gazebo iiwa_gazebo_examples.launch model:=iiwa7_kinect_ft world:=iiwa_fullEx
 roslaunch trik_controller iiwa.launch enabled_on_start:=false vel:=4 tvel:=4 rvel:=4 accel:=3
 rosservice call /disable
 rosrun hybrid_automaton_manager_kuka hybrid_automaton_manager_kuka
 
+# Step 3: run vision code
 rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example3.yaml --debug
 
-# to check potential grasps
+# Step 4 (optional): to check potential grasps
 rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
 ```
 
@@ -231,7 +233,7 @@ In RViz you should be able to see the point cloud simulated in Gazebo and the ge
 <img src="docs/example3_gazebo_init.png" alt="Gazebo" width="250" /> <img src="docs/example3_raw.png" alt="Raw" width="250" /> <img src="docs/example3_graph.png" alt="Graph" width="250" />
 
 ```
-# select a surface grasp, visualize and execute it
+# Step 5: select a surface grasp, visualize and execute it
 rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rviz --handarm RBOHand2Kuka
 ```
 
