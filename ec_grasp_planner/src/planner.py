@@ -168,7 +168,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
         norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
 
     # 4. Preserve the position
-    control_sequence.append(ha.GravityCompensationMode())
+    control_sequence.append(ha.SimpleRBOHandControlMode(goal = np.array([1])))
 
     # 4b. Switch when hand closing time ends
     control_sequence.append(ha.TimeSwitch('', '', duration = hand_closing_time))
