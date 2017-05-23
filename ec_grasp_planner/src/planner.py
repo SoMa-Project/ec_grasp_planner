@@ -101,7 +101,7 @@ class GetGrasp(smach.State):
                 t = get_numpy_matrix(self.li, p.pose)
                 
                 # express the target in the robot's base frame
-                self.li.waitForTransform(self.robot_base_frame, p.header.frame_id, rospy.Time(), rospy.Duration(10.0))
+                self.li.waitForTransform(self.robot_base_frame, p.header.frame_id, rospy.Time(), rospy.Duration(30.0))
                 p.header.stamp = rospy.Time()
                 p_robotbaseframe = self.li.transformPose(self.robot_base_frame, p)
                 t_robotbaseframe = get_numpy_matrix(self.li, p_robotbaseframe.pose)
@@ -128,7 +128,7 @@ class GetGrasp(smach.State):
                 t0 = get_numpy_matrix(self.li, p0.pose)
                 t1 = get_numpy_matrix(self.li, p0.pose)
                 
-                self.li.waitForTransform(self.robot_base_frame, p0.header.frame_id, rospy.Time(), rospy.Duration(10.0))
+                self.li.waitForTransform(self.robot_base_frame, p0.header.frame_id, rospy.Time(), rospy.Duration(30.0))
                 p0.header.stamp = rospy.Time()
                 p0_robotbaseframe = self.li.transformPose(self.robot_base_frame, p0)
                 p1.header.stamp = rospy.Time()
@@ -161,7 +161,7 @@ class GetGrasp(smach.State):
                 p = grasp.pregrasp_pose.pose
                 t = get_numpy_matrix(self.li, p.pose)
                 
-                self.li.waitForTransform(self.robot_base_frame, p.header.frame_id, rospy.Time(), rospy.Duration(10.0))
+                self.li.waitForTransform(self.robot_base_frame, p.header.frame_id, rospy.Time(), rospy.Duration(30.0))
                 p.header.stamp = rospy.Time()
                 p_robotbaseframe = self.li.transformPose(self.robot_base_frame, p)
                 t_robotbaseframe = get_numpy_matrix(self.li, p_robotbaseframe.pose)
@@ -649,7 +649,7 @@ def main(**args):
     object_frame = args['object_frame']
     
     # make sure those frames exist and we can transform between them
-    tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
+    tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(30.0))
     
     #p.header.stamp = rospy.Time()
     #p_robotbaseframe = tf_listener.transformPose(robot_base_frame, p)
@@ -663,10 +663,10 @@ def main(**args):
         
         graph.header.stamp = rospy.Time.now() + rospy.Duration(0.5)
         
-        tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(5.0))
+        tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(45.0))
         graph_in_base = tf_listener.asMatrix(robot_base_frame, graph.header)
         
-        tf_listener.waitForTransform(robot_base_frame, object_frame, graph.header.stamp, rospy.Duration(5.0))
+        tf_listener.waitForTransform(robot_base_frame, object_frame, graph.header.stamp, rospy.Duration(60.0))
         object_in_base = tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), object_frame))
         
         print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))

@@ -30,7 +30,8 @@ class RBOHand2WAM(RBOHand2):
         
         #self['surface_grasp']['initial_goal'] = np.array([0.910306, -0.870773, -2.36991, 2.23058, -0.547684, -0.989835, 0.307618])
         #self['surface_grasp']['initial_goal'] = np.array([0.503036, 0.585747, 0.128301, 2.11672, 0.190204, -1.11393, 0.233436])
-	self['surface_grasp']['initial_goal'] = np.array([0.503036, 0.585747, 0.128301, 1.8116720, 0.190204, -0.9113930, 0.133436])
+	#self['surface_grasp']['initial_goal'] = np.array([0.503036, 0.585747, 0.128301, 1.8116720, 0.190204, -0.9113930, 0.133436])
+	self['surface_grasp']['initial_goal'] = np.array([0.12241, 0.603385, -0.0594532, 2.14911, 0.0500536, 0.515765, -0.0220901])
         self['surface_grasp']['pose'] = tra.translation_matrix([0, 0, 0])
         self['surface_grasp']['pose'] = tra.rotation_matrix(-math.pi/2, [0,0,1], [0,0,0]) # fixing the hand-palm frame to be consisten with robot model and planner 
         self['surface_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.25]) # dgb0 or dgb1? assumed offset for dgb0 //above object position
