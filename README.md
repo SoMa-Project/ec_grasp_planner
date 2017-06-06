@@ -108,7 +108,7 @@ git clone https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git
 Now, you can clone this repository into your catkin workspace and build the ROS package:
 
 ```
-catkin clone https://github.com/SoMa-Project/ec_grasp_planner.git
+git clone https://github.com/SoMa-Project/ec_grasp_planner.git
 cd ec_grasp_planner
 git submodule init
 git submodule update
