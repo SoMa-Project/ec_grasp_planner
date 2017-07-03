@@ -79,12 +79,16 @@ catkin build ecto_rbo
 pip install -e git+https://github.com/garydoranjr/pyddl.git#egg=pyddl
 ```
 
-* Get the ROS package hybrid_automaton_msgs from [hybrid_automaton_manager_kuka](https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git):
+* Get the ROS package [hybrid_automaton_msgs](https://github.com/tu-rbo/hybrid_automaton_msgs):
 ```
-git clone https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git
+git clone https://github.com/tu-rbo/hybrid_automaton_msgs.git
 ```
 
 ### Dependencies For Running the Gazebo Example <a name="gazebodependencies"></a>
+* Get the ROS package [hybrid_automaton_manager_kuka](https://github.com/SoMa-Project/hybrid_automaton_manager_kuka) if the Kuka interface is needed:
+```
+git clone https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git
+```
 
 * Get Gazebo multi-robot simulator, version 2.2.6:
 ```
