@@ -164,8 +164,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
     control_sequence.append(ha.HTransformControlMode(dirDown, controller_name = 'GoDown', goal_is_relative='1'))
     
     # 3b. Switch when the f/t sensor is triggered with normal force from the table
-    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]), 
-        norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
+    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([downward_force, 0, 0, 0, 0, 0]), 
+        norm_weights = np.array([1, 0, 0, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
 
     # 4. Preserve the position
     control_sequence.append(ha.SimpleRBOHandControlMode(goal = np.array([1])))
