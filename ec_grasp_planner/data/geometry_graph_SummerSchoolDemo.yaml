@@ -92,47 +92,6 @@ filter_by_distance:
   max_distance: 0.3
   min_size: 200
   max_size: 1000
-filter_wall_by_size:
-  type: ecto::pcl::PclCell<ecto_rbo_pcl::FilterClustersBySize>
-  inputs:
-    input: crop_box/output
-    #clusters: filter_by_distance/filtered_clusters
-    clusters: flood_fill/clusters
-  max_volume: 0.004
-  min_volume: 0.
-  filter_criterion: 1
-  max_distance: 0.2
-  min_size: 1000
-  max_size: 100000
-filter_wall_by_normal:
-  type: ecto::pcl::PclCellWithNormals<ecto_rbo_pcl::FilterClustersByNormals>
-  inputs:
-    input: crop_box/output
-    normals: normal_estimation/output
-    clusters: filter_wall_by_size/filtered_clusters
-    transform: table_fits/transform_biggest
-  max_distance: 20.0
-  negate: true
-wall_fit:
-  type: ecto::pcl::PclCellWithNormals<ecto_rbo_pcl::PlaneFits>
-  inputs:
-    input: crop_box/output
-    clusters: filter_wall_by_normal/filtered_clusters
-    normals: normal_estimation/output
-  distance_threshold: 10.05
-  max_size: 10.24
-  min_boxness: 0.0
-  min_inlier_ratio: 0.0
-  min_size: 0.00
-  weight_contour: 0.0
-  polygon_approximation_epsilon: 10.0
-tf_send_wall:
-  type: ecto_rbo_pcl::BroadcastTF
-  inputs:
-    transform: wall_fit/transform_biggest
-  source_frame: camera_rgb_optical_frame
-  target_frame: wall
-
 merge_clusters:
   type: ecto_rbo_pcl::MergeClusters
   inputs:
@@ -241,14 +200,6 @@ positioning_motions:
   inputs:
     input: crop_box/output
     normals: normal_estimation/output
-wall_grasps:
-  type: ecto::pcl::PclCellWithNormals<ecto_rbo_grasping::WallGrasps>
-  inputs:
-    input: crop_box/output
-    normals: normal_estimation/output
-    polygons: table_fits/polygons
-    bounded_planes: table_fits/bounded_models
-  min_points: 200
 edge_grasp_planner:
   type: ecto_rbo_grasping::CreateGeometryGraph
   inputs:
@@ -260,8 +211,8 @@ edge_grasp_planner:
     surface_grasp_manifolds: planar_manifolds/manifolds
     edge_pregrasp_messages: cliff_grasps/cliff_pregrasp_messages
     edge_grasp_manifolds: cliff_grasps/cliff_manifolds
-    wall_pregrasp_messages: wall_grasps/wall_pregrasp_messages
-    wall_grasp_manifolds: wall_grasps/wall_manifolds
+    #wall_pregrasp_messages: wall_grasps/wall_pregrasp_messages
+    #wall_grasp_manifolds: wall_grasps/wall_manifolds
 publish_graph:
   type: ecto_rbo_grasping::PublishGeometryGraph
   inputs:
