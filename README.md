@@ -5,6 +5,7 @@
 1. [Overview](#overview)
 2. [Structure, Interfaces and Flow of Information](#structure)
 3. [List of Controllers, Primitives, ECs](#lists)
+4. [Hardware Dependencies](#hardwaredependencies)
 4. [Install](#install)
    1. [Minimal Dependencies](#minimaldependencies)
    2. [Dependencies For Running the Gazebo Example](#gazebodependencies)
@@ -71,6 +72,12 @@ List of jump conditions: time based, F/T measurement based, joint configuration 
 List of ECs: Surface, Edge, Wall
 
 ---
+< a name="hardwaredependencies"></a>
+## Hardware Dependencies 
+
+
+---
+
 
 ## Install <a name="install"></a>
 
