@@ -4,12 +4,13 @@
 
 1. [Overview](#overview)
 2. [Structure, Interfaces and Flow of Information](#structure)
-3. [Install](#install)
+3. [List of Controllers, Primitives, ECs](#lists)
+4. [Install](#install)
    1. [Minimal Dependencies](#minimaldependencies)
    2. [Dependencies For Running the Gazebo Example](#gazebodependencies)
    3. [Grasp Planner](#planner)
-4. [Usage](#usage)
-5. [Examples](#examples)
+5. [Usage](#usage)
+6. [Examples](#examples)
    1. [Planning Based on PCD Input](#example1)
    2. [Planning Based on Continuous RGB-D Input](#example2)
    3. [Kuka Arm in Gazebo Simulation with TRIK Controller](#example3)
@@ -60,7 +61,7 @@ This is because position trajectories lack the expressive power that is needed t
 Hybrid automata are much more suited in this context. 
 As a consequence any entity that wants to execute the generated plans needs to be capable of interpreting those hybrid automata descriptions. We use a [C++ library](https://github.com/tu-rbo/hybrid-automaton-library) that allows serialization/desirialization and can be used to wrap robot-specific interfaces as shown in Example 3.
 
-### Primitives, Controllers, and Jump Conditions:
+### Primitives, Controllers, and Jump Conditions: <a name="lists"></a>
 List of primitives: Positioning, sliding, Caging, EdgeGrasp, WallGrasp, SurfaceGrasp The primitives are based on Clemens Eppner and Oliver Brock. "[Planning Grasp Strategies That Exploit Environmental Constraints](http://www.robotics.tu-berlin.de/fileadmin/fg170/Publikationen_pdf/eppner_icra2015.pdf)"  
 
 List of controllers: joint controller, operational space controller, sliding controller, RBO-hand controller, Pisa-IIT-hand controller
