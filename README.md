@@ -72,13 +72,14 @@ List of jump conditions: time based, F/T measurement based, joint configuration 
 List of ECs: Surface, Edge, Wall
 
 ---
-< a name="hardwaredependencies"></a>
+
+<a name="hardwaredependencies"></a>
 ## Hardware Dependencies 
 This table lists the tested hardware dependencies of the planner by SoMa partner:
 
-T: tested
-S: tested in simulation (gazebo)
-F: failed
+T: tested<br />
+S: tested in simulation (gazebo)<br />
+F: failed<br />
 
 |                     | TUB                         | UNIPI | IIT | Ocado | Disney |
 |---------------------|-----------------------------|-------|-----|-------|--------|
