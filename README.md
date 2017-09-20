@@ -87,6 +87,7 @@ F: failed
 | Force-Torque Sensor | ATI FTN-Gamma Sensors (T)   |       |     |       |        |
 | RGB-D Sensor        | ASUS Xtion Pro Live (T)     |       |     |       |        |
 |                     |                             |       |     |       |        |
+
 ---
 
 
