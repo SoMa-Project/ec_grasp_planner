@@ -200,12 +200,40 @@ bbox_fits:
     normal: tf_to_vector_table/vector
   #min_aspect_ratio: 1.9
   #max_aspect_ratio: 1.0
+
 bbox_to_axis:
   type: ecto_rbo_pcl::TFs2Vectors
   inputs:
     transforms: bbox_fits/transforms
   column_index: 0
   negate: false
+
+bbox_to_graspsig:
+  type: ecto_rbo_pcl::BBox2GSig
+  inputs:
+    transforms: bbox_fits/transforms
+    centroids: calculate_centroids/centroids
+
+graspsig_axis:
+  type: ecto_rbo_pcl::TFs2Vectors
+  inputs:
+    transforms: bbox_to_graspsig/transforms_out
+  column_index: 0
+  negate: false
+
+take_first_gs_tf:
+  type: ecto_rbo_pcl::Vector2TF
+  inputs:
+    input: bbox_to_graspsig/transforms_out
+
+tf_send_graspsig:
+  type: ecto_rbo_pcl::BroadcastTF
+  inputs:
+    transform: take_first_gs_tf/output
+  source_frame: camera_rgb_optical_frame
+  target_frame: object_GS
+
+
 
 take_first_tf:
   type: ecto_rbo_pcl::Vector2TF
@@ -258,6 +286,8 @@ edge_grasp_planner:
     pushing_motion_manifolds: planar_manifolds/manifolds
     surface_pregrasp_messages: create_top_down_grasps/pregrasp_messages
     surface_grasp_manifolds: planar_manifolds/manifolds
+    graspsig_pregrasp_messages: create_gsig_top_grasps/pregrasp_messages
+    graspsig_grasp_manifolds: planar_manifolds/manifolds
     edge_pregrasp_messages: cliff_grasps/cliff_pregrasp_messages
     edge_grasp_manifolds: cliff_grasps/cliff_manifolds
     wall_pregrasp_messages: wall_grasps/wall_pregrasp_messages
@@ -267,12 +297,22 @@ publish_graph:
   inputs:
     graph_message: edge_grasp_planner/graph_message
 
+create_gsig_top_grasps:
+  type: ecto_rbo_grasping::CreateGrasps
+  inputs:
+    header: msg_to_pcl/header
+    positions: calculate_centroids/centroids 
+    approach_vectors: wrap_in_vector_table/vector
+    roll_vectors: graspsig_axis/vectors
+  strategy: 10  # SQUEEZE
+  pregrasp_configuration: 2 # SPHERE
+  roll_offset: 0 #-1.5707963267948966   #3.141592653589793
 
 create_top_down_grasps:
   type: ecto_rbo_grasping::CreateGrasps
   inputs:
     header: msg_to_pcl/header
-    positions: calculate_centroids/centroids
+    positions: calculate_centroids/centroids 
     approach_vectors: wrap_in_vector_table/vector
     roll_vectors: bbox_to_axis/vectors
   strategy: 10  # SQUEEZE
