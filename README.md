@@ -83,7 +83,7 @@ F: failed<br />
 
 |                     | TUB                         | UNIPI | IIT | Ocado | Disney |
 |---------------------|-----------------------------|-------|-----|-------|--------|
-| Hands               | RBO Hand2 (T) Pisa IIT Hand |       |     |       |        |
+| Hand                | RBO Hand2 (T) Pisa IIT Hand |       |     |       |        |
 | Arms                | WAM (T) KUKA iiwa (S)       |       |     |       |        |
 | Force-Torque Sensor | ATI FTN-Gamma Sensors (T)   |       |     |       |        |
 | RGB-D Sensor        | ASUS Xtion Pro Live (T)     |       |     |       |        |
