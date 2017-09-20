@@ -60,8 +60,8 @@ This planner is different. It outputs so-called hybrid automata. A hybrid automa
 This is because position trajectories lack the expressive power that is needed to capture the feedback-driven contact-rich motions considered here.
 Hybrid automata are much more suited in this context. 
 As a consequence any entity that wants to execute the generated plans needs to be capable of interpreting those hybrid automata descriptions. We use a [C++ library](https://github.com/tu-rbo/hybrid-automaton-library) that allows serialization/desirialization and can be used to wrap robot-specific interfaces as shown in Example 3.
-
-### Primitives, Controllers, and Jump Conditions: <a name="lists"></a>
+<a name="lists"></a>
+### Primitives, Controllers, and Jump Conditions: 
 List of primitives: Positioning, sliding, Caging, EdgeGrasp, WallGrasp, SurfaceGrasp The primitives are based on Clemens Eppner and Oliver Brock. "[Planning Grasp Strategies That Exploit Environmental Constraints](http://www.robotics.tu-berlin.de/fileadmin/fg170/Publikationen_pdf/eppner_icra2015.pdf)"  
 
 List of controllers: joint controller, operational space controller, sliding controller, RBO-hand controller, Pisa-IIT-hand controller
