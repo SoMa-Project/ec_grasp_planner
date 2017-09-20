@@ -74,8 +74,19 @@ List of ECs: Surface, Edge, Wall
 ---
 < a name="hardwaredependencies"></a>
 ## Hardware Dependencies 
+This table lists the tested hardware dependencies of the planner by SoMa partner:
 
+T: tested
+S: tested in simulation (gazebo)
+F: failed
 
+|                     | TUB                         | UNIPI | IIT | Ocado | Disney |
+|---------------------|-----------------------------|-------|-----|-------|--------|
+| Hands               | RBO Hand2 (T) Pisa IIT Hand |       |     |       |        |
+| Arms                | WAM (T) KUKA iiwa (S)       |       |     |       |        |
+| Force-Torque Sensor | ATI FTN-Gamma Sensors (T)   |       |     |       |        |
+| RGB-D Sensor        | ASUS Xtion Pro Live (T)     |       |     |       |        |
+|                     |                             |       |     |       |        |
 ---
 
 
