@@ -84,7 +84,7 @@ F: failed<br />
 |                     | TUB                         | UNIPI | IIT | Ocado | Disney |
 |---------------------|-----------------------------|-------|-----|-------|--------|
 | Hand                | RBO Hand2 (T) Pisa IIT Hand |       |     | RBO Hand2 (T)<br />Pisa/IIT Hand<br />RBO Hand2 v2 (T)                                                                      <br /> Pisa/IIT Hand v2<br /> Pisa/IIT Softgripper                                                                                 |        |
-| Arms                | WAM (T) KUKA iiwa (S)       |       |     | Kuka IIWA14 (T)<br /> Staubli RC160L                                                                                               |        |
+| Arms                | WAM (T) KUKA iiwa (S)       |       |     | KUKA LBR iiwa14 (T)<br /> Staubli RX160L                                                                                           |        |
 | Force-Torque Sensor | ATI FTN-Gamma Sensors (T)   |       |     |Optoforce HEX-70-XE-200N (T)                                                                                                       |        |
 | RGB-D Sensor        | ASUS Xtion Pro Live (T)     |       |     |Primesense Carmine 1.08/9(T) <br /> Kinect v2                                                                                       |        |
 |                     |                             |       |     |       |        |
