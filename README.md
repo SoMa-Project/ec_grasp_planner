@@ -87,8 +87,8 @@ F: failed<br />
 | Arms                | WAM (T) KUKA iiwa (S)       |       |     | KUKA LBR iiwa14 (T)<br /> Staubli RX160L                                                                                           |        |
 | Force-Torque Sensor | ATI FTN-Gamma Sensors (T)   |       |     |Optoforce HEX-70-XE-200N (T)                                                                                                       |        |
 | RGB-D Sensor        | ASUS Xtion Pro Live (T)     |       |     |Primesense Carmine 1.08/9(T) <br /> Kinect v2                                                                                       |        |
+| API                 |     ROS/MoveIt              |       |     |       |        |
 |                     |                             |       |     |       |        |
-
 ---
 
 
