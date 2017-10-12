@@ -94,14 +94,17 @@ F: failed<br />
 
 ## Install <a name="install"></a>
 
-This code was tested with [ROS indigo](http://wiki.ros.org/indigo) under Ubuntu 14.04.5 (LTS).
+This code was tested with [ROS indigo](http://wiki.ros.org/indigo) under Ubuntu 14.04.5 (LTS). To follow our build instructions you need to build with catkin tools (apt-get install python-catkin-tools)
 
 ### Minimal Dependencies <a name="minimaldependencies"></a>
+
+* git clone https://github.com/SoMa-Project/ec_grasp_planner.git [ecto_rbo]
+```
 
 * Clone the ROS stack [ecto_rbo](https://github.com/SoMa-Project/vision.git) in your catkin workspace and build it:
 ```
 git clone https://github.com/SoMa-Project/vision.git
-catkin build ecto_rbo
+and follow the instructions on this repository
 ```
 
 * Get [PyDDL](https://github.com/garydoranjr/pyddl):
