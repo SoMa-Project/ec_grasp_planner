@@ -98,8 +98,16 @@ This code was tested with [ROS indigo](http://wiki.ros.org/indigo) under Ubuntu 
 
 ### Minimal Dependencies <a name="minimaldependencies"></a>
 
-* git clone https://github.com/SoMa-Project/ec_grasp_planner.git [ecto_rbo]
 
+* Clone this repository
+```
+git clone https://github.com/SoMa-Project/ec_grasp_planner.git 
+```
+
+* Build the geometry messages (don't build any other projects form this repository yet)
+```
+catkin build geometry_graph_msgs
+```
 
 * Clone the ROS stack [ecto_rbo](https://github.com/SoMa-Project/vision.git) in your catkin workspace and build it:
 ```
