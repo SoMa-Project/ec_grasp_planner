@@ -113,7 +113,7 @@ catkin build geometry_graph_msgs
 ```
 git clone https://github.com/SoMa-Project/vision.git
 ```
-and follow the instructions on this repository
+and follow the instructions on https://github.com/SoMa-Project/vision/blob/master/README.md
 
 
 * Get [PyDDL](https://github.com/garydoranjr/pyddl):
