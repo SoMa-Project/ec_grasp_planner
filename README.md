@@ -261,10 +261,8 @@ This example shows the execution of a planned hybrid automaton motion in the Gaz
 roscore
 rosparam set use_sim_time 1
 
-# Step 2: start the simulation environment 
-roslaunch iiwa_gazebo iiwa_gazebo_examples.launch model:=iiwa7_kinect_ft world:=iiwa_fullEx
-roslaunch trik_controller iiwa.launch enabled_on_start:=false vel:=4 tvel:=4 rvel:=4 accel:=3
-rosservice call /disable
+# Step 2: start the simulation environment and kuka control manager 
+rosrun hybrid_automaton_manager_kuka hybrid_automaton_manager_kuka
 rosrun hybrid_automaton_manager_kuka hybrid_automaton_manager_kuka
 
 # Step 3: run vision code
