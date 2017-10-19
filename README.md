@@ -257,12 +257,9 @@ This example shows the execution of a planned hybrid automaton motion in the Gaz
 
 ```
 # Step 1: make sure the simulation time is used
-# To replace steps 1 and 2, (and faster setup/collision models) use launchGazebo.launch from h_a_manager_kuka
-roscore
-rosparam set use_sim_time 1
+roslaunch hybrid_automaton_manager_kuka launchGazebo.launch
 
 # Step 2: start the simulation environment and kuka control manager 
-rosrun hybrid_automaton_manager_kuka hybrid_automaton_manager_kuka
 rosrun hybrid_automaton_manager_kuka hybrid_automaton_manager_kuka
 
 # Step 3: run vision code
@@ -278,8 +275,12 @@ In RViz you should be able to see the point cloud simulated in Gazebo and the ge
 
 ```
 # Step 5: select a surface grasp, visualize and execute it
-rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rviz --handarm RBOHand2Kuka
+roscd hybrid_automaton_manager_kuka/test_xmls/ 
+rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rviz --handarm RBOHand2Kuka [need to ctrl-c once done]
+/ha_send_xml.sh hybrid_automaton.xml  
 ```
+
+# Step 6: 
 
 In RViz you should be able to see the planned surface grasp and in Gazebo the robot moves its hand towards the cylinder until contact (https://youtu.be/Q91U9r83Vl0):
 
