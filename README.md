@@ -277,7 +277,7 @@ In RViz you should be able to see the point cloud simulated in Gazebo and the ge
 # Step 5: select a surface grasp, visualize and execute it
 roscd hybrid_automaton_manager_kuka/test_xmls/ 
 rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rviz --handarm RBOHand2Kuka [need to ctrl-c once done]
-/ha_send_xml.sh hybrid_automaton.xml  
+./ha_send_xml.sh hybrid_automaton.xml  
 ```
 
 # Step 6: 
