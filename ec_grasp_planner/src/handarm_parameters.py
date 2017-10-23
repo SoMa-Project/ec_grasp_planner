@@ -59,6 +59,7 @@ class RBOHand2Kuka(RBOHand2):
         
         self['surface_grasp']['initial_goal'] = np.array([-0.058,0.41,-0.05,-1.6,-0.11,-0.82,0])
         self['surface_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, 0.06])
+        #self['surface_grasp']['hand_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0]), tra.concatenate_matrices(tra.rotation_matrix(math.radians(0.), [0, 0, 1]), tra.rotation_matrix(math.radians(180.), [1, 0, 0])))
         self['surface_grasp']['hand_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0]), tra.concatenate_matrices(tra.rotation_matrix(math.radians(0.), [0, 0, 1]), tra.rotation_matrix(math.radians(180.), [1, 0, 0])))
         self['surface_grasp']['downward_force'] = 7.
         self['surface_grasp']['valve_pattern'] = (np.array([[ 0. ,  4.1], [ 0. ,  0.1], [ 0. ,  5. ], [ 0. ,  5.], [ 0. ,  2.], [ 0. ,  3.5]]), np.array([[1,0]]*6))
