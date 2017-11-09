@@ -38,6 +38,8 @@ from pregrasp_msgs.msg import GraspStrategy
 
 from geometry_graph_msgs.msg import Graph
 
+from ec_grasp_planner.srv import RunGraspPlanner, RunGraspPlannerResponse
+
 import pyddl
 
 import rospkg
@@ -49,8 +51,115 @@ import hatools.cookbook as cookbook
 
 import handarm_parameters
 
+class GraspPlanner():
+    def __init__(self):
+        # initialize the ros node
+        rospy.init_node('ec_planner')
+        s = rospy.Service('run_grasp_planner', RunGraspPlanner, lambda msg: self.handle_run_grasp_planner(msg))
+        self.handarm_params = handarm_parameters.__dict__[args['handarm']]()
+        self.tf_listener = tf.TransformListener()
+
+        # Publish rviz markers
+        if args['rviz']:
+            print "Press Ctrl-C to stop sending visualization_msgs/MarkerArray on topic '/planned_grasp_path' ..."
+            #TODO
+            #publish_rviz_markers(self.rviz_frames, self.robot_base_frame, self.handarm_params)
+            # rospy.spin()
+
+
+    # ------------------------------------------------------------------------------------------------
+    def handle_run_grasp_planner(self, req):
+        robot_base_frame = args['robot_base_frame']
+        object_frame = args['object_frame']
+
+        # make sure those frames exist and we can transform between them
+        self.tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
+
+        # --------------------------------------------------------
+        # Get grasp from graph representation
+        grasp_path = None
+        while grasp_path is None:
+            # Get geometry graph
+            graph = rospy.wait_for_message('geometry_graph', Graph)
+            graph.header.stamp = rospy.Time.now() + rospy.Duration(0.5)
+
+            # Get the geometry graph frame in robot base frame
+            self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(10.0))
+            graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
+
+            # Get the object frame in robot base frame
+            self.tf_listener.waitForTransform(robot_base_frame, object_frame, graph.header.stamp, rospy.Duration(10.0))
+            object_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), object_frame))
+
+            print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
+
+            # Find a path in the ECE graph
+            hand_node_id = [n.label for n in graph.nodes].index("Positioning")
+            object_node_id = [n.label for n in graph.nodes].index("Slide")
+            grasp_path = find_a_path(hand_node_id, object_node_id, graph, args['grasp'], verbose=True)
+
+            rospy.sleep(0.3)
+
+        # --------------------------------------------------------
+        # Turn grasp into hybrid automaton
+        ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
+                                                                self.handarm_params)
+
+        # --------------------------------------------------------
+        # Output the hybrid automaton
+
+        # Call update_hybrid_automaton service to communicate with a hybrid automaton manager (kuka or rswin)
+        if args['ros_service_call']:
+            call_ha = rospy.ServiceProxy('update_hybrid_automaton', srv.UpdateHybridAutomaton)
+            call_ha(ha.xml())
+
+        # Write to a xml file
+        if args['file_output']:
+            with open('hybrid_automaton.xml', 'w') as outfile:
+                outfile.write(ha.xml())
+
+        return RunGraspPlannerResponse(ha.xml())
+
+
 # ================================================================================================
-def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params):   
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Turn path in graph into hybrid automaton.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('--ros_service_call', action='store_true', default = False,
+                        help='Whether to send the hybrid automaton to a ROS service called /update_hybrid_automaton.')
+    parser.add_argument('--file_output', action='store_true', default = False,
+                        help='Whether to write the hybrid automaton to a file called hybrid_automaton.xml.')
+    #grasp_choices = ["any", "EdgeGrasp", "WallGrasp", "SurfaceGrasp"]
+    grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
+    parser.add_argument('--grasp', choices=grasp_choices, default=grasp_choices[0],
+                        help='Which grasp type to use.')
+    parser.add_argument('--grasp_id', type=int, default=-1,
+                        help='Which specific grasp to use. Ignores any values < 0.')
+    parser.add_argument('--rviz', action='store_true', default = False,
+                        help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
+    parser.add_argument('--robot_base_frame', type=str, default = 'world',
+                        help='Name of the robot base frame.')
+    parser.add_argument('--object_frame', type=str, default = 'object',
+                        help='Name of the object frame.')
+    parser.add_argument('--handarm', type=str, default = 'RBOHand2WAM',
+                        help='Python class that contains configuration parameters for hand and arm-specific properties.')
+
+    args = parser.parse_args()
+
+    if args.grasp == 'any':
+        args.grasp = grasp_choices[1:]
+    else:
+        args.grasp = [args.grasp]
+
+    if args.grasp_id >= 0:
+        tmp = [g + '_' + str(args.grasp_id) for g in args.grasp]
+        args.grasp = tmp
+
+    planner = GraspPlanner()
+
+# ================================================================================================
+# ================================================================================================
+def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params):
 
     # Get the parameters from the handarm_parameters.py file
     table_force = handarm_params['wall_grasp']['table_force']
@@ -76,7 +185,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     rviz_frames.append(goalr)
     goal = (tra.translation_matrix([0, -0.2, 0]).dot(goalr))
     rviz_frames.append(goal)
-        
+
     # Create the directions to go up/down and towards the wall
     dirDown = tra.translation_matrix([0, 0, -down_speed]);
     dirWall = tra.translation_matrix([0, sliding_speed, 0]);
@@ -92,12 +201,12 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 
     # 2. Go down onto the object
     control_sequence.append(ha.HTransformControlMode(dirDown, controller_name = 'GoToTable', goal_is_relative='1'))
-    
+
     # 2b. Switch when the f/t sensor is triggered with normal force from the table
-    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([table_force, 0, 0, 0, 0, 0]), 
+    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([table_force, 0, 0, 0, 0, 0]),
         norm_weights = np.array([1, 0, 0, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
 
-    # 3. Lift upwards 
+    # 3. Lift upwards
     control_sequence.append(ha.HTransformControlMode(dirUp, controller_name = 'Lift1', goal_is_relative='1'))
 
     # 3b. Switch when hand closing time ends
@@ -105,12 +214,12 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 
     # 4. Go towards the wall
     control_sequence.append(ha.HTransformControlMode(dirWall, controller_name = 'GoToWall', goal_is_relative='1'))
-    
+
     # 4b. Switch when the f/t sensor is triggered with normal force from the table
-    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, wall_force, 0, 0, 0]), 
+    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, wall_force, 0, 0, 0]),
         norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", goal_is_relative = '1'))
 
-    # 5. Lift upwards 
+    # 5. Lift upwards
     control_sequence.append(ha.HTransformControlMode(dirUp, controller_name = 'Lift2', goal_is_relative='1'))
 
     # 5b. Switch when hand closing time ends
@@ -124,14 +233,14 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 # ================================================================================================
 def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
 
-    # Get the relevant parameters 
+    # Get the relevant parameters
     initial_cspace_goal = handarm_params['surface_grasp']['initial_goal']
     downward_force = handarm_params['surface_grasp']['downward_force']
     valve_pattern = handarm_params['surface_grasp']['valve_pattern']
     pregrasp_pose = handarm_params['surface_grasp']['pregrasp_pose']
     hand_pose = handarm_params['surface_grasp']['hand_pose']
     hand_closing_time = np.max(valve_pattern) + 1.
-    
+
     # Set the initial pose above the object
     goal_ = np.copy(support_surface_frame)
     goal_[:3,3] = tra.translation_from_matrix(object_frame)
@@ -145,7 +254,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
     # Set the directions to use TRIK controller with
     dirDown = tra.translation_matrix([0, 0, -0.1]);
     dirUp = tra.translation_matrix([0, 0, 0.1]);
-    
+
     control_sequence = []
 
     # 1. Go to the start configuration with joint space control
@@ -162,9 +271,9 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
 
     # 3. Go down onto the object
     control_sequence.append(ha.HTransformControlMode(dirDown, controller_name = 'GoDown', goal_is_relative='1'))
-    
+
     # 3b. Switch when the f/t sensor is triggered with normal force from the table
-    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]), 
+    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]),
         norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
 
     # 4. Preserve the position
@@ -173,7 +282,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
     # 4b. Switch when hand closing time ends
     control_sequence.append(ha.TimeSwitch('', '', duration = hand_closing_time))
 
-    # 5. Lift upwards 
+    # 5. Lift upwards
     control_sequence.append(ha.HTransformControlMode(dirUp, controller_name = 'GoUp', goal_is_relative='1'))
 
     # 5b. Switch when hand closing time ends
@@ -181,7 +290,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
 
     # 6. Go to gravity compensation mode to finish
     control_sequence.append(ha.GravityCompensationMode())
-            
+
     return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
 
 # ================================================================================================
@@ -200,10 +309,10 @@ def get_node_from_actions(actions, action_name, graph):
 def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
-    
+
     grasp_type = graph.nodes[int(motion_sequence[-1].sig[1][1:])].label
     #grasp_frame = grasp_frames[grasp_type]
-    
+
     if grasp_type == 'EdgeGrasp':
         raise "Edge grasp is not supported yet"
         #support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
@@ -227,10 +336,10 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
 # ================================================================================================
 def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_labels, verbose = False):
     locations = ['l'+str(i) for i in range(len(graph.nodes))]
-    
+
     connections = [('connected', 'l'+str(e.node_id_start), 'l'+str(e.node_id_end)) for e in graph.edges]
     grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
-        
+
     # define possible actions
     domain = pyddl.Domain((
         pyddl.Action(
@@ -281,7 +390,7 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
             ),
         ),
     ))
-    
+
     # each node in the graph is a location
     problem = pyddl.Problem(
         domain,
@@ -303,7 +412,7 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
     else:
         for action in plan:
             print(action)
-    
+
     return plan
 
 # ================================================================================================
@@ -312,9 +421,9 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
     from visualization_msgs.msg import Marker
     marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
     markers = MarkerArray()
-    
+
     timestamp = rospy.Time.now()
-    
+
     for i, f in enumerate(frames):
         msg = Marker()
         msg.header.stamp = timestamp
@@ -328,11 +437,11 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
         msg.mesh_use_embedded_materials = True
         msg.mesh_resource = handarm_params["mesh_file"]
         msg.scale.x = msg.scale.y = msg.scale.z = handarm_params["mesh_file_scale"]
-        #msg.mesh_resource = mesh_resource 
+        #msg.mesh_resource = mesh_resource
         msg.pose = homogenous_tf_to_pose_msg(f)
-        
+
         markers.markers.append(msg)
-    
+
     for f1, f2 in zip(frames, frames[1:]):
         msg = Marker()
         msg.header.stamp = timestamp
@@ -348,120 +457,20 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
         msg.scale.y = 0.03 # head diameter
         msg.points.append(homogenous_tf_to_pose_msg(f1).position)
         msg.points.append(homogenous_tf_to_pose_msg(f2).position)
-        
+
         markers.markers.append(msg)
-    
+
     br = tf.TransformBroadcaster()
 
     r = rospy.Rate(5);
     while not rospy.is_shutdown():
         marker_pub.publish(markers)
-        
+
         for i, f in enumerate(frames):
             br.sendTransform(tra.translation_from_matrix(f),
                         tra.quaternion_from_matrix(f),
                         rospy.Time.now(),
                         "dgb_frame_" + str(i),
                         frame_id)
-        
+
         r.sleep()
-
-
-# ------------------------------------------------------------------------------------------------
-def main(**args):
-
-    # initialize the ros node
-    rospy.init_node('ec_planner')
-    handarm_params = handarm_parameters.__dict__[args['handarm']]()
-    tf_listener = tf.TransformListener()
-    robot_base_frame = args['robot_base_frame']
-    object_frame = args['object_frame']
-    
-    # make sure those frames exist and we can transform between them
-    tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
-    
-    # --------------------------------------------------------
-    # Get grasp from graph representation
-    grasp_path = None
-    while grasp_path is None:
-
-        # Get geometry graph
-        graph = rospy.wait_for_message('geometry_graph', Graph)
-        graph.header.stamp = rospy.Time.now() + rospy.Duration(0.5)
-        
-        # Get the geometry graph frame in robot base frame
-        tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(10.0))
-        graph_in_base = tf_listener.asMatrix(robot_base_frame, graph.header)
-        
-        # Get the object frame in robot base frame
-        tf_listener.waitForTransform(robot_base_frame, object_frame, graph.header.stamp, rospy.Duration(10.0))
-        object_in_base = tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), object_frame))
-        
-        print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
-        
-        # Find a path in the ECE graph 
-        hand_node_id = [n.label for n in graph.nodes].index("Positioning")
-        object_node_id = [n.label for n in graph.nodes].index("Slide")
-        grasp_path = find_a_path(hand_node_id, object_node_id, graph, args['grasp'], verbose = True)
-        
-        rospy.sleep(0.3)
-    
-    # --------------------------------------------------------
-    # Turn grasp into hybrid automaton
-    ha, rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base, handarm_params)
-    
-    # --------------------------------------------------------
-    # Output the hybrid automaton 
-
-    # Call update_hybrid_automaton service to communicate with a hybrid automaton manager (kuka or rswin)
-    if args['ros_service_call']:
-        call_ha = rospy.ServiceProxy('update_hybrid_automaton', srv.UpdateHybridAutomaton)
-        call_ha(ha.xml())
-    
-    # Write to a xml file
-    if args['file_output']:
-        with open('hybrid_automaton.xml', 'w') as outfile:
-            outfile.write(ha.xml())
-    
-    # Publish rviz markers
-    if args['rviz']:
-        print "Press Cntrl-C to stop sending visualization_msgs/MarkerArray on topic '/planned_grasp_path' ..."
-        publish_rviz_markers(rviz_frames, robot_base_frame, handarm_params)
-        #rospy.spin()
-    
-# ================================================================================================
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Turn path in graph into hybrid automaton.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    
-    parser.add_argument('--ros_service_call', action='store_true', default = False,
-                        help='Whether to send the hybrid automaton to a ROS service called /update_hybrid_automaton.')
-    parser.add_argument('--file_output', action='store_true', default = False,
-                        help='Whether to write the hybrid automaton to a file called hybrid_automaton.xml.')
-    #grasp_choices = ["any", "EdgeGrasp", "WallGrasp", "SurfaceGrasp"]
-    grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
-    parser.add_argument('--grasp', choices=grasp_choices, default=grasp_choices[0],
-                        help='Which grasp type to use.')
-    parser.add_argument('--grasp_id', type=int, default=-1,
-                        help='Which specific grasp to use. Ignores any values < 0.')
-    parser.add_argument('--rviz', action='store_true', default = False,
-                        help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
-    parser.add_argument('--robot_base_frame', type=str, default = 'world',
-                        help='Name of the robot base frame.')
-    parser.add_argument('--object_frame', type=str, default = 'object',
-                        help='Name of the object frame.')
-    parser.add_argument('--handarm', type=str, default = 'RBOHand2WAM',
-                        help='Python class that contains configuration parameters for hand and arm-specific properties.')
-    
-    args = parser.parse_args()
-    
-    if args.grasp == 'any':
-        args.grasp = grasp_choices[1:]
-    else:
-        args.grasp = [args.grasp]
-    
-    if args.grasp_id >= 0:
-        tmp = [g + '_' + str(args.grasp_id) for g in args.grasp]
-        args.grasp = tmp
-    
-    main(**vars(args))
-# ================================================================================================
