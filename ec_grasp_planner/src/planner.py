@@ -56,7 +56,6 @@ class GraspPlanner():
         # initialize the ros node
         rospy.init_node('ec_planner')
         s = rospy.Service('run_grasp_planner', RunGraspPlanner, lambda msg: self.handle_run_grasp_planner(msg))
-        self.handarm_params = handarm_parameters.__dict__[args['handarm']]()
         self.tf_listener = tf.TransformListener()
 
         # Publish rviz markers
@@ -69,6 +68,10 @@ class GraspPlanner():
 
     # ------------------------------------------------------------------------------------------------
     def handle_run_grasp_planner(self, req):
+        self.object_type = req.object_type
+        self.grasp_type = req.grasp_type
+        self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
+
         robot_base_frame = args['robot_base_frame']
         object_frame = args['object_frame']
 
@@ -96,7 +99,7 @@ class GraspPlanner():
             # Find a path in the ECE graph
             hand_node_id = [n.label for n in graph.nodes].index("Positioning")
             object_node_id = [n.label for n in graph.nodes].index("Slide")
-            grasp_path = find_a_path(hand_node_id, object_node_id, graph, args['grasp'], verbose=True)
+            grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
 
             rospy.sleep(0.3)
 
