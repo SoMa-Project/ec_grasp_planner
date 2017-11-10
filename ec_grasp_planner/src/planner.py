@@ -149,7 +149,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
     control_sequence = []
 
     # 1. Go to the start configuration with joint space control
-    control_sequence.append(ha.JointControlMode(initial_cspace_goal, controller_name = 'GoToInitJointConfig'))
+    control_sequence.append(ha.JointControlMode(initial_cspace_goal, controller_name = 'GoToInitJointConfig1', name = 'pregrasp'))
 
     # 1b. Switch when joint is reached
     control_sequence.append(ha.JointConfigurationSwitch('', '', controller = 'GoToInitJointConfig', epsilon = str(math.radians(7.))))

@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /TF1/Tree1
-        - /PointCloud21/Status1
         - /MarkerArray2
       Splitter Ratio: 0.755814
     Tree Height: 583
@@ -86,6 +85,8 @@ Visualization Manager:
           Value: false
         iiwa_link_ee_kuka:
           Value: false
+        iiwa_link_hand_palm:
+          Value: true
         object:
           Value: true
         table:
@@ -125,7 +126,8 @@ Visualization Manager:
                       iiwa_link_6:
                         iiwa_link_7:
                           iiwa_link_ee:
-                            {}
+                            iiwa_link_hand_palm:
+                              {}
                           iiwa_link_ee_kuka:
                             {}
       Update Interval: 0
@@ -176,6 +178,100 @@ Visualization Manager:
         {}
       Queue Size: 100
       Value: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        camera_depth_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_depth_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        camera_rgb_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_rgb_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        iiwa_link_0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        iiwa_link_1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        iiwa_link_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        iiwa_link_3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        iiwa_link_4:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        iiwa_link_5:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        iiwa_link_6:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        iiwa_link_7:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        iiwa_link_ee:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        iiwa_link_ee_kuka:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        iiwa_link_hand_palm:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: RobotModel
+      Robot Description: robot_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -200,7 +296,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 4.86878
+      Distance: 2.87067
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
@@ -212,10 +308,10 @@ Visualization Manager:
         Z: 0.0153952
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.549797
+      Pitch: 1.0098
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.43987
+      Yaw: 5.54988
     Saved: ~
 Window Geometry:
   Displays:
@@ -233,5 +329,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1239
-  X: 65
-  Y: 49
+  X: 55
+  Y: 39
