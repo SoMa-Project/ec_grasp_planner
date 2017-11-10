@@ -215,6 +215,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
     downward_force = handarm_params['surface_grasp']['downward_force']
     valve_pattern = handarm_params['surface_grasp']['valve_pattern']
     pregrasp_pose = handarm_params['surface_grasp']['pregrasp_pose']
+    grasp_pose = handarm_params['surface_grasp']['grasp_pose']
     hand_pose = handarm_params['surface_grasp']['hand_pose']
     hand_closing_time = np.max(valve_pattern) + 1.
 
@@ -227,6 +228,9 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
     # Set the frames to visualize with RViz
     rviz_frames = []
     rviz_frames.append(goal)
+    # Set the frame to grasp
+    grasp_pose = goal_.dot(grasp_pose).dot(hand_pose)
+    rviz_frames.append(grasp_pose)
 
     # Set the directions to use TRIK controller with
     dirDown = tra.translation_matrix([0, 0, -0.1]);
@@ -240,14 +244,15 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
     # 1b. Switch when joint is reached
     control_sequence.append(ha.JointConfigurationSwitch('', '', controller = 'GoToInitJointConfig', epsilon = str(math.radians(7.))))
 
-    # 2. Go above the object
+    # 2. Go above the object    
     control_sequence.append(ha.HTransformControlMode(goal, controller_name = 'GoAboveObject', goal_is_relative='0'))
 
     # 2b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoAboveObject', epsilon = '0.01'))
 
     # 3. Go down onto the object
-    control_sequence.append(ha.HTransformControlMode(dirDown, controller_name = 'GoDown', goal_is_relative='1'))
+#    control_sequence.append(ha.HTransformControlMode(dirDown, controller_name = 'GoDown', goal_is_relative='1'))
+    control_sequence.append(ha.HTransformControlMode(grasp_pose, controller_name = 'GoAboveObject', goal_is_relative='0'))
 
     # 3b. Switch when the f/t sensor is triggered with normal force from the table
     control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, downward_force, 0, 0, 0]),
