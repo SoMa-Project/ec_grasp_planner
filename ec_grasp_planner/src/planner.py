@@ -38,7 +38,10 @@ from pregrasp_msgs.msg import GraspStrategy
 
 from geometry_graph_msgs.msg import Graph
 
-from ec_grasp_planner.srv import RunGraspPlanner, RunGraspPlannerResponse
+from ec_grasp_planner import srv
+
+from visualization_msgs.msg import MarkerArray
+from visualization_msgs.msg import Marker
 
 import pyddl
 
@@ -51,20 +54,16 @@ import hatools.cookbook as cookbook
 
 import handarm_parameters
 
+markers_rviz = MarkerArray()
+frames_rviz = []
+
 class GraspPlanner():
-    def __init__(self):
+    def __init__(self, args):
         # initialize the ros node
         rospy.init_node('ec_planner')
-        s = rospy.Service('run_grasp_planner', RunGraspPlanner, lambda msg: self.handle_run_grasp_planner(msg))
+        s = rospy.Service('run_grasp_planner', srv.RunGraspPlanner, lambda msg: self.handle_run_grasp_planner(msg))
         self.tf_listener = tf.TransformListener()
-
-        # Publish rviz markers
-        if args['rviz']:
-            print "Press Ctrl-C to stop sending visualization_msgs/MarkerArray on topic '/planned_grasp_path' ..."
-            #TODO
-            #publish_rviz_markers(self.rviz_frames, self.robot_base_frame, self.handarm_params)
-            # rospy.spin()
-
+        self.args = args
 
     # ------------------------------------------------------------------------------------------------
     def handle_run_grasp_planner(self, req):
@@ -72,8 +71,8 @@ class GraspPlanner():
         self.grasp_type = req.grasp_type
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
-        robot_base_frame = args['robot_base_frame']
-        object_frame = args['object_frame']
+        robot_base_frame = self.args.robot_base_frame
+        object_frame = self.args.object_frame
 
         # make sure those frames exist and we can transform between them
         self.tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
@@ -112,16 +111,23 @@ class GraspPlanner():
         # Output the hybrid automaton
 
         # Call update_hybrid_automaton service to communicate with a hybrid automaton manager (kuka or rswin)
-        if args['ros_service_call']:
+        if self.args.ros_service_call:
             call_ha = rospy.ServiceProxy('update_hybrid_automaton', srv.UpdateHybridAutomaton)
             call_ha(ha.xml())
 
         # Write to a xml file
-        if args['file_output']:
+        if self.args.file_output:
             with open('hybrid_automaton.xml', 'w') as outfile:
                 outfile.write(ha.xml())
 
-        return RunGraspPlannerResponse(ha.xml())
+        # Publish rviz markers
+        if self.args.rviz:
+            #print "Press Ctrl-C to stop sending visualization_msgs/MarkerArray on topic '/planned_grasp_path' ..."
+            publish_rviz_markers(self.rviz_frames, self.robot_base_frame, self.handarm_params)
+            # rospy.spin()
+
+
+        return srv.RunGraspPlannerResponse(ha.xml())
 
 
 # ================================================================================================
@@ -134,31 +140,53 @@ if __name__ == '__main__':
                         help='Whether to write the hybrid automaton to a file called hybrid_automaton.xml.')
     #grasp_choices = ["any", "EdgeGrasp", "WallGrasp", "SurfaceGrasp"]
     grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
-    parser.add_argument('--grasp', choices=grasp_choices, default=grasp_choices[0],
-                        help='Which grasp type to use.')
-    parser.add_argument('--grasp_id', type=int, default=-1,
-                        help='Which specific grasp to use. Ignores any values < 0.')
+    # parser.add_argument('--grasp', choices=grasp_choices, default=grasp_choices[0],
+    #                     help='Which grasp type to use.')
+    # parser.add_argument('--grasp_id', type=int, default=-1,
+    #                    help='Which specific grasp to use. Ignores any values < 0.')
     parser.add_argument('--rviz', action='store_true', default = False,
                         help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
     parser.add_argument('--robot_base_frame', type=str, default = 'world',
                         help='Name of the robot base frame.')
     parser.add_argument('--object_frame', type=str, default = 'object',
                         help='Name of the object frame.')
-    parser.add_argument('--handarm', type=str, default = 'RBOHand2WAM',
-                        help='Python class that contains configuration parameters for hand and arm-specific properties.')
+    # parser.add_argument('--handarm', type=str, default = 'RBOHand2WAM',
+    #                     help='Python class that contains configuration parameters for hand and arm-specific properties.')
 
     args = parser.parse_args()
 
-    if args.grasp == 'any':
-        args.grasp = grasp_choices[1:]
-    else:
-        args.grasp = [args.grasp]
+    # if args.grasp == 'any':
+    #     args.grasp = grasp_choices[1:]
+    # else:
+    #     args.grasp = [args.grasp]
 
-    if args.grasp_id >= 0:
-        tmp = [g + '_' + str(args.grasp_id) for g in args.grasp]
-        args.grasp = tmp
+    # if args.grasp_id >= 0:
+    #     tmp = [g + '_' + str(args.grasp_id) for g in args.grasp]
+    #     args.grasp = tmp
 
-    planner = GraspPlanner()
+    robot_base_frame = args.robot_base_frame
+
+    planner = GraspPlanner(args)
+
+
+
+    r = rospy.Rate(5);
+
+    marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
+    br = tf.TransformBroadcaster()
+
+    global frames_rviz, markers_rviz
+    while not rospy.is_shutdown():
+        marker_pub.publish(markers_rviz)
+
+        for i, f in enumerate(frames_rviz):
+            br.sendTransform(tra.translation_from_matrix(f),
+                             tra.quaternion_from_matrix(f),
+                             rospy.Time.now(),
+                             "dgb_frame_" + str(i),
+                             robot_base_frame)
+
+        r.sleep()
 
 # ================================================================================================
 # ================================================================================================
@@ -420,12 +448,13 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
 
 # ================================================================================================
 def publish_rviz_markers(frames, frame_id, handarm_params):
-    from visualization_msgs.msg import MarkerArray
-    from visualization_msgs.msg import Marker
-    marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
-    markers = MarkerArray()
 
     timestamp = rospy.Time.now()
+
+    global markers_rviz
+    global frames_rviz
+
+    markers_rviz = MarkerArray()
 
     for i, f in enumerate(frames):
         msg = Marker()
@@ -443,14 +472,14 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
         #msg.mesh_resource = mesh_resource
         msg.pose = homogenous_tf_to_pose_msg(f)
 
-        markers.markers.append(msg)
+        markers_rviz.markers.append(msg)
 
     for f1, f2 in zip(frames, frames[1:]):
         msg = Marker()
         msg.header.stamp = timestamp
         msg.header.frame_id = frame_id
         msg.frame_locked = True # False
-        msg.id = markers.markers[-1].id + 1
+        msg.id = markers_rviz.markers[-1].id + 1
         msg.action = Marker.ADD
         msg.lifetime = rospy.Duration()
         msg.type = Marker.ARROW
@@ -461,19 +490,7 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
         msg.points.append(homogenous_tf_to_pose_msg(f1).position)
         msg.points.append(homogenous_tf_to_pose_msg(f2).position)
 
-        markers.markers.append(msg)
+        markers_rviz.markers.append(msg)
 
-    br = tf.TransformBroadcaster()
+    frames_rviz = frames
 
-    r = rospy.Rate(5);
-    while not rospy.is_shutdown():
-        marker_pub.publish(markers)
-
-        for i, f in enumerate(frames):
-            br.sendTransform(tra.translation_from_matrix(f),
-                        tra.quaternion_from_matrix(f),
-                        rospy.Time.now(),
-                        "dgb_frame_" + str(i),
-                        frame_id)
-
-        r.sleep()
