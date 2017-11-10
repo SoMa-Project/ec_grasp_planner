@@ -378,7 +378,7 @@ def main(**args):
     object_frame = args['object_frame']
     
     # make sure those frames exist and we can transform between them
-    tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
+    tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(50.0))
     
     # --------------------------------------------------------
     # Get grasp from graph representation
