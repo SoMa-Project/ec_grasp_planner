@@ -110,7 +110,7 @@ class GraspPlanner():
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
         ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
-                                                                self.handarm_params)
+                                                                self.handarm_params, self.object_type)
 
         # --------------------------------------------------------
         # Output the hybrid automaton
@@ -208,20 +208,22 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
 
 # ================================================================================================
-def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
+def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type):
 
     # Get the relevant parameters
-    
-    downward_force = handarm_params['surface_grasp']['downward_force']    
-    
-    pregrasp_pose = handarm_params['surface_grasp']['pregrasp_pose']
-    grasp_pose = handarm_params['surface_grasp']['grasp_pose']
-    go_up_goal = handarm_params['surface_grasp']['go_up']
-    drop_off_goal = handarm_params['surface_grasp']['drop_off'] 
+    if (object_type in handarm_params['surface_grasp']):            
+        params = handarm_params['surface_grasp'][object_type]
+    else:
+        params = handarm_params['surface_grasp']['object']
         
-    hand_pose = handarm_params['surface_grasp']['hand_pose']
-    hand_closing_time = handarm_params['surface_grasp']['hand_closing_duration']
-    hand_synergy = handarm_params['surface_grasp']['hand_closing_synergy'] 
+    downward_force = params['downward_force']
+    pregrasp_pose = params['pregrasp_pose']
+    grasp_pose = params['grasp_pose']
+    go_up_goal = params['go_up']
+    drop_off_goal = params['drop_off']         
+    hand_pose = params['hand_pose']
+    hand_closing_time = params['hand_closing_duration']
+    hand_synergy = params['hand_closing_synergy']
 
     # Set the initial pose above the object
     goal_ = np.copy(support_surface_frame)
@@ -309,7 +311,7 @@ def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
 
 # ================================================================================================
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params):
+def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params, object_type):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
 
@@ -332,7 +334,7 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
     elif grasp_type == 'SurfaceGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params)
+        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type)
     else:
         raise "Unknown grasp type: ", grasp_type
 
