@@ -13,12 +13,15 @@ class BaseHandArm(dict):
         self['mesh_file'] = "Unknown"
         self['mesh_file_scale'] = 1.
         
-        self['wall_grasp'] = {}
-        self['wall_grasp']['object'] = {}
+        self['wall_grasp'] = {}        
         self['edge_grasp'] = {}
-        self['edge_grasp']['object'] = {}        
         self['surface_grasp'] = {}
+        self['wall_grasp']['object'] = {}
+        self['edge_grasp']['object'] = {}
         self['surface_grasp']['object'] = {}
+        self['wall_grasp']['punet'] = {}
+        self['edge_grasp']['punet'] = {}
+        self['surface_grasp']['punet'] = {}
 
 class RBOHand2(BaseHandArm):
     def __init__(self):
@@ -32,7 +35,7 @@ class RBOHand2WAM(RBOHand2):
         super(RBOHand2WAM, self).__init__()
         
         # general object is 'object'
-        self['surface_grasp']['object']['go_up'] = np.array([0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
+        self['surface_grasp']['object']['go_up'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, -0.2]), tra.rotation_matrix(math.radians(-15.), [0, 1, 0]))
         self['surface_grasp']['object']['drop_off'] = np.array([0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
         self['surface_grasp']['object']['pregrasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, -0.2]), tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))        
         self['surface_grasp']['object']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.05]), tra.rotation_matrix(math.radians(0.0), [0, 0, 1]))
