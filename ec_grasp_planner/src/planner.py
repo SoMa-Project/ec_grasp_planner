@@ -136,17 +136,24 @@ class GraspPlanner():
 
 
 
-def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params):
+def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params, object_type):
+    # Get the relevant parameters
+    print(object_type)
+    if (object_type in handarm_params['wall_grasp']):            
+        params = handarm_params['wall_grasp'][object_type]
+    else:
+        params = handarm_params['wall_grasp']['object']
+        
 
     # Get the parameters from the handarm_parameters.py file
-    table_force = handarm_params['wall_grasp']['table_force']
-    sliding_speed = handarm_params['wall_grasp']['sliding_speed']
-    up_speed = handarm_params['wall_grasp']['up_speed']
-    down_speed = handarm_params['wall_grasp']['down_speed']
-    wall_force = handarm_params['wall_grasp']['wall_force']
-    angle_of_attack = handarm_params['wall_grasp']['angle_of_attack']
-    pregrasp_pose = handarm_params['wall_grasp']['pregrasp_pose']
-    object_lift_time = handarm_params['wall_grasp']['object_lift_time']
+    table_force = params['table_force']
+    sliding_speed = params['sliding_speed']
+    up_speed = params['up_speed']
+    down_speed = params['down_speed']
+    wall_force = params['wall_force']
+    angle_of_attack = params['angle_of_attack']
+    pregrasp_pose = params['pregrasp_pose']
+    object_lift_time = params['object_lift_time']
 
     # Get the pose above the object
     rviz_frames = []
@@ -336,7 +343,7 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
         wall_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         wall_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(wall_frame_node.transform))
-        return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame, handarm_params)
+        return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame, handarm_params, object_type)
     elif grasp_type == 'SurfaceGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
@@ -489,7 +496,7 @@ if __name__ == '__main__':
     #                    help='Which specific grasp to use. Ignores any values < 0.')
     parser.add_argument('--rviz', action='store_true', default = False,
                         help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
-    parser.add_argument('--robot_base_frame', type=str, default = 'world',
+    parser.add_argument('--robot_base_frame', type=str, default = 'base_link',
                         help='Name of the robot base frame.')
     parser.add_argument('--object_frame', type=str, default = 'object',
                         help='Name of the object frame.')

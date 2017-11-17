@@ -58,8 +58,12 @@ class RBOHand2WAM(RBOHand2):
         self['wall_grasp']['object']['hand_object_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.1]), tra.rotation_matrix(math.radians(-69.0), [1, 0, 0]), tra.euler_matrix(0, math.pi / 2., math.pi / 2.))
         self['wall_grasp']['object']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.]), tra.rotation_matrix(math.radians(-69.0), [1, 0, 0]), tra.euler_matrix(0, math.pi / 2., math.pi / 2.))
         self['wall_grasp']['object']['postgrasp_pose'] = tra.translation_matrix([-0.1, 0, -0.1])
-        self['wall_grasp']['object']['table_force'] = 3.
+        self['wall_grasp']['object']['table_force'] = 3.0
         self['wall_grasp']['object']['sliding_speed'] = 0.04
+        self['wall_grasp']['object']['up_speed'] = 0.1
+        self['wall_grasp']['object']['down_speed'] = 0.1
+        self['wall_grasp']['object']['angle_of_attack'] = 1.0
+        self['wall_grasp']['object']['object_lift_time'] = 1.0
         self['wall_grasp']['object']['wall_force'] = -11.0
         self['wall_grasp']['object']['valve_pattern'] = (np.array([[1,0]]*6), np.array([[0, 2.5]]*6))
          
@@ -83,7 +87,7 @@ class RBOHand2Kuka(RBOHand2):
         self['surface_grasp']['valve_pattern'] = (np.array([[ 0. ,  4.1], [ 0. ,  0.1], [ 0. ,  5. ], [ 0. ,  5.], [ 0. ,  2.], [ 0. ,  3.5]]), np.array([[1,0]]*6))
         
         self['wall_grasp']['pregrasp_pose'] = tra.translation_matrix([0.05, 0, -0.2])
-        self['wall_grasp']['table_force'] = 7.
+        self['wall_grasp']['table_force'] = 7.0
         self['wall_grasp']['sliding_speed'] = 0.1
         self['wall_grasp']['up_speed'] = 0.1
         self['wall_grasp']['down_speed'] = 0.1
