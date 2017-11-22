@@ -236,9 +236,16 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     hand_synergy = params['hand_closing_synergy']
 
     # Set the initial pose above the object
-    goal_ = np.copy(support_surface_frame)
+    #goal_ = np.copy(support_surface_frame)
+    goal_ = np.copy(object_frame) #this should be support_surface_frame
     goal_[:3,3] = tra.translation_from_matrix(object_frame)
     goal_ =  goal_.dot(hand_pose)
+
+    #the grasp frame is symmetrical - check which side is nicer to reach
+    #this is a hacky first version for our WAM
+    zflip = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
+    if goal_[0][0]<0:
+        goal_ = goal_.dot(zflip)
 
     pre_grasp = goal_.dot(pregrasp_pose)
 

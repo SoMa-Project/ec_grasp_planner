@@ -35,27 +35,42 @@ class RBOHandO2WAM(RBOHand2):
         super(RBOHandO2WAM, self).__init__()
 
         # general object is 'object'
+
+        # transformation between object and hand palm frame
+        self['surface_grasp']['object']['hand_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, -0.05, 0]),
+                                                                                tra.concatenate_matrices(
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(90.), [0, 0, 1]),
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(180.), [1, 0, 0])))
+
+        # above the object, in hand palm frame
+        self['surface_grasp']['object']['pregrasp_pose'] = tra.concatenate_matrices(
+            tra.translation_matrix([0, 0, -0.3]), tra.rotation_matrix(math.radians(30.0), [0, 1, 0]))
+
+        # at grasp position, in hand palm frame
+        self['surface_grasp']['object']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0.0, 0.05]),
+                                                                                 tra.rotation_matrix(math.radians(30.0),
+                                                                                                     [0, 1, 0]))
+
+        # first motion after grasp, in hand palm frame
+        self['surface_grasp']['object']['post_grasp_rotation'] = tra.concatenate_matrices(
+            tra.translation_matrix([0, 0, 0.]),
+            tra.rotation_matrix(math.radians(-20.),
+                                [0, 1, 0]))
+
+
+        # second motion after grasp, in hand palm frame
         self['surface_grasp']['object']['go_up'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0, -0.3]),
                                                                             tra.rotation_matrix(math.radians(-20.),
                                                                                                 [0, 1, 0]))
-        self['surface_grasp']['object']['post_grasp_rotation'] = tra.concatenate_matrices(
-            tra.translation_matrix([0, 0, 0.]),
-            tra.rotation_matrix(math.radians(-30.),
-                                [0, 1, 0]))
+
+        self['surface_grasp']['object']['downward_force'] = 10.
+
+        #drop configuration
         self['surface_grasp']['object']['drop_off'] = np.array(
             [0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
-        self['surface_grasp']['object']['pregrasp_pose'] = tra.concatenate_matrices(
-            tra.translation_matrix([0, 0, -0.3]), tra.rotation_matrix(math.radians(30.0), [0, 1, 0]))
-        self['surface_grasp']['object']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0, 0.05]),
-                                                                                 tra.rotation_matrix(math.radians(30.0),
-                                                                                                     [0, 1, 0]))
-        self['surface_grasp']['object']['downward_force'] = 10.
-        self['surface_grasp']['object']['hand_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0]),
-                                                                                tra.concatenate_matrices(
-                                                                                    tra.rotation_matrix(
-                                                                                        math.radians(0.), [0, 0, 1]),
-                                                                                    tra.rotation_matrix(
-                                                                                        math.radians(180.), [1, 0, 0])))
+
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
         self['surface_grasp']['object']['hand_closing_duration'] = 5
 
