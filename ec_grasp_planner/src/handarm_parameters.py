@@ -19,6 +19,8 @@ class BaseHandArm(dict):
         self['edge_grasp']['punet'] = {}
         self['surface_grasp']['punet'] = {}
 
+        self.isForceControllerAvailable = False
+
 class RBOHand2(BaseHandArm):
     def __init__(self):
         super(RBOHand2, self).__init__()
@@ -123,6 +125,8 @@ class RBOHandO2WAM(RBOHand2):
         self['edge_grasp']['object']['sliding_speed'] = 0.04
         self['edge_grasp']['object']['valve_pattern'] = (
         np.array([[0, 0], [0, 0], [1, 0], [1, 0], [1, 0], [1, 0]]), np.array([[0, 3.0]] * 6))
+
+        self.isForceControllerAvailable = True
 
 
 class RBOHand2Kuka(RBOHand2):
