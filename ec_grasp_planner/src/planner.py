@@ -184,7 +184,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoAboveObject', epsilon = '0.01'))
 
     # 2. Go down onto the object
-    control_sequence.append(ha.HTransformControlMode(dirDown, controller_name = 'GoToTable', goal_is_relative='1'))
+    control_sequence.append(ha.HTransformControlMode(dirDown, controller_name = 'GoDown', goal_is_relative='1'))
 
     # 2b. Switch when the f/t sensor is triggered with normal force from the table
     control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([table_force, 0, 0, 0, 0, 0]),
@@ -197,7 +197,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     control_sequence.append(ha.TimeSwitch('', '', duration = 1.5))
 
     # 4. Go towards the wall
-    control_sequence.append(ha.HTransformControlMode(dirWall, controller_name = 'GoToWall', goal_is_relative='1'))
+    control_sequence.append(ha.HTransformControlMode(dirWall, controller_name = 'SlideToWall', goal_is_relative='1'))
 
     # 4b. Switch when the f/t sensor is triggered with normal force from the table
     control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, wall_force, 0, 0, 0]),
