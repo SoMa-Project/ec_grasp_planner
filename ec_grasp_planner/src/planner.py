@@ -230,7 +230,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     pregrasp_transform = params['pregrasp_transform']
     grasp_transform = params['grasp_transform']
     post_grasp_transform= params['post_grasp_transform'] # TODO: USE THIS!!!
-    go_up_transform = params['go_up_tranform']
+    go_up_transform = params['go_up_transform']
 
     drop_off_config = params['drop_off_config']
 
@@ -250,6 +250,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
     if goal_[0][0]<0:
         goal_ = goal_.dot(zflip_transform)
+
+    #prepregrasp pose goes to ifco center
 
     prepre_grasp_pose = goal_.dot(prepregrasp_transform)
     pre_grasp_pose = goal_.dot(pregrasp_transform)
@@ -272,13 +274,13 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.HTransformControlMode(prepre_grasp_pose, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Prepregrasp'))
  
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch('Prepregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
  
     # 2. Go down onto the object Godown
     control_sequence.append(ha.HTransformControlMode(pre_grasp_pose, controller_name = 'GoDown', goal_is_relative='0', name = 'GoDown'))
  
     # 2b. Switch when the f/t sensor is triggered with normal force from the table
-    force  = np.array([0, 0, downward_force, 0, 0, 0])
+    force  = np.array([0, 0, 0.5*downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown', 'PreGraspRotate', 'ForceSwitch', goal = force,
         norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_LOWER_BOUND", goal_is_relative = '1', frame_id = 'world'))
 
@@ -286,15 +288,17 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(
         ha.HTransformControlMode(grasp_pose, controller_name='PreGraspRotate', goal_is_relative='0', name='PreGraspRotate'))
 
+    force2  = np.array([0, 0, 0.5*downward_force, 0, 0, 0])
     # 3b. Switch when goal is reached
-    control_sequence.append(ha.FramePoseSwitch('PreGraspRotate', 'softhand_close', controller='PreGraspRotate', epsilon='0.01'))
+    control_sequence.append(ha.ForceTorqueSwitch('PreGraspRotate', 'softhand_close',  goal = force2,
+        norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_LOWER_BOUND", goal_is_relative = '1', frame_id = 'world'))
 
     # 4. Maintain the position
     desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
     force_gradient = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
     desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])    
     
-    if params.isForceControllerAvailable:
+    if handarm_params['isForceControllerAvailable']:
         control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_close', synergy = hand_synergy,
                                                         desired_displacement = desired_displacement, 
                                                         force_gradient = force_gradient, 

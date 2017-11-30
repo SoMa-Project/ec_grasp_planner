@@ -19,7 +19,7 @@ class BaseHandArm(dict):
         self['edge_grasp']['punet'] = {}
         self['surface_grasp']['punet'] = {}
 
-        self.isForceControllerAvailable = False
+        self['isForceControllerAvailable'] = False
 
 class RBOHand2(BaseHandArm):
     def __init__(self):
@@ -52,12 +52,12 @@ class RBOHandO2WAM(RBOHand2):
 
         # above the object, in hand palm frame
         self['surface_grasp']['object']['prepregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.03, 0, -0.4]), tra.rotation_matrix(math.radians(-20.), [0, 1, 0]))
+            tra.translation_matrix([-0.03, 0, -0.28]), tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
 
 
         # finger tips on table, in hand palm frame
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.03, 0.0, 0.05]), tra.rotation_matrix(math.radians(-20.), [0, 1, 0]))
+            tra.translation_matrix([-0.03, 0.0, 0.05]), tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
 
         # at grasp position, in hand palm frame
         self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(
@@ -76,7 +76,7 @@ class RBOHandO2WAM(RBOHand2):
                                                                                                 [0, 1, 0]))
 
         # the maximum allowed force for pushing down
-        self['surface_grasp']['object']['downward_force'] = 7.
+        self['surface_grasp']['object']['downward_force'] = -7.
 
         #drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
@@ -131,7 +131,7 @@ class RBOHandO2WAM(RBOHand2):
         self['edge_grasp']['object']['valve_pattern'] = (
         np.array([[0, 0], [0, 0], [1, 0], [1, 0], [1, 0], [1, 0]]), np.array([[0, 3.0]] * 6))
 
-        self.isForceControllerAvailable = True
+        self['isForceControllerAvailable'] = True
 
 
 class RBOHand2Kuka(RBOHand2):
