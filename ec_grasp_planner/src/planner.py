@@ -143,7 +143,8 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
         params = handarm_params['wall_grasp'][object_type]
     else:
         params = handarm_params['wall_grasp']['object']
-        
+
+    isForceControllerAvailable = handarm_params.isForceControllerAvailable
 
     # Get the parameters from the handarm_parameters.py file
     table_force = params['table_force']
@@ -156,7 +157,9 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     object_lift_time = params['object_lift_time']
 
     # Get the pose above the object
+    global rviz_frames
     rviz_frames = []
+
     ssf = np.copy(support_surface_frame)
     ssf[:3,3] = tra.translation_from_matrix(object_frame)
     goal_ = (ssf.dot(pregrasp_pose))
@@ -169,6 +172,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     rviz_frames.append(goalr)
     goal = (tra.translation_matrix([0, -0.2, 0]).dot(goalr))
     rviz_frames.append(goal)
+    aboveObj_pose = goal
 
     # Create the directions to go up/down and towards the wall
     dirDown = tra.translation_matrix([0, 0, -down_speed]);
@@ -177,40 +181,84 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 
     control_sequence = []
 
+    hand_synergy = 1
+    hand_closing_time = 1
+
+    desired_displacement = np.array(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
+    force_gradient = np.array(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
+    desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
+
+    goDown_pose = goal
+    lift_pose = goal
+    slide_pose = goal
+    go_up_pose = goal
+    drop_off_config = goal
+
+
     # 1. Go above the object
-    control_sequence.append(ha.HTransformControlMode(goal, controller_name = 'GoAboveObject', goal_is_relative='0'))
+    control_sequence.append(ha.HTransformControlMode(aboveObj_pose, controller_name = 'GoAboveObject', goal_is_relative='0', name = "PreGrasp"))
 
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoAboveObject', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
 
-    # 2. Go down onto the object
-    control_sequence.append(ha.HTransformControlMode(dirDown, controller_name = 'GoDown', goal_is_relative='1'))
+    # 2. Go down onto the object/table
+    control_sequence.append(ha.HTransformControlMode(goDown_pose, controller_name = 'GoDown', goal_is_relative='1', name = "GoDown"))
 
     # 2b. Switch when the f/t sensor is triggered with normal force from the table
-    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([table_force, 0, 0, 0, 0, 0]),
+    control_sequence.append(ha.ForceTorqueSwitch('GoDown', 'LiftHand', goal = np.array([table_force, 0, 0, 0, 0, 0]),
         norm_weights = np.array([1, 0, 0, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", frame_id = 'odom', goal_is_relative = '1'))
 
-    # 3. Lift upwards
-    control_sequence.append(ha.HTransformControlMode(dirUp, controller_name = 'Lift1', goal_is_relative='1'))
+    # 3. Lift upwards so the hand doesn't slide
+    control_sequence.append(ha.HTransformControlMode(lift_pose, controller_name = 'Lift1', goal_is_relative='1', name = "LiftHand"))
 
     # 3b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('', '', duration = 1.5))
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration = 1.5))
 
-    # 4. Go towards the wall
-    control_sequence.append(ha.HTransformControlMode(dirWall, controller_name = 'SlideToWall', goal_is_relative='1'))
+    # 4. Go towards the wall, and slide object to wall
+    control_sequence.append(ha.HTransformControlMode(slide_pose, controller_name = 'SlideToWall', goal_is_relative='1', name = "SlideToWall"))
 
     # 4b. Switch when the f/t sensor is triggered with normal force from the table
-    control_sequence.append(ha.ForceTorqueSwitch('', '', goal = np.array([0, 0, wall_force, 0, 0, 0]),
+    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'softhand_close', goal = np.array([0, 0, wall_force, 0, 0, 0]),
         norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", goal_is_relative = '1'))
 
-    # 5. Lift upwards
-    control_sequence.append(ha.HTransformControlMode(dirUp, controller_name = 'Lift2', goal_is_relative='1'))
 
-    # 5b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('', '', duration = object_lift_time))
+    if isForceControllerAvailable:
+        #apply force on object while closing the hand
+        control_sequence.append(ha.HandControlMode_ForceHT(name='softhand_close', synergy=hand_synergy,
+                                                           desired_displacement=desired_displacement,
+                                                           force_gradient=force_gradient,
+                                                           desired_force_dimension=desired_force_dimension))
+    else:
+        #just clse the hand
+        control_sequence.append(ha.close_rbohand())
 
-    # 6. Go to gravity compensation mode to finish
-    control_sequence.append(ha.GravityCompensationMode())    
+    # 3b. Switch when hand closing time ends
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration=hand_closing_time))
+    #
+    # 4. Lift upwards
+    control_sequence.append(
+        ha.HTransformControlMode(go_up_pose, controller_name='GoUpHTransform', name='GoUp', goal_is_relative='0'))
+
+    # 4b. Switch when joint is reached
+    control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', controller='GoUpHTransform', epsilon='0.01'))
+
+    # 5. Go to dropOFF
+    control_sequence.append(
+        ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
+
+    # 5.b  Switch when joint is reached
+    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'finished', controller='GoToDropJointConfig',
+                                                        epsilon=str(math.radians(7.))))
+
+    # 6. Block joints to finish motion and hold object in air
+    finishedMode = ha.ControlMode(name='finished')
+    finishedSet = ha.ControlSet()
+    finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
+                                  goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
+    finishedMode.set(finishedSet)
+    control_sequence.append(finishedMode)
 
     return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
 
@@ -223,13 +271,14 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         params = handarm_params['surface_grasp'][object_type]
     else:
         params = handarm_params['surface_grasp']['object']
-        
+
+    isForceControllerAvailable = handarm_params.isForceControllerAvailable
 
     hand_transform = params['hand_transform']
     pregrasp_transform = params['pregrasp_transform']
     grasp_transform = params['grasp_transform']
     post_grasp_rotation= params['post_grasp_transform'] # TODO: USE THIS!!!
-    go_up_transform = params['go_up_tranform']
+    go_up_transform = params['go_up_transform']
 
     drop_off_config = params['drop_off_config']
 
@@ -288,7 +337,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     force_gradient = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
     desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])    
     
-    if params.isForceControllerAvailable:
+    if isForceControllerAvailable:
         control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_close', synergy = hand_synergy,
                                                         desired_displacement = desired_displacement, 
                                                         force_gradient = force_gradient, 
@@ -360,7 +409,8 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
         return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type)
     else:
-        raise "Unknown grasp type: ", grasp_type
+        s = 'Unknown grasp type: %s' %grasp_type
+        raise s
 
 # ================================================================================================
 def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_labels, verbose = False):
@@ -540,7 +590,6 @@ if __name__ == '__main__':
     marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
     br = tf.TransformBroadcaster()
 
-    global frames_rviz, markers_rviz
     while not rospy.is_shutdown():
         marker_pub.publish(markers_rviz)
 
