@@ -129,6 +129,8 @@ class RBOHand2Kuka(RBOHand2):
     def __init__(self, **kwargs):
         super(RBOHand2Kuka, self).__init__()
 
+
+        #old parameters below - must be updated to new convention!
         self['surface_grasp']['initial_goal'] = np.array([-0.05864322834179703, 0.4118988657714642, -0.05864200146127985, -1.6887810963180838, -0.11728653060066829, -0.8237944986945402, 0])
         self['surface_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.2])
         self['surface_grasp']['hand_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(0.), [0, 0, 1]))
