@@ -313,7 +313,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 6. Block joints to finish motion and hold object in air
     finishedMode = ha.ControlMode(name  = 'finished')
     finishedSet = ha.ControlSet()
-    finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'JointController', goal  = np.zeros(7),
+    finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'InterpolatedJointController', goal  = np.zeros(7),
                                    goal_is_relative = 1, v_max = '[0,0]', a_max = '[0,0]'))
     finishedMode.set(finishedSet)  
     control_sequence.append(finishedMode)    
