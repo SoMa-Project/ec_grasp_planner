@@ -15,6 +15,7 @@
    1. [Planning Based on PCD Input](#example1)
    2. [Planning Based on Continuous RGB-D Input](#example2)
    3. [Kuka Arm in Gazebo Simulation with TRIK Controller](#example3)
+   3. [Using rosservice call for planner](#example4)
 
 ---
 
@@ -285,3 +286,14 @@ rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rvi
 In RViz you should be able to see the planned surface grasp and in Gazebo the robot moves its hand towards the cylinder until contact (https://youtu.be/Q91U9r83Vl0):
 
 <img src="docs/example3_grasp.png" alt="Grasp" width="250" /> <img src="docs/example3_gazebo_final.png" alt="Gazebo" width="250" />
+
+### Using rosservice call  <a name="example4"></a>
+
+Step 1, start the planner in the background in simulation:
+`rosrun ec_grasp_planner planner.py --rviz --file_output --robot_base_frame world`
+in real life for RBO:
+`rosrun ec_grasp_planner planner.py --rviz --file_output`
+
+Step 2, call with rosservice
+`rosservice call /run_grasp_planner "object_type: 'Apple' grasp_type: 'SurfaceGrasp' handarm_type: 'RBOHand2Kuka'"`
+
