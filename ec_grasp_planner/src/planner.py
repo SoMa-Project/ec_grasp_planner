@@ -69,6 +69,7 @@ class GraspPlanner():
     def handle_run_grasp_planner(self, req):
         self.object_type = req.object_type
         self.grasp_type = req.grasp_type
+        self.handarm_type = req.handarm_type
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
         robot_base_frame = self.args.robot_base_frame
@@ -110,7 +111,7 @@ class GraspPlanner():
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
         ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
-                                                                self.handarm_params, self.object_type)
+                                                                self.handarm_params, self.object_type, self.handarm_type)
 
         # --------------------------------------------------------
         # Output the hybrid automaton
@@ -136,7 +137,7 @@ class GraspPlanner():
 
 
 
-def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params, object_type):
+def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params, object_type, handarm_type):
     # Get the relevant parameters
     print(object_type)
     if (object_type in handarm_params['wall_grasp']):            
@@ -215,7 +216,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
 
 # ================================================================================================
-def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type):
+def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type, handarm_type):
 
     # Get the relevant parameters
     print(object_type)
@@ -260,11 +261,17 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     rviz_frames.append(goup_pose)
     
     # Set the directions to use TRIK controller with
-    #dirDown = tra.translation_matrix([0, 0, -0.1]);
-    dirUp = tra.translation_matrix([0, 0, 0.15]);
+    dirDown = tra.translation_matrix([0, 0, -0.05]);
+    dirUp = tra.translation_matrix([0, 0, 0.05]);
 
     control_sequence = []
 
+    # 0. Go above IFCO with fixed joint configuration
+    if handarm_type == 'RBOHand2SIMWAM':
+        ifco_config = params['ifco_config']
+        control_sequence.append(ha.JointControlMode(ifco_config, controller_name = 'GoAboveIFCO_Ctrl', name = 'GoAboveIFCO'))
+        control_sequence.append(ha.JointConfigurationSwitch('GoAboveIFCO', 'GoAboveObject', controller = 'GoAboveIFCO_Ctrl', epsilon = str(math.radians(7.))))    
+     
     # 1. Go above the object - Pregrasp    
     control_sequence.append(ha.HTransformControlMode(pre_grasp, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
  
@@ -272,7 +279,13 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
  
     # 2. Go down onto the object Godown
-    control_sequence.append(ha.HTransformControlMode(grasp_pose, controller_name = 'GoDown', goal_is_relative='0', name = 'GoDown'))
+
+    # If this plan is for the simulated WAM or the KUKA robot which have managers that support relative movement in the world frame, then
+    # provide such a relative pose
+    if handarm_type == 'RBOHand2SIMWAM' or handarm_type == 'RBOHand2Kuka':
+        control_sequence.append(ha.HTransformControlMode(dirDown, controller_name = 'GoDownRel', goal_is_relative='1'))
+    else:
+        control_sequence.append(ha.HTransformControlMode(grasp_pose, controller_name = 'GoDown', goal_is_relative='0', name = 'GoDown'))
  
     # 2b. Switch when the f/t sensor is triggered with normal force from the table 
     # rotate force reading into sgrasp pose frame   
@@ -299,10 +312,21 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration = hand_closing_time))
 # 
     # 4. Lift upwards
-    control_sequence.append(ha.HTransformControlMode(goup_pose, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='0' ))
+    if handarm_type == 'RBOHand2SIMWAM' or handarm_type == 'RBOHand2Kuka':
+
+        # Lift for a limited time
+        control_sequence.append(ha.HTransformControlMode(dirUp, controller_name = 'GoUpRel', name = 'GoUp', goal_is_relative='1'))
+
+        # 4b. Switch when time is up
+        hand_going_up_time = params['hand_going_up_duration']
+        control_sequence.append(ha.TimeSwitch('GoUp', 'GoDropOff', duration = hand_going_up_time))
+    else:
+
+        # Lift to a fixed position
+        control_sequence.append(ha.HTransformControlMode(goup_pose, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='0' ))
  
-    # 4b. Switch when joint is reached
-    control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', controller = 'GoUpHTransform', epsilon = '0.01'))
+        # 4b. Switch when joint is reached
+        control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', epsilon = '0.01'))
      
     # 5. Go to dropOFF 
     control_sequence.append(ha.JointControlMode(drop_off_goal, controller_name = 'GoToDropJointConfig', name = 'GoDropOff'))
@@ -313,13 +337,14 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 6. Block joints to finish motion and hold object in air
     finishedMode = ha.ControlMode(name  = 'finished')
     finishedSet = ha.ControlSet()
-    finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'JointController', goal  = np.zeros(7),
+    finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'InterpolatedJointController', goal  = np.zeros(7),
                                    goal_is_relative = 1, v_max = '[0,0]', a_max = '[0,0]'))
     finishedMode.set(finishedSet)  
     control_sequence.append(finishedMode)    
     
 
-    return cookbook.sequence_of_modes_and_switches_with_saftyOn(control_sequence), rviz_frames
+    #return cookbook.sequence_of_modes_and_switches_with_saftyOn(control_sequence), rviz_frames
+    return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
 
 # ================================================================================================
 def transform_msg_to_homogenous_tf(msg):
@@ -334,7 +359,7 @@ def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
 
 # ================================================================================================
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params, object_type):
+def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params, object_type, handarm_type):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
 
@@ -353,11 +378,11 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
         wall_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         wall_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(wall_frame_node.transform))
-        return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame, handarm_params, object_type)
+        return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame, handarm_params, object_type, handarm_type)
     elif grasp_type == 'SurfaceGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type)
+        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type, handarm_type)
     else:
         raise "Unknown grasp type: ", grasp_type
 
