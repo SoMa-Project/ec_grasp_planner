@@ -261,8 +261,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     rviz_frames.append(goup_pose)
     
     # Set the directions to use TRIK controller with
-    dirDown = tra.translation_matrix([0, 0, -0.2]);
-    dirUp = tra.translation_matrix([0, 0, 0.15]);
+    dirDown = tra.translation_matrix([0, 0, -0.05]);
+    dirUp = tra.translation_matrix([0, 0, 0.05]);
 
     control_sequence = []
 
