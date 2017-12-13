@@ -21,31 +21,30 @@ import rospy
 import subprocess
 import rospkg
 import time
+import numpy as np
 
-def handle_add_two_ints(req):
+def handle_kinematics_check(req):
 
     # Make call to the kinematic check program in roblib
     jointStr = ",".join(format(x, "f") for x in req.joints)
+    goalFrameStr = ",".join(format(x, "f") for x in req.goalFrame)
     rospack = rospkg.RosPack()
     this_pkg_path = rospack.get_path('ec_grasp_planner')
     roblib_pkg_path = this_pkg_path + '/../../contact-motion-planning/'
-    subprocess.Popen([roblib_pkg_path+'build/demos/rlSomaDemo/rlSomaDemod', '--rootDir', roblib_pkg_path, '--joints', jointStr])
+    subprocess.Popen([roblib_pkg_path+'build/demos/rlSomaDemo/rlSomaDemod', '--rootDir', roblib_pkg_path, '--joints', jointStr, '--goalFrame', goalFrameStr, '--problemID', req.problemID, '--collObject', req.collObject])
     time.sleep(1)
-    
+
     # Read the output that is written to a file
-    file = open(this_pkg_path + '/src/collision-result.txt', 'r')
+    file = open(roblib_pkg_path + '/build/collision-result.txt', 'r')
     val = file.readlines()
-    print val
-    print int(val[0])
-        
 
-    return srv.CheckKinematicsResponse(req.joints[0] + req.joints[1])
+    return srv.CheckKinematicsResponse(inCollision=int(val[0]), finalJoints=np.fromstring(val[1], dtype=float, sep=' '))
 
-def add_two_ints_server():
-    rospy.init_node('add_two_ints_server')
-    s = rospy.Service('add_two_ints', srv.CheckKinematics, handle_add_two_ints)
-    print "Ready to add two ints."
+def kinematics_check_server():
+    rospy.init_node('kinematics_check_server')
+    s = rospy.Service('kinematics_check', srv.CheckKinematics, handle_kinematics_check)
+    print "Ready for service call."
     rospy.spin()
 
 if __name__ == "__main__":
-    add_two_ints_server()
+    kinematics_check_server()
