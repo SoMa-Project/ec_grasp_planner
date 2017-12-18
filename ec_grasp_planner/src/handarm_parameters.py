@@ -106,12 +106,15 @@ class RBOHandO2WAM(RBOHand2):
                     math.radians(180.), [1, 0, 0]),
                 tra.rotation_matrix(
                     math.radians(90.0), [0, 0, 1])))
+
+        # relative transformation to position_behind_object
+        # the hand should be above the IFCO
+        # angle of attack already can be applied if necessary
         self['wall_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.23, 0, 0]), tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
 
-        # relative rotation and/or translation of the hand in pre-grasp
-        self['wall_grasp']['object']['angleOfAttack_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0.0, 0, 0]), tra.rotation_matrix(math.radians(0.15), [0, 1, 0]))
+        # relative rotation of the hand in pre-grasp and slide
+        self['wall_grasp']['object']['angleOfAttack_transform'] = tra.rotation_matrix(math.radians(0.15), [0, 1, 0])
 
         # drop configuration - this is system specific!
         self['wall_grasp']['object']['drop_off_config'] = np.array(
@@ -152,7 +155,7 @@ class RBOHandO2WAM(RBOHand2):
                                                                                                   [1, 0, 0]),
                                                                               tra.euler_matrix(0, 0, -math.pi / 2.))
         self['edge_grasp']['object']['postgrasp_pose'] = tra.translation_matrix([0, 0, -0.1])
-        self['edge_grasp']['object']['downward_force'] = 4.0
+        self['edge_grasp']['object']['downward_force'] = -7.0
         self['edge_grasp']['object']['sliding_speed'] = 0.04
         self['edge_grasp']['object']['valve_pattern'] = (
         np.array([[0, 0], [0, 0], [1, 0], [1, 0], [1, 0], [1, 0]]), np.array([[0, 3.0]] * 6))

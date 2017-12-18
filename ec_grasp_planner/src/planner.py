@@ -166,20 +166,22 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     global rviz_frames
     rviz_frames = []
 
-    position_behind_object = object_frame.dot(wall_frame);
-    ssf = np.copy(support_surface_frame)
-    ssf[:3,3] = tra.translation_from_matrix(position_behind_object)
 
+    # relative hand pose to object and wall
     wsf = np.copy(wall_frame)
     wsf[:3,3] = tra.translation_from_matrix(object_frame)
     wsf = (wsf.dot(hand_transform))
-    goal_ = wsf.dot(tra.translation_matrix([0, 0 , -0.1]))
+    # move the hand behind the object (10cm) facing with palm the wall
+    position_behind_object = wsf.dot(tra.translation_matrix([0, 0, -0.1]))
 
 
-    # Create the directions to go up/down and towards the wall
-    dirDown = tra.translation_matrix([down_speed, 0, 0]);
-    dirLift = tra.translation_matrix([-up_speed, 0, 0]);
-    dirWall = tra.translation_matrix([0, 0, sliding_speed]);
+    # Create the directions to go up/down in world frame
+    dirDown = tra.translation_matrix([0, 0, -down_speed]);
+    dirLift = tra.translation_matrix([0, 0, up_speed]);
+
+    # wall direction is given by the normal of the wall
+    dirWall = tra.translation_matrix([0, 0, -sliding_speed]);
+    dirWall[:3, 3] = wall_frame[:3, :3].dot(dirWall[:3, 3])
     # dirUp = tra.translation_matrix([up_speed, 0, 0]);
 
     control_sequence = []
@@ -190,7 +192,8 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     # - above the object,
     # - fingers pointing downwords
     # - palm facing the object and wall
-    preGrasp_pose = goal_.dot(pregrasp_transform)
+    preGrasp_pose = position_behind_object.dot(pregrasp_transform).dot(angleOfAttack_transform)
+
     # this is only a debug frame showing where we want to slide
     # this frame is also used to generate force frame
     slide_pose = wall_frame.dot(hand_transform)
@@ -204,13 +207,13 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 
 
     # 1. Go above the object
-    control_sequence.append(ha.HTransformControlMode(preGrasp_pose, controller_name = 'GoAboveObject', goal_is_relative='0', name = "PreGrasp"))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(preGrasp_pose, controller_name = 'GoAboveObject', goal_is_relative='0', name = "PreGrasp"))
 
     # 1b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
 
     # 2. Go down onto the object/table
-    control_sequence.append(ha.HTransformControlMode(dirDown, controller_name = 'GoDown', goal_is_relative='1', name = "GoDown"))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dirDown, controller_name = 'GoDown', goal_is_relative='1', name = "GoDown", reference_frame = "world"))
 
     # 2b. Switch when the f/t sensor is triggered with normal force from the table
     force = np.array([0, 0, 0.5 * downward_force, 0, 0, 0])
@@ -220,16 +223,16 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                                  frame_id='world'))
 
     # 3. Lift upwards so the hand doesn't slide on table surface (this is from original Clemens implementation)
-    control_sequence.append(ha.HTransformControlMode(dirLift, controller_name = 'Lift1', goal_is_relative='1', name = "LiftHand"))
+    # maybe we wan tto slide on the table top
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dirLift, controller_name = 'Lift1', goal_is_relative='1', name = "LiftHand", reference_frame = "world"))
 
     # 3b. Switch when hand was lifted enough,
     control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration = 1.5))
 
     # 4. Go towards the wall, and slide object to wall
-    control_sequence.append(ha.HTransformControlMode(dirWall, controller_name = 'SlideToWall', goal_is_relative='1', name = "SlideToWall"))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dirWall, controller_name = 'SlideToWall', goal_is_relative='1', name = "SlideToWall"))
 
     # 4b. Switch when the f/t sensor is triggered with normal force from wall
-    # how to define a transformation here?
     force = np.array([0, 0, 0.5 * wall_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'softhand_close', 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
@@ -262,7 +265,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     control_sequence.append(
         ha.HTransformControlMode(go_up_pose, controller_name='GoUpHTransform', name='GoUp', goal_is_relative='0'))
 
-    # 4b. Switch when joint is reached
+    # 4b. Switch when pose is reached
     control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', controller='GoUpHTransform', epsilon='0.01'))
 
     # 5. Go to dropOFF
