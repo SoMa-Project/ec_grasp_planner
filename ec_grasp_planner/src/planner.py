@@ -282,7 +282,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 2b. Switch when the f/t sensor is triggered with normal force from the table
     force  = np.array([0, 0, 0.5*downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown', 'PreGraspRotate', 'ForceSwitch', goal = force,
-        norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_LOWER_BOUND", goal_is_relative = '1', frame_id = 'world'))
+        norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_LOWER_BOUND", goal_is_relative = '1', frame_id = 'world', port = '2'))
 
     # 3. Rotate hand
     control_sequence.append(
