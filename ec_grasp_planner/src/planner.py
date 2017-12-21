@@ -147,6 +147,9 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     # Get the parameters from the handarm_parameters.py file
     # params like in case of surface grasp
     hand_transform = params['hand_transform']
+    initial_jointConf = params['initial_goal']
+    # ifco_bugFix = params['IFCO_detection_BUG_fix']
+
     #prepregrasp_transform = params['prepregrasp_transform']
 
     #old params need to check if we need all of them
@@ -170,6 +173,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     # relative hand pose to object and wall
     wsf = np.copy(wall_frame)
     wsf[:3,3] = tra.translation_from_matrix(object_frame)
+    # wsf = (wsf.dot(ifco_bugFix))
     wsf = (wsf.dot(hand_transform))
     # move the hand behind the object (10cm) facing with palm the wall
     position_behind_object = wsf.dot(tra.translation_matrix([0, 0, -0.1]))
@@ -201,10 +205,17 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     go_up_pose = slide_pose.dot(tra.translation_matrix([-0.23, 0, 0]))
 
     # Rviz debug frames
+    rviz_frames.append(wall_frame)
+    # rviz_frames.append(wsf)
+    # rviz_frames.append(position_behind_object)
     rviz_frames.append(preGrasp_pose)
-    rviz_frames.append(slide_pose)
-    rviz_frames.append(go_up_pose )
+    #
 
+    # initial position above ifco
+    control_sequence.append(ha.JointControlMode(initial_jointConf, name = 'IntialJointConfig', controller_name = 'initialJointCtrl'))
+
+    control_sequence.append(ha.JointConfigurationSwitch('IntialJointConfig', 'PreGrasp', controller='initialJointCtrl',
+                                                        epsilon=str(math.radians(7.))))
 
     # 1. Go above the object
     control_sequence.append(ha.InterpolatedHTransformControlMode(preGrasp_pose, controller_name = 'GoAboveObject', goal_is_relative='0', name = "PreGrasp"))
