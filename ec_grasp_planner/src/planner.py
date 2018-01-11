@@ -71,6 +71,8 @@ class GraspPlanner():
         self.grasp_type = req.grasp_type
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
+        graph = req.graph
+
         robot_base_frame = self.args.robot_base_frame
         object_frame = self.args.object_frame
 
@@ -81,10 +83,6 @@ class GraspPlanner():
         # Get grasp from graph representation
         grasp_path = None
         while grasp_path is None:
-            # Get geometry graph
-            graph = rospy.wait_for_message('geometry_graph', Graph)
-            graph.header.stamp = rospy.Time.now() + rospy.Duration(0.5)
-
             # Get the geometry graph frame in robot base frame
             self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(10.0))
             graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)

@@ -118,6 +118,8 @@ class RBOHand2WAM(RBOHand2):
         self['edge_grasp']['object']['sliding_speed'] = 0.04
         self['edge_grasp']['object']['valve_pattern'] = (np.array([[0,0],[0,0],[1,0],[1,0],[1,0],[1,0]]), np.array([[0, 3.0]]*6))
 
+#TODO: this needs to be adapted similar to match the frames above!
+#The map is now 3d and the frame definitions changed.
 class RBOHand2Kuka(RBOHand2):
     def __init__(self, **kwargs):
         super(RBOHand2Kuka, self).__init__()
