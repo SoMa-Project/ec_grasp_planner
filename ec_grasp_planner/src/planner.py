@@ -43,6 +43,8 @@ from ec_grasp_planner import srv
 from visualization_msgs.msg import MarkerArray
 from visualization_msgs.msg import Marker
 
+from pregrasp_msgs import srv
+
 import pyddl
 
 import rospkg
@@ -71,7 +73,15 @@ class GraspPlanner():
         self.grasp_type = req.grasp_type
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
-        graph = req.graph
+        rospy.wait_for_service('computeECGraph')
+
+        try:
+            call_vision = rospy.ServiceProxy('computeECGraph', srv.ComputeECGraph(self.object_type))
+            res = call_vision(self.object_type)
+            graph = res.graph
+        except rospy.ServiceException, e:
+            print "Vision service call failed: %s" % e
+            return srv.RunGraspPlannerResponse("")
 
         robot_base_frame = self.args.robot_base_frame
         object_frame = self.args.object_frame

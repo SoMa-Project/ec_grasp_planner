@@ -1,8 +1,6 @@
 string object_type
 string grasp_type
 string handarm_type
-geometry_graph_msgs/Graph graph
-
 ---
 string hybrid_automaton_xml
 
