@@ -28,7 +28,7 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from subprocess import call
-from hybrid_automaton_msgs import srv
+from hybrid_automaton_msgs import srv as ha_srv
 from hybrid_automaton_msgs.msg import HAMState
 
 from std_msgs.msg import Header
@@ -38,12 +38,12 @@ from pregrasp_msgs.msg import GraspStrategy
 
 from geometry_graph_msgs.msg import Graph
 
-from ec_grasp_planner import srv
+from ec_grasp_planner import srv as plan_srv
 
 from visualization_msgs.msg import MarkerArray
 from visualization_msgs.msg import Marker
 
-from pregrasp_msgs import srv
+from pregrasp_msgs import srv as vision_srv
 
 import pyddl
 
@@ -63,7 +63,7 @@ class GraspPlanner():
     def __init__(self, args):
         # initialize the ros node
         rospy.init_node('ec_planner')
-        s = rospy.Service('run_grasp_planner', srv.RunGraspPlanner, lambda msg: self.handle_run_grasp_planner(msg))
+        s = rospy.Service('run_grasp_planner', plan_srv.RunGraspPlanner, lambda msg: self.handle_run_grasp_planner(msg))
         self.tf_listener = tf.TransformListener()
         self.args = args
 
@@ -76,18 +76,18 @@ class GraspPlanner():
         rospy.wait_for_service('computeECGraph')
 
         try:
-            call_vision = rospy.ServiceProxy('computeECGraph', srv.ComputeECGraph(self.object_type))
+            call_vision = rospy.ServiceProxy('computeECGraph', vision_srv.ComputeECGraph)
             res = call_vision(self.object_type)
             graph = res.graph
         except rospy.ServiceException, e:
             print "Vision service call failed: %s" % e
-            return srv.RunGraspPlannerResponse("")
+            return plan_srv.RunGraspPlannerResponse("")
 
         robot_base_frame = self.args.robot_base_frame
         object_frame = self.args.object_frame
 
         # make sure those frames exist and we can transform between them
-        self.tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
+        self.tf_listener.waitForTransform(object_frame, robot_base_frame, graph.header.stamp, rospy.Duration(10.0))
 
         # --------------------------------------------------------
         # Get grasp from graph representation
@@ -125,7 +125,7 @@ class GraspPlanner():
 
         # Call update_hybrid_automaton service to communicate with a hybrid automaton manager (kuka or rswin)
         if self.args.ros_service_call:
-            call_ha = rospy.ServiceProxy('update_hybrid_automaton', srv.UpdateHybridAutomaton)
+            call_ha = rospy.ServiceProxy('update_hybrid_automaton', ha_srv.UpdateHybridAutomaton)
             call_ha(ha.xml())
 
         # Write to a xml file
@@ -140,7 +140,7 @@ class GraspPlanner():
             # rospy.spin()
 
 
-        return srv.RunGraspPlannerResponse(ha.xml())
+        return plan_srv.RunGraspPlannerResponse(ha.xml())
 
 
 

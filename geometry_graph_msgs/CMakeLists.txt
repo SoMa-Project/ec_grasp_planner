@@ -52,6 +52,7 @@ add_message_files(
   Edge.msg
   Node.msg
   Graph.msg
+  Objects.msg
 )
 
 ## Generate services in the 'srv' folder
