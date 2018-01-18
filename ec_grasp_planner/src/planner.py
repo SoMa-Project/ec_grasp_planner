@@ -53,6 +53,7 @@ pkg_path = rospack.get_path('ec_grasp_planner')
 sys.path.append(pkg_path + '/../hybrid-automaton-tools-py/')
 import hatools.components as ha
 import hatools.cookbook as cookbook
+import tf_conversions.posemath as pm
 
 import handarm_parameters
 
@@ -71,35 +72,48 @@ class GraspPlanner():
     def handle_run_grasp_planner(self, req):
         self.object_type = req.object_type
         self.grasp_type = req.grasp_type
+        grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
+        if self.grasp_type not in grasp_choices:
+            raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp]")
+            return
+
+        #todo: more failure handling here for bad service parameters
+
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
-        rospy.wait_for_service('computeECGraph')
+        rospy.wait_for_service('compute_ec_graph')
 
         try:
-            call_vision = rospy.ServiceProxy('computeECGraph', vision_srv.ComputeECGraph)
+            call_vision = rospy.ServiceProxy('compute_ec_graph', vision_srv.ComputeECGraph)
             res = call_vision(self.object_type)
             graph = res.graph
+            objects = res.objects
         except rospy.ServiceException, e:
-            print "Vision service call failed: %s" % e
+            raise rospy.ServiceException("Vision service call failed: %s" % e)
             return plan_srv.RunGraspPlannerResponse("")
 
         robot_base_frame = self.args.robot_base_frame
-        object_frame = self.args.object_frame
+        object_frame = objects.transforms[0]
 
-        # make sure those frames exist and we can transform between them
-        self.tf_listener.waitForTransform(object_frame, robot_base_frame, graph.header.stamp, rospy.Duration(10.0))
+        time = rospy.Time(0)
+        graph.header.stamp = time
+        object_frame.header.stamp = time
 
         # --------------------------------------------------------
         # Get grasp from graph representation
         grasp_path = None
         while grasp_path is None:
             # Get the geometry graph frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(10.0))
+            self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
             graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
 
+
             # Get the object frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, object_frame, graph.header.stamp, rospy.Duration(10.0))
-            object_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), object_frame))
+            self.tf_listener.waitForTransform(robot_base_frame, object_frame.header.frame_id, time, rospy.Duration(2.0))
+            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)
+            object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
+
+            object_in_base = camera_in_base * object_in_camera
 
             print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
 
@@ -287,8 +301,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     force  = np.array([0, 0, downward_force, 0])
     force  =  grasp_pose.dot(force) # in the EE frame
     force.resize(6)
-    print(force)
-     
+
     control_sequence.append(ha.ForceTorqueSwitch('GoDown', 'softhand_close', 'ForceSwitch', goal = force,
         norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_LOWER_BOUND", goal_is_relative = '1'))
  
@@ -509,7 +522,6 @@ if __name__ == '__main__':
     parser.add_argument('--file_output', action='store_true', default = False,
                         help='Whether to write the hybrid automaton to a file called hybrid_automaton.xml.')
     #grasp_choices = ["any", "EdgeGrasp", "WallGrasp", "SurfaceGrasp"]
-    grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
     # parser.add_argument('--grasp', choices=grasp_choices, default=grasp_choices[0],
     #                     help='Which grasp type to use.')
     # parser.add_argument('--grasp_id', type=int, default=-1,
@@ -518,8 +530,6 @@ if __name__ == '__main__':
                         help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
     parser.add_argument('--robot_base_frame', type=str, default = 'base_link',
                         help='Name of the robot base frame.')
-    parser.add_argument('--object_frame', type=str, default = 'object',
-                        help='Name of the object frame.')
     # parser.add_argument('--handarm', type=str, default = 'RBOHand2WAM',
     #                     help='Python class that contains configuration parameters for hand and arm-specific properties.')
 
@@ -547,7 +557,6 @@ if __name__ == '__main__':
     marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
     br = tf.TransformBroadcaster()
 
-    global frames_rviz, markers_rviz
     while not rospy.is_shutdown():
         marker_pub.publish(markers_rviz)
 
@@ -555,7 +564,7 @@ if __name__ == '__main__':
             br.sendTransform(tra.translation_from_matrix(f),
                              tra.quaternion_from_matrix(f),
                              rospy.Time.now(),
-                             "dgb_frame_" + str(i),
+                             "dbg_frame_" + str(i),
                              robot_base_frame)
 
         r.sleep()
