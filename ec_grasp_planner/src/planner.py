@@ -255,7 +255,6 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 
     # 3b. Switch when hand was lifted enough,
     control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.5))
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.2))
 
     # 4. Go towards the wall, and slide object to wall
     control_sequence.append(
@@ -267,8 +266,8 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     force = np.array([0, 0, 0.5 * wall_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'softhand_close', 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
-                                                 jump_criterion="THRESH_LOWER_BOUND", goal_is_relative='1',
-                                                 frame_id='world', frame=wall_frame))
+                                                 jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
+                                                 frame_id='world', frame=wall_frame, port='2'))
 
     # control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'softhand_close', goal = np.array([0, 0, wall_force, 0, 0, 0]),
     #     norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", goal_is_relative = '1'))
