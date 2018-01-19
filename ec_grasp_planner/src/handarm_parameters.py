@@ -181,7 +181,7 @@ class RBOHandP24WAM(RBOHand2):
         self['wall_grasp']['object']['relative_motion_velocity'] = np.array([0.125, 0.06])
 
         self['wall_grasp']['object']['object_lift_time'] = 1.0
-        self['wall_grasp']['object']['wall_force'] = -11.0
+        self['wall_grasp']['object']['wall_force'] = 3.0
 
         self['wall_grasp']['object']['valve_pattern'] = (np.array([[1, 0]] * 6), np.array([[0, 2.5]] * 6))
 
