@@ -254,6 +254,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                              reference_frame="world"))
 
     # 3b. Switch when hand was lifted enough,
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.5))
     control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.2))
 
     # 4. Go towards the wall, and slide object to wall
