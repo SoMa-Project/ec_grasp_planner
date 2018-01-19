@@ -1,4 +1,5 @@
 # Grasp Planner based on Environmental Constraint Exploitation
+CAUTION: If you plan on running a specific branch, please read the README.md in that branch. This README.md is only valid for the current branch.
 
 ## Table of Contents
 
