@@ -103,6 +103,7 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['down_speed'] = 0.35
         self['surface_grasp']['object']['up_speed'] = 0.35
 
+
         #####################################################################################
         # below are parameters for wall and edge grasp - caution: currently not working!
         #####################################################################################
@@ -110,6 +111,7 @@ class RBOHandP24WAM(RBOHand2):
         # new init joint conf: -0.0590627, 0.550439, 0.267117, 1.7828, -0.0434081, -0.0639901, -0.253677
         # 0.439999, 0.624437, -0.218715, 1.71695, -0.735594, 0.197093, -0.920799
 
+        self['wall_grasp']['object']['hand_closing_duration'] = 5
         self['wall_grasp']['object']['initial_goal'] = np.array(
             [0.439999, 0.624437, -0.218715, 1.71695, -0.735594, 0.197093, -0.920799])
 
@@ -156,7 +158,7 @@ class RBOHandP24WAM(RBOHand2):
 
         # drop configuration - this is system specific!
         self['wall_grasp']['object']['drop_off_config'] = np.array(
-            [0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
+            [0.25118, 0.649543, -0.140991, 1.79668, 0.0720235, 0.453135, -1.03957])
 
         # self['wall_grasp']['object']['angle_of_attack'] = 1.0
 
@@ -177,7 +179,7 @@ class RBOHandP24WAM(RBOHand2):
         self['wall_grasp']['object']['sliding_speed'] = 0.4
         self['wall_grasp']['object']['lift_speed'] = 0.1
         self['wall_grasp']['object']['up_speed'] = 0.2
-        self['wall_grasp']['object']['down_speed'] = 0.1
+        self['wall_grasp']['object']['down_dist'] = 0.25
         self['wall_grasp']['object']['relative_motion_velocity'] = np.array([0.125, 0.06])
 
         self['wall_grasp']['object']['object_lift_time'] = 1.0
