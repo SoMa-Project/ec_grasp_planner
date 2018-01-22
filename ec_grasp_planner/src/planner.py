@@ -163,12 +163,13 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     sliding_speed = params['sliding_speed']
     up_speed = params['up_speed']
     lift_speed = params['lift_speed']
-    down_speed = params['down_speed']
+    down_distance = params['down_dist']
     wall_force = params['wall_force']
     pregrasp_transform = params['pregrasp_transform']
     drop_off_config = params['drop_off_config']
     angleOfAttack_transform = params['angleOfAttack_transform']
     relative_motion_velocity = params['relative_motion_velocity']
+    hand_closing_time = params['hand_closing_duration']
 
     # angle_of_attack = params['angle_of_attack']
     # object_lift_time = params['object_lift_time']
@@ -186,7 +187,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     position_behind_object = wsf.dot(tra.translation_matrix([0, 0, -0.1]))
 
     # Create the directions to go up/down in world frame
-    dirDown = tra.translation_matrix([0, 0, -down_speed])
+    dirDown = tra.translation_matrix([0, 0, -down_distance])
     dirLift = tra.translation_matrix([0, 0, lift_speed])
     dirUp = tra.translation_matrix([0, 0, up_speed]);
 
@@ -198,7 +199,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 
     control_sequence = []
     hand_synergy = 1
-    hand_closing_time = 1
+
 
     # the pre-grasp pose should be:
     # - above the object,
@@ -254,7 +255,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                              reference_frame="world"))
 
     # 3b. Switch when hand was lifted enough,
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.5))
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.2))
 
     # 4. Go towards the wall, and slide object to wall
     control_sequence.append(
