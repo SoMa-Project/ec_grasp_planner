@@ -311,7 +311,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     finishedMode.set(finishedSet)
     control_sequence.append(finishedMode)
 
-    return cookbook.sequence_of_modes_and_switches_with_saftyOn(control_sequence), rviz_frames
+    return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
 
 # ================================================================================================
@@ -434,7 +434,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(finishedMode)    
     
 
-    return cookbook.sequence_of_modes_and_switches_with_saftyOn(control_sequence), rviz_frames
+    return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
 # ================================================================================================
 def transform_msg_to_homogenous_tf(msg):
