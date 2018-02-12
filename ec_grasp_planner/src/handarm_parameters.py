@@ -264,10 +264,65 @@ class RBOHandO2KUKA(RBOHand2):
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
 
         #time of soft hand closing
-        self['surface_grasp']['object']['hand_closing_duration'] = 5
+        self['surface_grasp']['object']['hand_closing_duration'] = 2
 
         # time of soft hand closing
         self['surface_grasp']['object']['down_speed'] = 0.05
-        self['surface_grasp']['object']['up_speed'] = 0.35
+        self['surface_grasp']['object']['up_speed'] = 0.05
 
-        self['isForceControllerAvailable'] = True
+        self['isForceControllerAvailable'] = False
+
+        #####################################################################################
+        # below are parameters for wall grasp with P24 fingers (standard RBO hand)
+        #####################################################################################
+        self['wall_grasp']['object']['hand_closing_duration'] = 5
+        self['wall_grasp']['object']['initial_goal'] = np.array(
+            [0.439999, 0.624437, -0.218715, 1.71695, -0.735594, 0.197093, -0.920799])
+
+        # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
+        # the convention at our lab is: x along the fingers and z normal on the palm.
+        # please follow the same convention
+        self['wall_grasp']['object']['hand_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, 0.0]),
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(180.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 1, 0]),
+                tra.rotation_matrix(
+                    math.radians(90.0), [0, 0, 1]),
+            ))
+
+        # the pre-approach pose should be:
+        # - floating above and behind the object,
+        # - fingers pointing downwards
+        # - palm facing the object and wall
+        self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
+                tra.translation_matrix([-0.23, 0, -0.15]), #23 cm above object, 15 cm behind
+                tra.concatenate_matrices(
+                    tra.rotation_matrix(
+                        math.radians(0.), [1, 0, 0]),
+                    tra.rotation_matrix(
+                        math.radians(30.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
+                    tra.rotation_matrix(                #this makes the fingers point downwards
+                        math.radians(0.0), [0, 0, 1]),
+            ))
+
+        # first motion after grasp, in hand palm frame
+        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, 0.0]), #nothing right now
+            tra.rotation_matrix(math.radians(0.0),
+                                [0, 1, 0]))
+
+        # drop configuration - this is system specific!
+        self['wall_grasp']['object']['drop_off_config'] = np.array(
+            [0.25118, 0.649543, -0.140991, 1.79668, 0.0720235, 0.453135, -1.03957])
+
+        self['wall_grasp']['object']['table_force'] = 1.5
+        self['wall_grasp']['object']['lift_dist'] = 0.1 #short lift after initial contact (before slide)
+        self['wall_grasp']['object']['sliding_dist'] = 0.4 #sliding distance, should be min. half Ifco size
+        self['wall_grasp']['object']['up_dist'] = 0.2
+        self['wall_grasp']['object']['down_dist'] = 0.25
+        self['wall_grasp']['object']['go_down_velocity'] = np.array([0.125, 0.06]) #first value: rotational, second translational
+        self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.06])
+        self['wall_grasp']['object']['wall_force'] = 3.0
