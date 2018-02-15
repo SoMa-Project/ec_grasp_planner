@@ -250,15 +250,15 @@ class RBOHandO2KUKA(RBOHand2):
                                 [0, 1, 0]))
 
         # second motion after grasp, in hand palm frame
-        self['surface_grasp']['object']['go_up_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0, -0.3]),
+        self['surface_grasp']['object']['go_up_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0, -0.1]),
                                                                             tra.rotation_matrix(math.radians(-20.),
                                                                                                 [0, 1, 0]))
         # the maximum allowed force for pushing down
-        self['surface_grasp']['object']['downward_force'] = 7.
+        self['surface_grasp']['object']['downward_force'] = 10.
 
         #drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
-            [0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
+            [0.0, 0.0, 0.0, -0.6, 0.0, 0.0, 0.0])
 
         #synergy type for soft hand closing
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
@@ -271,6 +271,8 @@ class RBOHandO2KUKA(RBOHand2):
         self['surface_grasp']['object']['up_speed'] = 0.05
 
         self['isForceControllerAvailable'] = False
+
+        self['surface_grasp']['object']['final_goal'] = np.array([0.0, 0.0, 0.0, -0.6, 0.0, 0.0, 0.0])
 
         #####################################################################################
         # below are parameters for wall grasp with P24 fingers (standard RBO hand)
