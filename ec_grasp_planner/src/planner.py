@@ -235,14 +235,28 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
  
     # 6b. Switch when joint is reached
-    control_sequence.append(ha.FramePoseSwitch('GoUp', 'finished', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
+    control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
      
-    # # 7. Go to dropOFF
-    # control_sequence.append(ha.JointControlMode(drop_off_config, controller_name = 'GoToDropJointConfig', name = 'GoDropOff'))
+    # 7. Go to dropOFF
+    control_sequence.append(ha.JointControlMode(drop_off_config, controller_name = 'GoToDropJointConfig', name = 'GoDropOff'))
  
-    # # 7.b  Switch when joint is reached
-    # control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'finished', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))    
- 
+    # 7.b  Switch when joint is reached
+    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'softhand_open', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))
+
+    # 8. Release SKU
+    if handarm_params['isForceControllerAvailable']:
+        control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_open', synergy = hand_synergy,
+                                                        desired_displacement = desired_displacement,
+                                                        force_gradient = force_gradient,
+                                                        desired_force_dimension = desired_force_dimension))
+    else:
+        # if hand is not RBO then create general hand closing mode?
+        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = '1'))
+
+
+    # 8b. Switch when hand closing time ends
+    control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration = hand_closing_time))
+
     # 8. Block joints to finish motion and hold object in air
     finishedMode = ha.ControlMode(name  = 'finished')
     finishedSet = ha.ControlSet()
