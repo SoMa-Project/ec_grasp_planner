@@ -73,53 +73,57 @@ class GraspPlanner():
 
         robot_base_frame = self.args.robot_base_frame
         object_frame = self.args.object_frame
+        
 
         # make sure those frames exist and we can transform between them
-        # self.tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
+        self.tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
 
         # --------------------------------------------------------
         # Get grasp from graph representation
-        # grasp_path = None
-        # while grasp_path is None:
-        #     # Get geometry graph
-        #     graph = rospy.wait_for_message('geometry_graph', Graph)
-        #     graph.header.stamp = rospy.Time.now() + rospy.Duration(0.5)
+        if not self.args.bypass:
+            print("Using graph")
+            grasp_path = None
+            while grasp_path is None:
+                # Get geometry graph
+                graph = rospy.wait_for_message('geometry_graph', Graph)
+                graph.header.stamp = rospy.Time.now() + rospy.Duration(0.5)
 
-        #     # Get the geometry graph frame in robot base frame
-        #     self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(10.0))
-        #     graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
+                # Get the geometry graph frame in robot base frame
+                self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(10.0))
+                graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
 
-        #     # Get the object frame in robot base frame
-        #     self.tf_listener.waitForTransform(robot_base_frame, object_frame, graph.header.stamp, rospy.Duration(10.0))
-        #     object_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), object_frame))
+                # Get the object frame in robot base frame
+                self.tf_listener.waitForTransform(robot_base_frame, object_frame, graph.header.stamp, rospy.Duration(10.0))
+                object_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), object_frame))
 
-        #     print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
+                print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
 
-        #     # Find a path in the ECE graph
-        #     hand_node_id = [n.label for n in graph.nodes].index("Positioning")
-        #     object_node_id = [n.label for n in graph.nodes].index("Slide")
+                # Find a path in the ECE graph
+                hand_node_id = [n.label for n in graph.nodes].index("Positioning")
+                object_node_id = [n.label for n in graph.nodes].index("Slide")
 
-        #     grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
+                grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
 
-        #     rospy.sleep(0.3)
+                rospy.sleep(0.3)
 
-        # --------------------------------------------------------
-        # Turn grasp into hybrid automaton
-        # ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
-        #                                                         self.handarm_params, self.object_type)
+            # --------------------------------------------------------
+            # Turn grasp into hybrid automaton
+            ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
+                                                                    self.handarm_params, self.object_type)
+        else:
+            print("Bypassing graph")
+            # Get the object frame in robot base frame
+            self.tf_listener.waitForTransform(robot_base_frame, object_frame, rospy.Time.now(), rospy.Duration(1000.0))
+            object_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), object_frame))
 
-        # Get the object frame in robot base frame
-        self.tf_listener.waitForTransform(robot_base_frame, object_frame, rospy.Time.now(), rospy.Duration(1000.0))
-        object_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), object_frame))
+            self.tf_listener.waitForTransform(robot_base_frame, "ifco", rospy.Time.now(), rospy.Duration(1000.0))
+            ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "ifco"))
 
-        self.tf_listener.waitForTransform(robot_base_frame, "ifco", rospy.Time.now(), rospy.Duration(1000.0))
-        ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "ifco"))
+            self.tf_listener.waitForTransform(robot_base_frame, "wall", rospy.Time.now(), rospy.Duration(1000.0))
+            wall_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "wall"))
 
-        self.tf_listener.waitForTransform(robot_base_frame, "wall", rospy.Time.now(), rospy.Duration(1000.0))
-        wall_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "wall"))
-
-        ha, self.rviz_frames = hybrid_automaton_without_motion_sequence(self.grasp_type, object_in_base, ifco_in_base, wall_in_base,
-                                                                self.handarm_params, self.object_type)
+            ha, self.rviz_frames = hybrid_automaton_without_motion_sequence(self.grasp_type, object_in_base, ifco_in_base, wall_in_base,
+                                                                    self.handarm_params, self.object_type)
         # --------------------------------------------------------
         # Output the hybrid automaton
 
@@ -664,6 +668,8 @@ if __name__ == '__main__':
                         help='Name of the robot base frame.')
     parser.add_argument('--object_frame', type=str, default = 'object',
                         help='Name of the object frame.')
+    parser.add_argument('--bypass', action='store_true', default = False,
+                        help='Whether to bypass graph.')
     # parser.add_argument('--handarm', type=str, default = 'RBOHand2WAM',
     #                     help='Python class that contains configuration parameters for hand and arm-specific properties.')
 
