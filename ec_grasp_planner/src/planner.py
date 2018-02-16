@@ -273,7 +273,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 8b. Switch when hand closing time ends
     control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration = hand_closing_time))
 
-    # 8. Block joints to finish motion and hold object in air
+    # 9. Block joints to finish motion and hold object in air
     finishedMode = ha.ControlMode(name  = 'finished')
     finishedSet = ha.ControlSet()
     finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'InterpolatedJointController', goal  = np.zeros(7),
@@ -421,20 +421,20 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                                            desired_force_dimension=desired_force_dimension))
     else:
         # just close the hand
-        control_sequence.append(ha.close_rbohand())
+        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
 
     # 5b. Switch when hand closing duration ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=hand_closing_duration))
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration=hand_closing_duration))
 
-    # 6. Move hand after closing and before lifting it up
-    # relative to current hand pose
-    control_sequence.append(
-        ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate',
-                                 goal_is_relative='1', ))
+#    # 6. Move hand after closing and before lifting it up
+#    # relative to current hand pose
+#    control_sequence.append(
+#        ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate',
+#                                 goal_is_relative='1', ))
 
-    # 6b. Switch when hand reaches post grasp pose
-    control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp', controller='PostGraspRotate', epsilon='0.01',
-                                               goal_is_relative='1', reference_frame='EE'))
+#    # 6b. Switch when hand reaches post grasp pose
+#    control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp', controller='PostGraspRotate', epsilon='0.01',
+#                                               goal_is_relative='1', reference_frame='EE'))
 
     # 7. Lift upwards (+z in world frame)
     dirUp = tra.translation_matrix([0, 0, up_dist])
@@ -452,13 +452,27 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
         ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
 
     # 8.b  Switch when configuration is reached
-    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'finished', controller='GoToDropJointConfig',
+    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'softhand_open', controller='GoToDropJointConfig',
                                                         epsilon=str(math.radians(7.))))
 
-    # 9. Block joints to finish motion and hold object in air
+    # 9. Release SKU
+    if handarm_params['isForceControllerAvailable']:
+        control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_open', synergy = hand_synergy,
+                                                        desired_displacement = desired_displacement,
+                                                        force_gradient = force_gradient,
+                                                        desired_force_dimension = desired_force_dimension))
+    else:
+        # if hand is not RBO then create general hand closing mode?
+        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = '1'))
+
+
+    # 9b. Switch when hand closing time ends
+    control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration = hand_closing_duration))
+
+    # 10. Block joints to finish motion and hold object in air
     finishedMode = ha.ControlMode(name='finished')
     finishedSet = ha.ControlSet()
-    finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
+    finishedSet.add(ha.Controller(name='JointSpaceController', type='InterpolatedJointController', goal=np.zeros(7),
                                   goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
     finishedMode.set(finishedSet)
     control_sequence.append(finishedMode)
