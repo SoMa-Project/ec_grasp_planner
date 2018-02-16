@@ -76,7 +76,7 @@ class GraspPlanner():
         
 
         # make sure those frames exist and we can transform between them
-        self.tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
+        # self.tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
 
         # --------------------------------------------------------
         # Get grasp from graph representation
@@ -113,14 +113,14 @@ class GraspPlanner():
         else:
             print("Bypassing graph")
             # Get the object frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, object_frame, rospy.Time.now(), rospy.Duration(1000.0))
-            object_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), object_frame))
+            self.tf_listener.waitForTransform(robot_base_frame, "ifco", rospy.Time.now(), rospy.Duration(1000.0))
+            object_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "ifco"))
 
             self.tf_listener.waitForTransform(robot_base_frame, "ifco", rospy.Time.now(), rospy.Duration(1000.0))
             ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "ifco"))
 
-            self.tf_listener.waitForTransform(robot_base_frame, "wall", rospy.Time.now(), rospy.Duration(1000.0))
-            wall_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "wall"))
+            self.tf_listener.waitForTransform(robot_base_frame, "wall1", rospy.Time.now(), rospy.Duration(1000.0))
+            wall_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "wall1"))
 
             ha, self.rviz_frames = hybrid_automaton_without_motion_sequence(self.grasp_type, object_in_base, ifco_in_base, wall_in_base,
                                                                     self.handarm_params, self.object_type)
@@ -138,6 +138,7 @@ class GraspPlanner():
                 outfile.write(ha.xml())
 
         # Publish rviz markers
+
         if self.args.rviz:
             #print "Press Ctrl-C to stop sending visualization_msgs/MarkerArray on topic '/planned_grasp_path' ..."
             publish_rviz_markers(self.rviz_frames, robot_base_frame, self.handarm_params)
@@ -251,13 +252,13 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
  
     # 6b. Switch when joint is reached
-    control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
+    control_sequence.append(ha.FramePoseSwitch('GoUp', 'softhand_open', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
      
-    # 7. Go to dropOFF
-    control_sequence.append(ha.JointControlMode(drop_off_config, controller_name = 'GoToDropJointConfig', name = 'GoDropOff'))
+    # # 7. Go to dropOFF
+    # control_sequence.append(ha.JointControlMode(drop_off_config, controller_name = 'GoToDropJointConfig', name = 'GoDropOff'))
  
-    # 7.b  Switch when joint is reached
-    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'softhand_open', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))
+    # # 7.b  Switch when joint is reached
+    # control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'softhand_open', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))
 
     # 8. Release SKU
     if handarm_params['isForceControllerAvailable']:
@@ -622,7 +623,6 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
     global frames_rviz
 
     markers_rviz = MarkerArray()
-
     for i, f in enumerate(frames):
         msg = Marker()
         msg.header.stamp = timestamp
@@ -658,7 +658,7 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
         msg.points.append(homogenous_tf_to_pose_msg(f2).position)
 
         markers_rviz.markers.append(msg)
-
+   
     frames_rviz = frames
 # ================================================================================================
 if __name__ == '__main__':
@@ -714,8 +714,8 @@ if __name__ == '__main__':
     global frames_rviz, markers_rviz
     while not rospy.is_shutdown():
         marker_pub.publish(markers_rviz)
-
         for i, f in enumerate(frames_rviz):
+            print(f)
             br.sendTransform(tra.translation_from_matrix(f),
                              tra.quaternion_from_matrix(f),
                              rospy.Time.now(),
