@@ -2,6 +2,7 @@
 
 import math
 import numpy as np
+import rospy
 from tf import transformations as tra
 
 # python ec_grasps.py --angle 69.0 --inflation .29 --speed 0.04 --force 3. --wallforce -11.0 --positionx 0.0 --grasp wall_grasp wall_chewinggum
@@ -221,17 +222,17 @@ class RBOHandO2KUKA(RBOHand2):
     def __init__(self, **kwargs):
         super(RBOHandO2KUKA, self).__init__()
 
-
+        hand_name = rospy.get_param('hand_name', 'iit_hand')
         # you can define a default strategy for all objects by setting the second field to  'object'
         # for object-specific strategies set it to the object label
 
         # transformation between object frame and hand palm frame
         # the convention at our lab is: x along the fingers and z normal on the palm.
         # please follow the same convention
-        self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
+        self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.15]),
                                                                                 tra.concatenate_matrices(
                                                                                     tra.rotation_matrix(
-                                                                                        math.radians(90.), [0, 0, 1]),
+                                                                                        math.radians(0.), [0, 0, 1]),
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(180.), [1, 0, 0])))
 
@@ -254,7 +255,7 @@ class RBOHandO2KUKA(RBOHand2):
                                                                             tra.rotation_matrix(math.radians(-20.),
                                                                                                 [0, 1, 0]))
         # the maximum allowed force for pushing down
-        self['surface_grasp']['object']['downward_force'] = 10.
+        self['surface_grasp']['object']['downward_force'] = 4.
 
         #drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
@@ -264,8 +265,12 @@ class RBOHandO2KUKA(RBOHand2):
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
 
         #time of soft hand closing
-        self['surface_grasp']['object']['hand_closing_duration'] = 2
+        if hand_name=="rbo_hand":
+            self['surface_grasp']['object']['hand_closing_duration'] = 6
+        else:
+            self['surface_grasp']['object']['hand_closing_duration'] = 2
 
+        self['surface_grasp']['object']['hand_opening_duration'] = 2
         # time of soft hand closing
         self['surface_grasp']['object']['down_speed'] = 0.05
         self['surface_grasp']['object']['up_speed'] = 0.05
@@ -275,11 +280,18 @@ class RBOHandO2KUKA(RBOHand2):
         self['surface_grasp']['object']['final_goal'] = np.array([0.0, 0.0, 0.0, -0.6, 0.0, 0.0, 0.0])
 
         #####################################################################################
-        # below are parameters for wall grasp with P24 fingers (standard RBO hand)
+        # below are parameters for wall grasp with PO2 fingers (Ocado RBO hand)
         #####################################################################################
-        self['wall_grasp']['object']['hand_closing_duration'] = 5
+        #time of soft hand closing
+        if hand_name=="rbo_hand":
+            self['wall_grasp']['object']['hand_closing_duration'] = 7
+        else:
+            self['wall_grasp']['object']['hand_closing_duration'] = 2
+
+        self['wall_grasp']['object']['hand_opening_duration'] = 2
+
         self['wall_grasp']['object']['initial_goal'] = np.array(
-            [0.0, 0.0, 0.0, -0.6, 0.0, 0.0, 0.0])
+            [0.0, 0.5, 0.0, -0.6, 0.0, 0.0, 0.0])
 
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
@@ -300,12 +312,12 @@ class RBOHandO2KUKA(RBOHand2):
         # - fingers pointing downwards
         # - palm facing the object and wall
         self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-                tra.translation_matrix([-0.15, 0, -0.15]), #23 cm above object, 15 cm behind
+                tra.translation_matrix([-0.20, 0, -0.1]), #23 cm above object, 15 cm behind
                 tra.concatenate_matrices(
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
                     tra.rotation_matrix(
-                        math.radians(30.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
+                        math.radians(0.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
                     tra.rotation_matrix(                #this makes the fingers point downwards
                         math.radians(0.0), [0, 0, 1]),
             ))
@@ -320,11 +332,12 @@ class RBOHandO2KUKA(RBOHand2):
         self['wall_grasp']['object']['drop_off_config'] = np.array(
             [0.0, 0.0, 0.0, -0.6, 0.0, 0.0, 0.0])
 
-        self['wall_grasp']['object']['table_force'] = 1.5
+        self['wall_grasp']['object']['table_force'] = 2
         self['wall_grasp']['object']['lift_dist'] = 0.1 #short lift after initial contact (before slide)
         self['wall_grasp']['object']['sliding_dist'] = 0.4 #sliding distance, should be min. half Ifco size
-        self['wall_grasp']['object']['up_dist'] = 0.2
-        self['wall_grasp']['object']['down_dist'] = 0.25
-        self['wall_grasp']['object']['go_down_velocity'] = np.array([0.125, 0.06]) #first value: rotational, second translational
-        self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.06])
-        self['wall_grasp']['object']['wall_force'] = 3.0
+        self['wall_grasp']['object']['up_dist'] = 0.05
+        self['wall_grasp']['object']['down_dist'] = 0.05
+        self['wall_grasp']['object']['go_down_velocity'] = 0.05 #first value: rotational, second translational
+        self['wall_grasp']['object']['go_up_velocity'] = 0.1 #first value: rotational, second translational
+        self['wall_grasp']['object']['slide_velocity'] = 0.08
+        self['wall_grasp']['object']['wall_force'] = 2.5
