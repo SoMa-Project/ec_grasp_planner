@@ -701,12 +701,14 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     #internal experiments parameter
     hand_orientation = 90
     hand_object_distance = 0.15
-    approach_direction = 30
-    pre_placement_joint_config = np.array([0.70, 0, 0, -1.57, 0, 1.20, 0])
+    approach_direction = 30    
     initial_pose_offset_x = -0.01
     initial_pose_offset_y = 0
     initial_pose_offset_z = 0.05
+    #pre_placement_joint_config = np.array([0.70, 0, 0, -1.57, 0, 1.20, 0])
+    pre_placement_pose = np.dot(tra.translation_matrix([0.3862, 0.32528, 0.51104]),tra.rotation_matrix(math.radians(180),[1, 0 , 0]))
     
+
     #approach_direction_vector = np.dot(tra.rotation_matrix(math.radians(-approach_direction),[1, 0 , 0]), np.array([0,down_speed,0,0]))[0:3]
     #ad_transform = tra.translation_matrix(approach_direction_vector)
 
@@ -735,8 +737,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     rviz_frames = []
     rviz_frames.append(object_frame)
     rviz_frames.append(goal_)
-    rviz_frames.append(pre_grasp_pose)
-
+    rviz_frames.append(pre_placement_pose)
 
     # assemble controller sequence
     control_sequence = []
@@ -781,17 +782,17 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 4b. Switch after a certain amount of time
     control_sequence.append(ha.TimeSwitch('GoUp', 'Preplacement', duration = 8))
 
-    #  # 2. Go above the object - Pregrasp
-    #control_sequence.append(ha.InterpolatedHTransformControlMode(pre_placement_pose, controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement'))
+    # 5. Go to Preplacement
+    control_sequence.append(ha.InterpolatedHTransformControlMode(pre_placement_pose, controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement'))
  
-    # # 2b. Switch when hand reaches the goal pose
-    #control_sequence.append(ha.FramePoseSwitch('Preplacement', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
+    # 5b. Switch when hand reaches the goal pose
+    control_sequence.append(ha.FramePoseSwitch('Preplacement', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
 
     # 5. Go to Preplacement
-    control_sequence.append(ha.JointControlMode(pre_placement_joint_config, controller_name = 'GoToDropJointConfig', name = 'Preplacement'))
+    #control_sequence.append(ha.JointControlMode(pre_placement_joint_config, controller_name = 'GoToDropJointConfig', name = 'Preplacement'))
  
     # 5.b  Switch when joint is reached
-    control_sequence.append(ha.JointConfigurationSwitch('Preplacement', 'GoDown2', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))
+    #control_sequence.append(ha.JointConfigurationSwitch('Preplacement', 'GoDown2', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))
 
     # 6. Go Down
     control_sequence.append(ha.InterpolatedHTransformControlMode(dirDown, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="EE"))
@@ -821,6 +822,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(finishedMode)   
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
+
+# ================================================================================================
 
 if __name__ == '__main__':
 
