@@ -685,6 +685,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     hand_orientation = 0
     hand_object_distance = 0.15
     approach_direction = 45
+    pre_placement_joint_config = np.array([0.70, 0, 0, -1.57, 0, 1.20, 0])
 
     # Get the relevant parameters for hand object combination
     if (object_type in handarm_params['surface_grasp']):
@@ -822,30 +823,30 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
  
     # 6b. Switch after a certain amount of time
-    control_sequence.append(ha.TimeSwitch('GoUp', 'Preplacement', duration = 8))
+    control_sequence.append(ha.TimeSwitch('GoUp', 'GoDropOff', duration = 8))
 
     #  # 2. Go above the object - Pregrasp
-    control_sequence.append(ha.InterpolatedHTransformControlMode(pre_placement_pose, controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement'))
+    #control_sequence.append(ha.InterpolatedHTransformControlMode(pre_placement_pose, controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement'))
  
     # # 2b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Preplacement', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
+    #control_sequence.append(ha.FramePoseSwitch('Preplacement', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
 
-    # # # 7. Go to dropOFF
-    # control_sequence.append(ha.JointControlMode(drop_off_config, controller_name = 'GoToDropJointConfig', name = 'GoDropOff'))
+    # 7. Go to dropOFF
+    control_sequence.append(ha.JointControlMode(pre_placement_joint_config, controller_name = 'GoToDropJointConfig', name = 'GoDropOff'))
  
-    # # # 7.b  Switch when joint is reached
-    # control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'softhand_open', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))
+    # 7.b  Switch when joint is reached
+    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'GoDown2', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))
 
     # 7. Go Down upwards
-    #control_sequence.append(ha.InterpolatedHTransformControlMode(dirDown, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dirDown, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
  
     # 7b. Switch after a certain amount of time
-    #control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = 3))
+    control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = 3))
 
-    control_sequence.append(ha.InterpolatedHTransformControlMode(placement_pose, controller_name = 'GoToDropOff', goal_is_relative='0', name = 'GoDown2'))
+    #control_sequence.append(ha.InterpolatedHTransformControlMode(placement_pose, controller_name = 'GoToDropOff', goal_is_relative='1', name = 'GoDown2', , reference_frame="world"))
  
     # # 2b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('GoDown2', 'softhand_open', controller = 'GoToDropOff', epsilon = '0.01'))
+    #control_sequence.append(ha.FramePoseSwitch('GoDown2', 'softhand_open', controller = 'GoToDropOff', epsilon = '0.01'))
 
 
     # 8. Release SKU
