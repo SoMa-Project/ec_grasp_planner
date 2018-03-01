@@ -678,6 +678,30 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
     frames_rviz = frames
 # ================================================================================================
 
+def generate_pregrasp_pose(object_frame):
+    #internal experiments parameter
+    hand_orientation = 0
+    hand_object_distance = 0.15
+    approach_direction = 90    
+    initial_pose_offset_x = -0.01
+    initial_pose_offset_y = 0
+    initial_pose_offset_z = 0.05
+    #approach_direction_vector = np.dot(tra.rotation_matrix(math.radians(-approach_direction),[1, 0 , 0]), np.array([0,down_speed,0,0]))[0:3]
+    #ad_transform = tra.translation_matrix(approach_direction_vector)
+
+    # Set the initial pose above the object
+    goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
+    hand_init_pose = tra.concatenate_matrices(tra.translation_matrix([0, hand_object_distance, 0]), tra.rotation_matrix(math.radians(180.), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [1, 0, 0]) ) #TODO remove dependency on the y axis of the object
+    goal_ = goal_.dot(hand_init_pose)
+    goal_ = goal_.dot(tra.rotation_matrix(math.radians(-approach_direction),[1, 0 , 0], [0, 0 , hand_object_distance])) # approach direction
+    goal_ = goal_.dot(tra.rotation_matrix(math.radians(hand_orientation),[0, 0 , 1])) # hand orientation
+
+    goal_[0,3] += initial_pose_offset_x 
+    goal_[1,3] += initial_pose_offset_y
+    goal_[2,3] += initial_pose_offset_z
+
+    return goal_    
+
 # ================================================================================================
 def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type):
 
@@ -687,8 +711,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     else:
         params = handarm_params['surface_grasp']['object']
 
-    hand_transform = params['hand_transform']
-    pregrasp_transform = params['pregrasp_transform']
+    #hand_transform = params['hand_transform']
+    #pregrasp_transform = params['pregrasp_transform']
     #post_grasp_transform= params['post_grasp_transform'] # TODO: USE THIS!!!
     #drop_off_config = params['drop_off_config']
     downward_force = params['downward_force']
@@ -698,34 +722,12 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     down_speed = params['down_speed']
     up_speed = params['up_speed']
 
-    #internal experiments parameter
-    hand_orientation = 90
-    hand_object_distance = 0.15
-    approach_direction = 30    
-    initial_pose_offset_x = -0.01
-    initial_pose_offset_y = 0
-    initial_pose_offset_z = 0.05
+    
+    #new aparameters
+    pre_placement_pose = np.dot(tra.translation_matrix([0.3862, 0.32528, 0.51104]),tra.rotation_matrix(math.radians(180),[1, 0 , 0]))    
     #pre_placement_joint_config = np.array([0.70, 0, 0, -1.57, 0, 1.20, 0])
-    pre_placement_pose = np.dot(tra.translation_matrix([0.3862, 0.32528, 0.51104]),tra.rotation_matrix(math.radians(180),[1, 0 , 0]))
     
-
-    #approach_direction_vector = np.dot(tra.rotation_matrix(math.radians(-approach_direction),[1, 0 , 0]), np.array([0,down_speed,0,0]))[0:3]
-    #ad_transform = tra.translation_matrix(approach_direction_vector)
-
-    # Set the initial pose above the object
-    goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
-    hand_init_pose = tra.concatenate_matrices(tra.translation_matrix([0, hand_object_distance, 0]), tra.rotation_matrix(math.radians(180.), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [1, 0, 0]) ) #TODO remove dependency on the y axis of the object
-    goal_ = goal_.dot(hand_init_pose)    
-
-    goal_ = goal_.dot(tra.rotation_matrix(math.radians(-approach_direction),[1, 0 , 0], [0, 0 , hand_object_distance])) # approach direction
-
-    goal_ = goal_.dot(tra.rotation_matrix(math.radians(hand_orientation),[0, 0 , 1])) # hand orientation
-
-    goal_[0,3] += initial_pose_offset_x 
-    goal_[1,3] += initial_pose_offset_y
-    goal_[2,3] += initial_pose_offset_z
     
-    pre_grasp_pose = np.copy(goal_)
 
     # Set the directions to use TRIK controller with
     # Down speed is positive because it is defined on the EE frame
@@ -733,10 +735,12 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # Up speed is positive because it is defined on the world frame
     dirUp = tra.translation_matrix([0, 0, up_speed])
 
+    pre_grasp_pose = generate_pregrasp_pose(object_frame)
+
     # Set the frames to visualize with RViz
     rviz_frames = []
     rviz_frames.append(object_frame)
-    rviz_frames.append(goal_)
+    rviz_frames.append(pre_grasp_pose)
     rviz_frames.append(pre_placement_pose)
 
     # assemble controller sequence
