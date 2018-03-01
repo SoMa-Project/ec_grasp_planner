@@ -753,10 +753,10 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         ha.InterpolatedHTransformControlMode(dirDown, controller_name='GoDown', goal_is_relative='1', name="GoDown",
                                              reference_frame="EE"))
 
-    force  = np.array([0, 0, 0.5*downward_force, 0, 0, 0])
+    force  = np.array([0, 0, -0.5*downward_force, 0, 0, 0])
     # 2b. Switch when ft trigger
     control_sequence.append(ha.ForceTorqueSwitch('GoDown', 'softhand_close',  goal = force,
-        norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", goal_is_relative = '1', frame_id = 'EE', port = '2'))
+        norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_LOWER_BOUND", goal_is_relative = '1', frame_id = 'EE', port = '2'))
 
     # 3. Maintain the position
     desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
