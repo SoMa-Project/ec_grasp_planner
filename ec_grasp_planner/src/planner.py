@@ -376,27 +376,31 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     
     # 2b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('GoDown', 'LiftHand', goal=force,
+    control_sequence.append(ha.ForceTorqueSwitch('GoDown', 'SlideToWall', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', port='2'))
 
     # 3. Lift upwards so the hand doesn't slide on table surface
-    dirLift = tra.translation_matrix([0, 0, go_up_velocity])
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirLift, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
-                                             reference_frame="world"))
+    # dirLift = tra.translation_matrix([0, 0, go_up_velocity])
+    # control_sequence.append(
+    #     ha.InterpolatedHTransformControlMode(dirLift, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
+    #                                          reference_frame="world"))
 
     # 3b. We switch after a short time as this allows us to do a small, precise lift motion
     # TODO partners: this can be replaced by a frame pose switch if your robot is able to do small motions precisely
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=1))
+    # control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=1.5))
 
     # 4. Go towards the wall to slide object to wall
+    # dirWall = tra.translation_matrix([0, slide_velocity, 0])
     dirWall = tra.translation_matrix([0, 0, slide_velocity])
     #TODO sliding_distance should be computed from wall and hand frame.
 
     # slide direction is given by the normal of the wall
     # dirWall[:3, 3] = wall_frame[:3, :3].dot(dirWall[:3, 3])
+    # control_sequence.append(
+    #     ha.InterpolatedHTransformControlMode(dirWall, controller_name='SlideToWall', goal_is_relative='1',
+    #                                          name="SlideToWall", reference_frame="world"))
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(dirWall, controller_name='SlideToWall', goal_is_relative='1',
                                              name="SlideToWall", reference_frame="EE"))
@@ -404,23 +408,42 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     # 4b. Switch when the f/t sensor is triggered with normal force from wall
     # TODO arne: needs tuning
     force = np.array([0, 0, wall_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'GoDownAgain', 'ForceSwitch', goal=force,
+    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'GoBackABit', 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame, port='2'))
+
+    # 2. Go down onto the object/table, in world frame
+    dirBack = tra.translation_matrix([0, 0, -slide_velocity])
+    control_sequence.append(
+        ha.InterpolatedHTransformControlMode(dirBack, controller_name='GoBackABit', goal_is_relative='1', name="GoBackABit",
+                                             reference_frame="EE"))
+
+    control_sequence.append(ha.TimeSwitch('GoBackABit', 'GoDownAgain', duration=3))
 
     # 2. Go down onto the object/table, in world frame
     dirDown = tra.translation_matrix([0, 0, -go_down_velocity])
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(dirDown, controller_name='GoDownAgain', goal_is_relative='1', name="GoDownAgain",
                                              reference_frame="world"))
+
     
     # 2b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('GoDownAgain', 'softhand_close', goal=force,
+    control_sequence.append(ha.ForceTorqueSwitch('GoDownAgain', 'SlideToWallAgain', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', port='2'))
+
+    control_sequence.append(
+        ha.InterpolatedHTransformControlMode(dirWall, controller_name='SlideToWallAgain', goal_is_relative='1',
+                                             name="SlideToWallAgain", reference_frame="EE"))
+
+    force = np.array([0, 0, wall_force/2, 0, 0, 0])
+    control_sequence.append(ha.ForceTorqueSwitch('SlideToWallAgain', 'softhand_close', 'ForceSwitch', goal=force,
+                                                 norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                 jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
+                                                 frame_id='world', frame=wall_frame, port='2'))
 
     # 5. Maintain contact while closing the hand
     if handarm_params['isForceControllerAvailable']:
