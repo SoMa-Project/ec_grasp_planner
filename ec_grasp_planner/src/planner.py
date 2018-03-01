@@ -680,9 +680,9 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
 
 def generate_pregrasp_pose(object_frame):
     #internal experiments parameter
-    hand_orientation = 90
+    hand_orientation = 0
     hand_object_distance = 0.15
-    approach_direction = 10    
+    approach_direction = 45   
     initial_pose_offset_x = -0.01
     initial_pose_offset_y = 0
     initial_pose_offset_z = 0.05
@@ -691,7 +691,7 @@ def generate_pregrasp_pose(object_frame):
 
     # Set the initial pose above the object
     goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
-    hand_init_pose = tra.concatenate_matrices(tra.translation_matrix([0, hand_object_distance, 0]), tra.rotation_matrix(math.radians(180.), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [1, 0, 0]) ) #TODO remove dependency on the y axis of the object
+    hand_init_pose = tra.concatenate_matrices( tra.rotation_matrix(math.radians(90.), [0, 0, 1]), tra.translation_matrix([0, hand_object_distance, 0]), tra.rotation_matrix(math.radians(180.), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [1, 0, 0])) #TODO remove dependency on the y axis of the object
     goal_ = goal_.dot(hand_init_pose)
     goal_ = goal_.dot(tra.rotation_matrix(math.radians(-approach_direction),[1, 0 , 0], [0, 0 , hand_object_distance])) # approach direction
     goal_ = goal_.dot(tra.rotation_matrix(math.radians(hand_orientation),[0, 0 , 1])) # hand orientation
