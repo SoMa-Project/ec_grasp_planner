@@ -305,7 +305,6 @@ def create_wall_grasp_original(object_frame, support_surface_frame, wall_frame, 
     # transformation to apply after grasping
     post_grasp_transform = params['post_grasp_transform']
 
-
     downward_force = params['table_force']
     sliding_dist = params['sliding_dist']
     up_dist = params['up_dist']
@@ -704,10 +703,12 @@ def generate_pregrasp_pose(object_frame):
 
 # ================================================================================================
 
-def transport_and_placement(handarm_params, dirDown, hand_opening_time, hand_synergy):
+def transport_and_placement(handarm_params, dirDown, hand_opening_time, hand_synergy, ifco_pos):
 
+    pre_placement_offset = [-0.10,	0.40,	0.23] #placement pose relative to the ifco position    
+    
     #new parameters
-    pre_placement_pose = np.dot(tra.translation_matrix([0.3862, 0.32528, 0.51104]),tra.rotation_matrix(math.radians(180),[1, 0 , 0]))    
+    pre_placement_pose = np.dot(tra.translation_matrix(ifco_pos + pre_placement_offset),tra.rotation_matrix(math.radians(180),[1, 0 , 0]))    
     #pre_placement_joint_config = np.array([0.70, 0, 0, -1.57, 0, 1.20, 0])  
     placement_going_down_time = 4  
 
@@ -820,7 +821,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.TimeSwitch('GoUp', 'Preplacement', duration = 8))
 
     # transport and placement
-    control_sequence = control_sequence + transport_and_placement(handarm_params, dirDown, hand_opening_time, hand_synergy)
+    control_sequence = control_sequence + transport_and_placement(handarm_params, dirDown, hand_opening_time, hand_synergy, tra.translation_from_matrix(support_surface_frame))
 
     # 5. Go to Preplacement
     #control_sequence.append(ha.JointControlMode(pre_placement_joint_config, controller_name = 'GoToDropJointConfig', name = 'Preplacement'))
@@ -1018,7 +1019,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 #                            reference_frame="world"))
     control_sequence.append(ha.TimeSwitch('GoUp', 'Preplacement', duration = 7))
 
-    control_sequence = control_sequence + transport_and_placement(handarm_params, -dirDown, hand_opening_duration, hand_synergy)
+    control_sequence = control_sequence + transport_and_placement(handarm_params, -dirDown, hand_opening_duration, hand_synergy, tra.translation_from_matrix(support_surface_frame))
 
     # 10. Block joints to finish motion and hold object in air
     finishedMode = ha.ControlMode(name='finished')
