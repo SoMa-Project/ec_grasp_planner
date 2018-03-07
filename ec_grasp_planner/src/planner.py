@@ -116,7 +116,7 @@ class GraspPlanner():
             camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)
             object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
 
-            object_in_base = camera_in_base * object_in_camera
+            object_in_base = camera_in_base.dot(object_in_camera)
 
             print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
 
