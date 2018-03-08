@@ -176,6 +176,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     hand_synergy = params['hand_closing_synergy']
     down_speed = params['down_speed']
     up_speed = params['up_speed']
+    go_down_velocity = params['go_down_velocity']
 
     # Set the initial pose above the object
     goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
@@ -223,13 +224,23 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     # 3. Go down onto the object (relative in world frame) - Godown
     control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirDown, controller_name='GoDown', goal_is_relative='1', name="GoDown",
-                                             reference_frame="world"))
+        ha.InterpolatedHTransformControlMode(dirDown,
+                                             controller_name='GoDown',
+                                             goal_is_relative='1',
+                                             name="GoDown",
+                                             reference_frame="world",
+                                             v_max=go_down_velocity))
 
-    force  = np.array([0, 0, 0.5*downward_force, 0, 0, 0])
+    force  = np.array([0, 0, downward_force, 0, 0, 0])
     # 3b. Switch when goal is reached
-    control_sequence.append(ha.ForceTorqueSwitch('GoDown', 'softhand_close',  goal = force,
-        norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", goal_is_relative = '1', frame_id = 'world', port = '2'))
+    control_sequence.append(ha.ForceTorqueSwitch('GoDown',
+                                                 'softhand_close',
+                                                 goal = force,
+                                                 norm_weights = np.array([0, 0, 1, 0, 0, 0]),
+                                                 jump_criterion = "THRESH_UPPER_BOUND",
+                                                 goal_is_relative = '1',
+                                                 frame_id = 'world',
+                                                 port = '2'))
 
     # 4. Maintain the position
     desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
@@ -364,15 +375,23 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     # 2. Go down onto the object/table, in world frame
     dirDown = tra.translation_matrix([0, 0, -down_dist])
     control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirDown, controller_name='GoDown', goal_is_relative='1', name="GoDown",
-                                             reference_frame="world", v_max=go_down_velocity))
+        ha.InterpolatedHTransformControlMode(dirDown,
+                                             controller_name='GoDown',
+                                             goal_is_relative='1',
+                                             name="GoDown",
+                                             reference_frame="world",
+                                             v_max=go_down_velocity))
 
     # 2b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('GoDown', 'LiftHand', goal=force,
+    control_sequence.append(ha.ForceTorqueSwitch('GoDown',
+                                                 'LiftHand',
+                                                 goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
-                                                 jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
-                                                 frame_id='world', port='2'))
+                                                 jump_criterion="THRESH_UPPER_BOUND",
+                                                 goal_is_relative='1',
+                                                 frame_id='world',
+                                                 port='2'))
 
     # 3. Lift upwards so the hand doesn't slide on table surface
     dirLift = tra.translation_matrix([0, 0, lift_dist])
