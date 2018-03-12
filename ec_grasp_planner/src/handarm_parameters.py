@@ -44,6 +44,7 @@ class RBOHand2(BaseHandArm):
 
 # This map defines all grasp parameter such as poses and configurations for a specific robot system
 
+
 # Define this map for your system if you want to port the planner
 #Rbo hand 2 (P24 fingers and rotated palm) mounted on WAM.
 class RBOHandP24WAM(RBOHand2):
@@ -282,59 +283,70 @@ class RBOHandP24_opposableThumbWAM(RBOHand2):
         self['wall_grasp']['object']['wall_force'] = 3.0
 
 #Rbo hand 2 (Ocado version with long fingers and rotated palm) mounted on WAM.
-class RBOHandO2WAM(RBOHand2):
+class RBOHandO2WAM(RBOHandP24WAM):
     def __init__(self, **kwargs):
         super(RBOHandO2WAM, self).__init__()
 
-        # you can define a default strategy for all objects by setting the second field to  'object'
-        # for object-specific strategies set it to the object label
-
-        # transformation between object frame and hand palm frame
-        # the convention at our lab is: x along the fingers and z normal on the palm.
-        # please follow the same convention
-        self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
-                                                                                tra.concatenate_matrices(
-                                                                                    tra.rotation_matrix(
-                                                                                        math.radians(90.), [0, 0, 1]),
-                                                                                    tra.rotation_matrix(
-                                                                                        math.radians(180.), [1, 0, 0])))
-
         # above the object, in hand palm frame
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0, 0, 0.0]), tra.rotation_matrix(math.radians(-30.0), [0, 1, 0]))
+            tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(20.0), [0, 1, 0]))
 
-        # at grasp position, in hand palm frame
-        self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0.0, 0.05]),
-                                                                                 tra.rotation_matrix(math.radians(30.0),
-                                                                                                     [0, 1, 0]))
-        # first motion after grasp, in hand palm frame only rotation
-        self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.0, 0.0, 0.0]),
-            tra.rotation_matrix(math.radians(-15.),
+        self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.03, 0.0, 0.05]),
+            tra.rotation_matrix(math.radians(50.0),
                                 [0, 1, 0]))
 
-        # second motion after grasp, in hand palm frame
-        self['surface_grasp']['object']['go_up_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0, -0.3]),
-                                                                            tra.rotation_matrix(math.radians(-20.),
-                                                                                                [0, 1, 0]))
-        # the maximum allowed force for pushing down
-        self['surface_grasp']['object']['downward_force'] = 7.
-
-        #drop configuration - this is system specific!
-        self['surface_grasp']['object']['drop_off_config'] = np.array(
-            [0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
-
-        #synergy type for soft hand closing
-        self['surface_grasp']['object']['hand_closing_synergy'] = 1
-
-        #time of soft hand closing
-        self['surface_grasp']['object']['hand_closing_duration'] = 5
-
-        # time of soft hand closing
-        self['surface_grasp']['object']['down_speed'] = 0.35
-        self['surface_grasp']['object']['up_speed'] = 0.35
-
-        self['isForceControllerAvailable'] = True
+        # # you can define a default strategy for all objects by setting the second field to  'object'
+        # # for object-specific strategies set it to the object label
+        #
+        # # transformation between object frame and hand palm frame
+        # # the convention at our lab is: x along the fingers and z normal on the palm.
+        # # please follow the same convention
+        # self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
+        #                                                                         tra.concatenate_matrices(
+        #                                                                             tra.rotation_matrix(
+        #                                                                                 math.radians(90.), [0, 0, 1]),
+        #                                                                             tra.rotation_matrix(
+        #                                                                                 math.radians(180.), [1, 0, 0])))
+        #
+        # # above the object, in hand palm frame
+        # self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
+        #     tra.translation_matrix([0, 0, 0.0]), tra.rotation_matrix(math.radians(30.0), [0, 1, 0]))
+        #
+        # # at grasp position, in hand palm frame
+        # self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.06, 0.0, 0.05]),
+        #                                                                          tra.rotation_matrix(math.radians(-20.0),
+        #                                                                                              [0, 1, 0]))
+        # # first motion after grasp, in hand palm frame only rotation
+        # self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
+        #     tra.translation_matrix([-0.0, 0.0, 0.0]),
+        #     tra.rotation_matrix(math.radians(-15.),
+        #                         [0, 1, 0]))
+        #
+        # # second motion after grasp, in hand palm frame
+        # self['surface_grasp']['object']['go_up_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.06, 0, -0.3]),
+        #                                                                     tra.rotation_matrix(math.radians(-20.),
+        #                                                                                         [0, 1, 0]))
+        # # the maximum allowed force for pushing down
+        # self['surface_grasp']['object']['downward_force'] = 7.
+        #
+        # #drop configuration - this is system specific!
+        # self['surface_grasp']['object']['drop_off_config'] = np.array(
+        #     [0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
+        #
+        # #synergy type for soft hand closing
+        # self['surface_grasp']['object']['hand_closing_synergy'] = 1
+        #
+        # #time of soft hand closing
+        # self['surface_grasp']['object']['hand_closing_duration'] = 5
+        #
+        # # time of soft hand closing
+        # self['surface_grasp']['object']['down_speed'] = 0.35
+        # self['surface_grasp']['object']['up_speed'] = 0.35
+        #
+        # self['isForceControllerAvailable'] = True
+        # self['surface_grasp']['object']['go_down_velocity'] = np.array(
+        #     [0.125, 0.06])  # first value: rotational, second translational
 
 
 #TODO: this needs to be adapted similar to match the frames above!
