@@ -161,6 +161,11 @@ class RBOHandP24WAM(RBOHand2):
         self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.06])
         self['wall_grasp']['object']['wall_force'] = 3.0
 
+
+class RBOHandP11WAM(RBOHandP24WAM):
+    def __init__(self, **kwargs):
+        RBOHandP24WAM.__init__(self, **kwargs)
+
 class RBOHandP24_opposableThumbWAM(RBOHand2):
     def __init__(self, **kwargs):
         super(RBOHandP24_opposableThumbWAM, self).__init__()
