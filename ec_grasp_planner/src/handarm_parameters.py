@@ -72,7 +72,7 @@ class PisaHand(BaseHand):
         self['mesh_file'] = "package://ec_grasp_planner/data/pisa_hand_simple.dae"
         self['mesh_file_scale'] = 0.001
 
-class RBOHand2WAM(RBOHand2):
+class RBOHandP24WAM(RBOHand2):
     def __init__(self, **kwargs):
         super(RBOHandP24WAM, self).__init__()
 
