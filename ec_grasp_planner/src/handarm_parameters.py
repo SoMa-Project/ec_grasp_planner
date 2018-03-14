@@ -217,6 +217,8 @@ class RBOHandO2WAM(RBOHand2):
         self['isForceControllerAvailable'] = True
 
 
+#TODO: this needs to be adapted similar to match the frames above!
+#The map is now 3d and the frame definitions changed.
 class RBOHand2Kuka(RBOHand2):
     def __init__(self, **kwargs):
         super(RBOHand2Kuka, self).__init__()
