@@ -135,6 +135,28 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     pregrasp_transform = params['pregrasp_transform']
     post_grasp_transform= params['post_grasp_transform'] # TODO: USE THIS!!!
 
+    drop_off_config = params['drop_off_config']
+    downward_force = params['downward_force']
+    hand_closing_time = params['hand_closing_duration']
+    hand_synergy = params['hand_closing_synergy']
+    down_speed = params['down_speed']
+    up_speed = params['up_speed']
+
+    # Set the initial pose above the object
+    goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
+    goal_[:3,3] = tra.translation_from_matrix(object_frame)
+    goal_ =  goal_.dot(hand_transform)
+
+    #the grasp frame is symmetrical - check which side is nicer to reach
+    #this is a hacky first version for our WAM
+    zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
+    if goal_[0][0]<0:
+        goal_ = goal_.dot(zflip_transform)
+
+
+    # hand pose above object
+    pre_grasp_pose = goal_.dot(pregrasp_transform)
+
     # Set the directions to use TRIK controller with
     dirDown = tra.translation_matrix([0, 0, -0.1]);
     dirUp = tra.translation_matrix([0, 0, 0.1]);
@@ -142,13 +164,13 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence = []
 
     # 1. Go to the start configuration with joint space control
-    control_sequence.append(ha.JointControlMode(initial_cspace_goal, controller_name = 'GoToInitJointConfig'))
+    #control_sequence.append(ha.JointControlMode(initial_cspace_goal, controller_name = 'GoToInitJointConfig'))
 
     # 1b. Switch when joint is reached
-    control_sequence.append(ha.JointConfigurationSwitch('', '', controller = 'GoToInitJointConfig', epsilon = str(math.radians(7.))))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
 
     # 2. Go above the object
-    control_sequence.append(ha.HTransformControlMode(goal, controller_name = 'GoAboveObject', goal_is_relative='0'))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
 
     # 2b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('', '', controller = 'GoAboveObject', epsilon = '0.01'))
