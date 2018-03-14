@@ -209,12 +209,13 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
         wall_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         wall_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(wall_frame_node.transform))
-        return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame, handarm_params)
+        return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame, handarm_params, object_type)
     elif grasp_type == 'SurfaceGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params)
+        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type)
     else:
+        return goto_start();
         raise "Unknown grasp type: ", grasp_type
 
 # ================================================================================================
