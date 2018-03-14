@@ -402,7 +402,7 @@ def main(**args):
     
     # --------------------------------------------------------
     # Turn grasp into hybrid automaton
-    ha, rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base, handarm_params,self.object_type)
+    ha, rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base, handarm_params,'object')
     
     # --------------------------------------------------------
     # Output the hybrid automaton 
