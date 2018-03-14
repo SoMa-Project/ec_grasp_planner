@@ -7,6 +7,29 @@ from tf import transformations as tra
 # python ec_grasps.py --angle 69.0 --inflation .29 --speed 0.04 --force 3. --wallforce -11.0 --positionx 0.0 --grasp wall_grasp wall_chewinggum
 # python ec_grasps.py --anglesliding -10.0 --inflation 0.02 --speed 0.04 --force 4.0 --grasp edge_grasp --edgedistance -0.007 edge_chewinggum/
 # python ec_grasps.py --anglesliding 0.0 --inflation 0.33 --force 7.0 --grasp surface_grasp test_folder
+class BaseHand(dict):
+    def __init__(self):
+        super(BaseHand,self).__init__()
+        self['mesh_file'] = "Unknown"
+        self['mesh_file_scale'] = 1.
+
+        self['wall_grasp'] = {}
+        self['edge_grasp'] = {}
+        self['surface_grasp'] = {}
+        self['wall_grasp']['object'] = {}
+        self['edge_grasp']['object'] = {}
+        self['surface_grasp']['object'] = {}
+        self['wall_grasp']['punet'] = {}
+        self['edge_grasp']['punet'] = {}
+        self['surface_grasp']['punet'] = {}
+
+        self['isForceControllerAvailable'] = False
+
+class BaseArm(dict):
+    def __init__(self):
+        super(BaseArm,self).__init__()
+        self['isForceControllerAvailable'] = False
+
 
 class BaseHandArm(dict):
     def __init__(self):
@@ -16,6 +39,26 @@ class BaseHandArm(dict):
         self['wall_grasp'] = {}
         self['edge_grasp'] = {}
         self['surface_grasp'] = {}
+        self['wall_grasp']['object'] = {}
+        self['edge_grasp']['object'] = {}
+        self['surface_grasp']['object'] = {}
+        self['wall_grasp']['punet'] = {}
+        self['edge_grasp']['punet'] = {}
+        self['surface_grasp']['punet'] = {}
+
+        self['isForceControllerAvailable'] = False
+
+
+class Kuka(BaseArm):
+    def __init__(self):
+        super(Kuka,self).__init__()
+        self['isForceControllerAvailable'] = False
+        self['surface_grasp']['object']['initial_goal'] = tra.concatenate_matrices(tra.translation_matrix([0.5,0.0,0.8]),tra.euler_matrix(0,math.pi/2,0))
+        self['surface_grasp']['object']['down_speed'] = 0.30
+        self['surface_grasp']['object']['up_speed'] = 0.30
+        #self['surface_grasp']['object']['drop_off_config'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.5]),tra.euler_matrix(0, math.pi / 2, 0))
+        self['surface_grasp']['object']['drop_off_config']=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]);
+
 
 class RBOHand2(BaseHandArm):
     def __init__(self):
@@ -23,6 +66,11 @@ class RBOHand2(BaseHandArm):
         self['mesh_file'] = "package://ec_grasp_planner/data/softhand_right_colored.dae"
         self['mesh_file_scale'] = 0.1
 
+class PisaHand(BaseHand):
+    def __init__(self):
+        super(PisaHand, self).__init__()
+        self['mesh_file'] = "package://ec_grasp_planner/data/pisa_hand_simple.dae"
+        self['mesh_file_scale'] = 0.001
 
 class RBOHand2WAM(RBOHand2):
     def __init__(self, **kwargs):
