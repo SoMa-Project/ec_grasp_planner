@@ -122,25 +122,18 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     return cookbook.sequence_of_modes_and_switches(control_sequence), rviz_frames
 
 # ================================================================================================
-def create_surface_grasp(object_frame, support_surface_frame, handarm_params):
+def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type):
 
-    # Get the relevant parameters 
-    initial_cspace_goal = handarm_params['surface_grasp']['initial_goal']
-    downward_force = handarm_params['surface_grasp']['downward_force']
-    valve_pattern = handarm_params['surface_grasp']['valve_pattern']
-    pregrasp_pose = handarm_params['surface_grasp']['pregrasp_pose']
-    hand_pose = handarm_params['surface_grasp']['hand_pose']
-    hand_closing_time = np.max(valve_pattern) + 1.
-    
-    # Set the initial pose above the object
-    goal_ = np.copy(support_surface_frame)
-    goal_[:3,3] = tra.translation_from_matrix(object_frame)
-    goal = goal_.dot(pregrasp_pose).dot(hand_pose)
-    print hand_pose
-
-    # Set the frames to visualize with RViz
-    rviz_frames = []
-    rviz_frames.append(goal)
+    # Get the relevant parameters for hand object combination
+    print(object_type)
+    print(handarm_params);
+    if (object_type in handarm_params['surface_grasp']):            
+        params = handarm_params['surface_grasp'][object_type]
+    else:
+        params = handarm_params['surface_grasp']['object']
+    hand_transform = params['hand_transform']
+    pregrasp_transform = params['pregrasp_transform']
+    post_grasp_transform= params['post_grasp_transform'] # TODO: USE THIS!!!
 
     # Set the directions to use TRIK controller with
     dirDown = tra.translation_matrix([0, 0, -0.1]);
