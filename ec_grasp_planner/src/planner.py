@@ -41,8 +41,8 @@ from geometry_graph_msgs.msg import Graph
 
 from ec_grasp_planner import srv
 
-from ifco_pose_estimator.srv import *
-from object_segmentation.srv import *
+from ifco_pose_estimator import srv as ifco_srv
+from object_segmentation import srv as object_srv
 
 from visualization_msgs.msg import MarkerArray
 from visualization_msgs.msg import Marker
@@ -118,18 +118,18 @@ class GraspPlanner():
         else:
             print("Bypassing graph")
 
-            self.tf_listener.waitForTransform(robot_base_frame, "kinect2_1_ir_optical_frame", rospy.Time.now(), rospy.Duration(1000.0))
-            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "kinect2_1_ir_optical_frame"))
+            self.tf_listener.waitForTransform(robot_base_frame, "camera", rospy.Time.now(), rospy.Duration(1000.0))
+            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "camera"))
 
             print("Acquired camera in base tf")
 
             rospy.wait_for_service('ifco_pose')
             try:
-                compute_ifco_pose = rospy.ServiceProxy('ifco_pose', ifco_pose)
+                compute_ifco_pose = rospy.ServiceProxy('ifco_pose', ifco_srv.ifco_pose)
                 max_tries = 5
                 max_fitness = 0.008
                 publish_ifco = True
-                res_ifco = ifco_pose(max_tries, max_fitness, publish_ifco)
+                res_ifco = compute_ifco_pose(max_tries, max_fitness, publish_ifco)
             except rospy.ServiceException, e:
                 print "Ifco service call failed: %s"%e
             print "Ifco service call succeeded"
@@ -140,8 +140,8 @@ class GraspPlanner():
 
             rospy.wait_for_service('object_pose')
             try:
-                compute_object_pose = rospy.ServiceProxy('object_pose', object_pose)
-                res_object = object_pose(res_ifco.pose)
+                compute_object_pose = rospy.ServiceProxy('object_pose', object_srv.object_pose)
+                res_object = compute_object_pose(res_ifco.pose)
             except rospy.ServiceException, e:
                 print "Object service call failed: %s"%e
             print "Object service call succeeded"
@@ -156,7 +156,9 @@ class GraspPlanner():
 
             wall_in_base = ifco_in_base.dot(tra.concatenate_matrices(tra.translation_matrix([0.28, 0, 0]),tra.rotation_matrix(math.radians(-90.0), [0, 0, 1]),tra.rotation_matrix(math.radians(90.0), [1, 0, 0])))
 
-            ha, self.rviz_frames = hybrid_automaton_without_motion_sequence(self.grasp_type, object_in_base, ifco_in_base, wall_in_base,
+
+
+            ha, self.rviz_frames = hybrid_automaton_without_motion_sequence(self.grasp_type, objects_in_base[0], ifco_in_base, wall_in_base,
                                                                     self.handarm_params, self.object_type)
         # --------------------------------------------------------
         # Output the hybrid automaton
