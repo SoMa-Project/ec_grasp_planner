@@ -22,6 +22,7 @@ import smach_ros
 import tf
 from tf import transformations as tra
 import numpy as np
+import tf_conversions.posemath as pm
 
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Pose
@@ -40,8 +41,12 @@ from geometry_graph_msgs.msg import Graph
 
 from ec_grasp_planner import srv
 
+from ifco_pose_estimator.srv import *
+from object_segmentation.srv import *
+
 from visualization_msgs.msg import MarkerArray
 from visualization_msgs.msg import Marker
+
 
 import pyddl
 
@@ -112,15 +117,44 @@ class GraspPlanner():
                                                                     self.handarm_params, self.object_type)
         else:
             print("Bypassing graph")
-            # Get the object frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, "ifco", rospy.Time.now(), rospy.Duration(1000.0))
-            object_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "ifco"))
 
-            self.tf_listener.waitForTransform(robot_base_frame, "ifco", rospy.Time.now(), rospy.Duration(1000.0))
-            ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "ifco"))
+            self.tf_listener.waitForTransform(robot_base_frame, "kinect2_1_ir_optical_frame", rospy.Time.now(), rospy.Duration(1000.0))
+            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "kinect2_1_ir_optical_frame"))
 
-            self.tf_listener.waitForTransform(robot_base_frame, "wall1", rospy.Time.now(), rospy.Duration(1000.0))
-            wall_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "wall1"))
+            print("Acquired camera in base tf")
+
+            rospy.wait_for_service('ifco_pose')
+            try:
+                compute_ifco_pose = rospy.ServiceProxy('ifco_pose', ifco_pose)
+                max_tries = 5
+                max_fitness = 0.008
+                publish_ifco = True
+                res_ifco = ifco_pose(max_tries, max_fitness, publish_ifco)
+            except rospy.ServiceException, e:
+                print "Ifco service call failed: %s"%e
+            print "Ifco service call succeeded"
+            
+            # Get the ifco frame in robot base frame
+            ifco_in_camera = pm.toMatrix(pm.fromMsg(res_ifco.pose))
+            ifco_in_base = camera_in_base.dot(ifco_in_camera.dot(tra.rotation_matrix(math.radians(180.0), [1, 0, 0])))
+
+            rospy.wait_for_service('object_pose')
+            try:
+                compute_object_pose = rospy.ServiceProxy('object_pose', object_pose)
+                res_object = object_pose(res_ifco.pose)
+            except rospy.ServiceException, e:
+                print "Object service call failed: %s"%e
+            print "Object service call succeeded"
+
+            # Get the object frames in robot base frame
+            objects_in_base = []
+            for counter, object_in_camera in enumerate(res_object.object_poses):
+                objects_in_base.append(camera_in_base.dot(pm.toMatrix(pm.fromMsg(object_in_camera))))
+
+            print "Objects found: "
+            print(len(objects_in_base))
+
+            wall_in_base = ifco_in_base.dot(tra.concatenate_matrices(tra.translation_matrix([0.28, 0, 0]),tra.rotation_matrix(math.radians(-90.0), [0, 0, 1]),tra.rotation_matrix(math.radians(90.0), [1, 0, 0])))
 
             ha, self.rviz_frames = hybrid_automaton_without_motion_sequence(self.grasp_type, object_in_base, ifco_in_base, wall_in_base,
                                                                     self.handarm_params, self.object_type)
