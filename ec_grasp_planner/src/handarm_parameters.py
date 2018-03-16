@@ -232,7 +232,7 @@ class RBOHandO2KUKA(RBOHand2):
         self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.15]),
                                                                                 tra.concatenate_matrices(
                                                                                     tra.rotation_matrix(
-                                                                                        math.radians(0.), [0, 0, 1]),
+                                                                                        math.radians(90.), [0, 0, 1]),
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(180.), [1, 0, 0])))
 
