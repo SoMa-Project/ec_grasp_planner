@@ -222,6 +222,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     hand_synergy = params['hand_closing_synergy']
     down_speed = params['down_speed']
     up_speed = params['up_speed']
+    hand_max_aperture =params['hand_max_aperture']
 
     # tf_listener.waitForTransform("iit_hand_palm_link", "iiwa_link_hand_palm", rospy.Time.now(), rospy.Duration(1000.0))
     # ee_in_hand_palm = tf_listener.asMatrix("iit_hand_palm_link", Header(0, rospy.Time(), "iiwa_link_hand_palm"))
@@ -322,8 +323,9 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                         desired_force_dimension = desired_force_dimension))
     else:
         # if hand is not RBO then create general hand closing mode?
-        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
-
+        # control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
+        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([1.0]), kp=np.array([2.0]),hand_max_aperture = hand_max_aperture,name  = 'softhand_close', 
+            bounding_box=np.array([0.2, 0.05, 0.06]), object_weight=np.array([0.4]), object_type='object', object_pose=np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])))
 
     # 4b. Switch when hand closing time ends
     control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration = hand_closing_time))
@@ -356,8 +358,11 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                         desired_force_dimension = desired_force_dimension))
     else:
         # if hand is not RBO then create general hand closing mode?
-        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = '1'))
-
+        # control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = '1'))
+        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([0.0]), kp=np.array([2.0]),hand_max_aperture = hand_max_aperture,name  = 'softhand_open', 
+            bounding_box=np.array([0.2, 0.05, 0.06]), object_weight=np.array([0.4]), object_type='object', object_pose=np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])))
+  
+  
 
     # 8b. Switch when hand closing time ends
     control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration = hand_opening_time))

@@ -274,6 +274,8 @@ class RBOHandO2KUKA(RBOHand2):
 
         self['surface_grasp']['object']['final_goal'] = np.array([0.0, 0.0, 0.0, -0.6, 0.0, 0.0, 0.0])
 
+        self['surface_grasp']['object']['hand_max_aperture'] = np.array([0.25])
+
         #####################################################################################
         # below are parameters for wall grasp with PO2 fingers (Ocado RBO hand)
         #####################################################################################
