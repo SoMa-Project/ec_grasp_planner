@@ -68,6 +68,7 @@ class GraspPlanner():
         rospy.init_node('ec_planner')
         s = rospy.Service('run_grasp_planner', srv.RunGraspPlanner, lambda msg: self.handle_run_grasp_planner(msg))
         self.tf_listener = tf.TransformListener()
+        self.tf_publisher = tf.TransformBroadcaster()
         self.args = args
 
     # ------------------------------------------------------------------------------------------------
@@ -118,10 +119,12 @@ class GraspPlanner():
         else:
             print("Bypassing graph")
 
+            # Get the camera frame in robot base frame
             self.tf_listener.waitForTransform(robot_base_frame, "camera", rospy.Time.now(), rospy.Duration(1000.0))
             camera_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "camera"))
 
             print("Acquired camera in base tf")
+
 
             rospy.wait_for_service('ifco_pose')
             try:
@@ -134,32 +137,48 @@ class GraspPlanner():
                 print "Ifco service call failed: %s"%e
             print "Ifco service call succeeded"
             
-            # Get the ifco frame in robot base frame
+            # Get the ifco frame in camera frame
             ifco_in_camera = pm.toMatrix(pm.fromMsg(res_ifco.pose))
+
+            # Get the ifco frame in robot base frame
             ifco_in_base = camera_in_base.dot(ifco_in_camera.dot(tra.rotation_matrix(math.radians(180.0), [1, 0, 0])))
 
-            rospy.wait_for_service('object_pose')
-            try:
-                compute_object_pose = rospy.ServiceProxy('object_pose', object_srv.object_pose)
-                res_object = compute_object_pose(res_ifco.pose)
-            except rospy.ServiceException, e:
-                print "Object service call failed: %s"%e
-            print "Object service call succeeded"
+            previous_objects_in_base = []
+            previous_bounding_boxes = []
 
-            # Get the object frames in robot base frame
-            objects_in_base = []
-            for counter, object_in_camera in enumerate(res_object.object_poses):
-                objects_in_base.append(camera_in_base.dot(pm.toMatrix(pm.fromMsg(object_in_camera))))
+            while True:
+                rospy.wait_for_service('object_pose')
+                try:
+                    compute_object_pose = rospy.ServiceProxy('object_pose', object_srv.object_pose)
+                    res_object = compute_object_pose(res_ifco.pose)
+                except rospy.ServiceException, e:
+                    print "Object service call failed: %s"%e
+                    continue
+                print "Object service call succeeded"
 
-            print "Objects found: "
-            print(len(objects_in_base))
+                # Get the object frames and their bounding boxes in robot base frame
+                objects_in_base = []
+                bounding_boxes = []
+                for counter, object_in_camera in enumerate(res_object.object_poses):
+                    objects_in_base.append(camera_in_base.dot(pm.toMatrix(pm.fromMsg(object_in_camera))))
+                    bounding_boxes.append(res_object.bounding_boxes[counter])
+
+                for bounding_box in bounding_boxes:
+                    print(bounding_box.x)
+
+                print "Objects found: "
+                print(len(objects_in_base))
+
+                if len(objects_in_base) > 0 and len(objects_in_base) == len(previous_objects_in_base):
+                    break
+                previous_objects_in_base = list(objects_in_base)
 
             wall_in_base = ifco_in_base.dot(tra.concatenate_matrices(tra.translation_matrix([0.28, 0, 0]),tra.rotation_matrix(math.radians(-90.0), [0, 0, 1]),tra.rotation_matrix(math.radians(90.0), [1, 0, 0])))
 
 
 
             ha, self.rviz_frames = hybrid_automaton_without_motion_sequence(self.grasp_type, objects_in_base[0], ifco_in_base, wall_in_base,
-                                                                    self.handarm_params, self.object_type)
+                                                                    self.handarm_params, self.object_type, self.tf_listener, self.tf_publisher)
         # --------------------------------------------------------
         # Output the hybrid automaton
 
@@ -184,7 +203,7 @@ class GraspPlanner():
         return srv.RunGraspPlannerResponse(ha.xml())
 
 # ================================================================================================
-def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type):
+def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type, tf_listener, tf_publisher):
 
     # Get the relevant parameters for hand object combination
     if (object_type in handarm_params['surface_grasp']):            
@@ -204,10 +223,39 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     down_speed = params['down_speed']
     up_speed = params['up_speed']
 
+    # tf_listener.waitForTransform("iit_hand_palm_link", "iiwa_link_hand_palm", rospy.Time.now(), rospy.Duration(1000.0))
+    # ee_in_hand_palm = tf_listener.asMatrix("iit_hand_palm_link", Header(0, rospy.Time(), "iiwa_link_hand_palm"))
+
+    # print("Acquired ee in hand_palm tf")
+
+    # signature_in_hand_palm = tra.translation_matrix([0.0298,-0.003,0.0986]).dot(tra.euler_matrix(0.2938,0.0529, 0.0078))
+
+    # signature_in_ee = signature_in_hand_palm.dot(ee_in_hand_palm)
+
+    # while(True):
+    #     tf_publisher.sendTransform((-0.001, -0.002, 0.003), (0.989, 0.148, -0.026, 0.008), rospy.Time.now(), "gs1", "iiwa_link_hand_palm")
+        # tf_publisher.sendTransform(tra.translation_from_matrix(signature_in_ee), tf.transformations.quaternion_from_matrix(signature_in_ee), rospy.Time.now(), "gs2", "iiwa_link_hand_palm")
+    
+    signature_in_ee = tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013]))
+
+    ee_in_signature = tra.inverse_matrix(signature_in_ee)
+
+    
+    
+
     # Set the initial pose above the object
     goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
-    goal_[:3,3] = tra.translation_from_matrix(object_frame)
-    goal_ =  goal_.dot(hand_transform)
+    goal_[:3,3] = tra.translation_from_matrix(object_frame) #this does nothing now
+    goal_ =  goal_.dot(hand_transform) #this is the pre-grasp transform of the signature frame expressed in the world
+
+    goal_ = goal_.dot(ee_in_signature)
+
+    # while(True):
+    #     # tf_publisher.sendTransform((-0.001, -0.002, 0.003), (0.989, 0.148, -0.026, 0.008), rospy.Time.now(), "gs1", "iiwa_link_hand_palm")
+    #     tf_publisher.sendTransform(tra.translation_from_matrix(signature_in_ee), tf.transformations.quaternion_from_matrix(signature_in_ee), rospy.Time.now(), "gs2", "iiwa_link_hand_palm")
+    #     tf_publisher.sendTransform(tra.translation_from_matrix(goal_), tf.transformations.quaternion_from_matrix(goal_), rospy.Time.now(), "goal", "world")
+    #     tf_publisher.sendTransform(tra.translation_from_matrix(object_frame), tf.transformations.quaternion_from_matrix(object_frame), rospy.Time.now(), "object", "world")
+    
 
     #the grasp frame is symmetrical - check which side is nicer to reach
     #this is a hacky first version for our WAM
@@ -216,8 +264,9 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         goal_ = goal_.dot(zflip_transform)
 
 
+
     # hand pose above object
-    pre_grasp_pose = goal_.dot(pregrasp_transform)
+    pre_grasp_pose = goal_.dot(pregrasp_transform) #this does nothing now
 
     # Set the directions to use TRIK controller with
     # Down speed is positive because it is defined on the EE frame
@@ -230,6 +279,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     rviz_frames.append(object_frame)
     rviz_frames.append(goal_)
     rviz_frames.append(pre_grasp_pose)
+
+
 
 
     # assemble controller sequence
@@ -597,13 +648,13 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         raise "Unknown grasp type: ", grasp_type
 
 # ================================================================================================
-def hybrid_automaton_without_motion_sequence(grasp_type, T_object_in_base, T_ifco_in_base, T_wall_in_base, handarm_params, object_type):
+def hybrid_automaton_without_motion_sequence(grasp_type, T_object_in_base, T_ifco_in_base, T_wall_in_base, handarm_params, object_type, tf_listener, tf_publisher):
 
     print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == '-WallGrasp':
         return create_wall_grasp(T_object_in_base, T_ifco_in_base, T_wall_in_base, handarm_params, object_type)
     elif grasp_type == '-SurfaceGrasp':
-        return create_surface_grasp(T_object_in_base, T_ifco_in_base, handarm_params, object_type)
+        return create_surface_grasp(T_object_in_base, T_ifco_in_base, handarm_params, object_type, tf_listener, tf_publisher)
     else:
         raise "Unknown grasp type: ", grasp_type
 
