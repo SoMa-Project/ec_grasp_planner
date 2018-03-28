@@ -1,0 +1,3 @@
+string name
+geometry_msgs/PoseStamped transform
+geometry_msgs/Vector3 boundingbox

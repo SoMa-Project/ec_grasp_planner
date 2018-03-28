@@ -29,7 +29,7 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from subprocess import call
-from hybrid_automaton_msgs import srv
+from hybrid_automaton_msgs import srv as ha_srv
 from hybrid_automaton_msgs.msg import HAMState
 
 from std_msgs.msg import Header
@@ -39,13 +39,16 @@ from pregrasp_msgs.msg import GraspStrategy
 
 from geometry_graph_msgs.msg import Graph
 
-from ec_grasp_planner import srv
+from ec_grasp_planner import srv as plan_srv
 
 from ifco_pose_estimator import srv as ifco_srv
 from object_segmentation import srv as object_srv
 
 from visualization_msgs.msg import MarkerArray
 from visualization_msgs.msg import Marker
+
+
+from pregrasp_msgs import srv as vision_srv
 
 
 import pyddl
@@ -56,6 +59,7 @@ pkg_path = rospack.get_path('ec_grasp_planner')
 sys.path.append(pkg_path + '/../hybrid-automaton-tools-py/')
 import hatools.components as ha
 import hatools.cookbook as cookbook
+import tf_conversions.posemath as pm
 
 import handarm_parameters
 
@@ -66,19 +70,27 @@ class GraspPlanner():
     def __init__(self, args):
         # initialize the ros node
         rospy.init_node('ec_planner')
-        s = rospy.Service('run_grasp_planner', srv.RunGraspPlanner, lambda msg: self.handle_run_grasp_planner(msg))
+        s = rospy.Service('run_grasp_planner', plan_srv.RunGraspPlanner, lambda msg: self.handle_run_grasp_planner(msg))
         self.tf_listener = tf.TransformListener()
         self.tf_publisher = tf.TransformBroadcaster()
         self.args = args
 
     # ------------------------------------------------------------------------------------------------
     def handle_run_grasp_planner(self, req):
+
+        print('Handling grasp planner service call')
         self.object_type = req.object_type
         self.grasp_type = req.grasp_type
+        grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
+        if self.grasp_type not in grasp_choices:
+            raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp]")
+            return
+
+        #todo: more failure handling here for bad service parameters
+
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
-        robot_base_frame = self.args.robot_base_frame
-        object_frame = self.args.object_frame
+        
         
 
         # make sure those frames exist and we can transform between them
@@ -88,19 +100,46 @@ class GraspPlanner():
         # Get grasp from graph representation
         if not self.args.bypass:
             print("Using graph")
+
+
+            # this might need to be moved out when our internal vision is merged to ecto
+            rospy.wait_for_service('compute_ec_graph')
+
+
+            try:
+                call_vision = rospy.ServiceProxy('compute_ec_graph', vision_srv.ComputeECGraph)
+                res = call_vision(self.object_type)
+                graph = res.graph
+                objects = res.objects.objects
+            except rospy.ServiceException, e:
+                raise rospy.ServiceException("Vision service call failed: %s" % e)
+                return plan_srv.RunGraspPlannerResponse("")
+
+            robot_base_frame = self.args.robot_base_frame
+
+            object_frame = self.args.object_frame
+            object_frame = objects[0].transform
+
+            time = rospy.Time(0)
+            graph.header.stamp = time
+            object_frame.header.stamp = time
+            bounding_box = objects[0].boundingbox
+
+            # --------------------------------------------------------
+            # Get grasp from graph representation
             grasp_path = None
             while grasp_path is None:
-                # Get geometry graph
-                graph = rospy.wait_for_message('geometry_graph', Graph)
-                graph.header.stamp = rospy.Time.now() + rospy.Duration(0.5)
-
                 # Get the geometry graph frame in robot base frame
-                self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, graph.header.stamp, rospy.Duration(10.0))
+                self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
                 graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
 
+
                 # Get the object frame in robot base frame
-                self.tf_listener.waitForTransform(robot_base_frame, object_frame, graph.header.stamp, rospy.Duration(10.0))
-                object_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), object_frame))
+                self.tf_listener.waitForTransform(robot_base_frame, object_frame.header.frame_id, time, rospy.Duration(2.0))
+                camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)
+                object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
+
+                object_in_base = camera_in_base.dot(object_in_camera)
 
                 print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
 
@@ -116,6 +155,7 @@ class GraspPlanner():
             # Turn grasp into hybrid automaton
             ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
                                                                     self.handarm_params, self.object_type)
+                                                
         else:
             print("Bypassing graph")
 
@@ -179,12 +219,54 @@ class GraspPlanner():
 
             ha, self.rviz_frames = hybrid_automaton_without_motion_sequence(self.grasp_type, objects_in_base[0], ifco_in_base, wall_in_base,
                                                                     self.handarm_params, self.object_type, self.tf_listener, self.tf_publisher)
+=======
+        object_frame = objects[0].transform
+
+        time = rospy.Time(0)
+        graph.header.stamp = time
+        object_frame.header.stamp = time
+        bounding_box = objects[0].boundingbox
+
+        # --------------------------------------------------------
+        # Get grasp from graph representation
+        grasp_path = None
+        while grasp_path is None:
+            # Get the geometry graph frame in robot base frame
+            self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
+            graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
+
+
+            # Get the object frame in robot base frame
+            self.tf_listener.waitForTransform(robot_base_frame, object_frame.header.frame_id, time, rospy.Duration(2.0))
+            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)
+            object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
+
+            object_in_base = camera_in_base.dot(object_in_camera)
+
+            print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
+
+            # Find a path in the ECE graph
+            hand_node_id = [n.label for n in graph.nodes].index("Positioning")
+            object_node_id = [n.label for n in graph.nodes].index("Slide")
+
+            grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
+
+            rospy.sleep(0.3)
+
+        # --------------------------------------------------------
+        # Turn grasp into hybrid automaton
+        ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
+                                                                self.handarm_params, self.object_type)
+
+>>>>>>> master
         # --------------------------------------------------------
         # Output the hybrid automaton
 
+        print("generated grasping ha")
+
         # Call update_hybrid_automaton service to communicate with a hybrid automaton manager (kuka or rswin)
         if self.args.ros_service_call:
-            call_ha = rospy.ServiceProxy('update_hybrid_automaton', srv.UpdateHybridAutomaton)
+            call_ha = rospy.ServiceProxy('update_hybrid_automaton', ha_srv.UpdateHybridAutomaton)
             call_ha(ha.xml())
 
         # Write to a xml file
@@ -200,7 +282,7 @@ class GraspPlanner():
             # rospy.spin()
 
 
-        return srv.RunGraspPlannerResponse(ha.xml())
+        return plan_srv.RunGraspPlannerResponse(ha.xml())
 
 # ================================================================================================
 def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type, tf_listener, tf_publisher):
@@ -222,6 +304,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     hand_synergy = params['hand_closing_synergy']
     down_speed = params['down_speed']
     up_speed = params['up_speed']
+    go_down_velocity = params['go_down_velocity']
 
     # tf_listener.waitForTransform("iit_hand_palm_link", "iiwa_link_hand_palm", rospy.Time.now(), rospy.Duration(1000.0))
     # ee_in_hand_palm = tf_listener.asMatrix("iit_hand_palm_link", Header(0, rospy.Time(), "iiwa_link_hand_palm"))
@@ -300,15 +383,26 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 2b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
  
+
     # 3. Go down onto the object (relative in world frame) - Godown
     control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirDown, controller_name='GoDown', goal_is_relative='1', name="GoDown",
-                                             reference_frame="world"))
+        ha.InterpolatedHTransformControlMode(dirDown,
+                                             controller_name='GoDown',
+                                             goal_is_relative='1',
+                                             name="GoDown",
+                                             reference_frame="world",
+                                             v_max=go_down_velocity))
 
-    force  = np.array([0, 0, 0.5*downward_force, 0, 0, 0])
+    force  = np.array([0, 0, downward_force, 0, 0, 0])
     # 3b. Switch when goal is reached
-    control_sequence.append(ha.ForceTorqueSwitch('GoDown', 'softhand_close',  goal = force,
-        norm_weights = np.array([0, 0, 1, 0, 0, 0]), jump_criterion = "THRESH_UPPER_BOUND", goal_is_relative = '1', frame_id = 'world', port = '2'))
+    control_sequence.append(ha.ForceTorqueSwitch('GoDown',
+                                                 'softhand_close',
+                                                 goal = force,
+                                                 norm_weights = np.array([0, 0, 1, 0, 0, 0]),
+                                                 jump_criterion = "THRESH_UPPER_BOUND",
+                                                 goal_is_relative = '1',
+                                                 frame_id = 'world',
+                                                 port = '2'))
 
     # 4. Maintain the position
     desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
@@ -372,6 +466,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
+
 
 # ================================================================================================
 def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params, object_type):
@@ -457,16 +552,23 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 
     # 2. Go down onto the object/table, in world frame
     dirDown = tra.translation_matrix([0, 0, -go_down_velocity])
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirDown, controller_name='GoDown', goal_is_relative='1', name="GoDown",
-                                             reference_frame="world"))
-    
+    control_sequence.append( ha.InterpolatedHTransformControlMode(dirDown,
+                                             controller_name='GoDown',
+                                             goal_is_relative='1',
+                                             name="GoDown",
+                                             reference_frame="world",
+                                             v_max=go_down_velocity))
+
     # 2b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('GoDown', 'SlideToWall', goal=force,
+    control_sequence.append(ha.ForceTorqueSwitch('GoDown',
+                                                 'LiftHand',
+                                                 goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
-                                                 jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
-                                                 frame_id='world', port='2'))
+                                                 jump_criterion="THRESH_UPPER_BOUND",
+                                                 goal_is_relative='1',
+                                                 frame_id='world',
+                                                 port='2'))
 
     # 3. Lift upwards so the hand doesn't slide on table surface
     # dirLift = tra.translation_matrix([0, 0, go_up_velocity])
@@ -797,7 +899,6 @@ if __name__ == '__main__':
     parser.add_argument('--file_output', action='store_true', default = False,
                         help='Whether to write the hybrid automaton to a file called hybrid_automaton.xml.')
     #grasp_choices = ["any", "EdgeGrasp", "WallGrasp", "SurfaceGrasp"]
-    grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
     # parser.add_argument('--grasp', choices=grasp_choices, default=grasp_choices[0],
     #                     help='Which grasp type to use.')
     # parser.add_argument('--grasp_id', type=int, default=-1,
@@ -837,14 +938,13 @@ if __name__ == '__main__':
     marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
     br = tf.TransformBroadcaster()
 
-    global frames_rviz, markers_rviz
     while not rospy.is_shutdown():
         marker_pub.publish(markers_rviz)
         for i, f in enumerate(frames_rviz):
             br.sendTransform(tra.translation_from_matrix(f),
                              tra.quaternion_from_matrix(f),
                              rospy.Time.now(),
-                             "dgb_frame_" + str(i),
+                             "dbg_frame_" + str(i),
                              robot_base_frame)
 
         r.sleep()
