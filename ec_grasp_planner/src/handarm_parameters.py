@@ -246,6 +246,8 @@ class RBOHandO2KUKA(RBOHand2):
 
         self['isForceControllerAvailable'] = False
 
+        self['isInPositionControl'] = True
+
         self['surface_grasp']['object']['final_goal'] = np.array([0.0, 0.0, 0.0, -0.6, 0.0, 0.0, 0.0])
 
         self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.0, 0.0])
@@ -322,3 +324,8 @@ class PISAHandKUKA(RBOHandO2KUKA):
 
         self['surface_grasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
 
+        self['surface_grasp']['object']['hand_max_aperture'] = np.array([0.25])
+
+        self['isInPositionControl'] = False
+
+        self['surface_grasp']['object']['kp'] = 4

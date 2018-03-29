@@ -151,7 +151,7 @@ class GraspPlanner():
 
             # --------------------------------------------------------
             # Turn grasp into hybrid automaton
-            ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
+            ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base, bounding_box,
                                                                     self.handarm_params, self.object_type)
                                                 
         else:
@@ -214,7 +214,7 @@ class GraspPlanner():
 
 
 
-            ha, self.rviz_frames = hybrid_automaton_without_motion_sequence(self.grasp_type, objects_in_base[0], ifco_in_base, wall_in_base,
+            ha, self.rviz_frames = hybrid_automaton_without_motion_sequence(self.grasp_type, objects_in_base[0], bounding_boxes[0], ifco_in_base, wall_in_base,
                                                                     self.handarm_params, self.object_type)
 
         # --------------------------------------------------------
@@ -243,7 +243,7 @@ class GraspPlanner():
         return plan_srv.RunGraspPlannerResponse(ha.xml())
 
 # ================================================================================================
-def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type):
+def create_surface_grasp(object_frame, bounding_box, support_surface_frame, handarm_params, object_type):
 
     # Get the relevant parameters for hand object combination
     if (object_type in handarm_params['surface_grasp']):            
@@ -264,6 +264,10 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     up_speed = params['up_speed']
     go_down_velocity = params['go_down_velocity']
     ee_in_goal_frame = params['ee_in_goal_frame']
+
+    hand_max_aperture = params['hand_max_aperture']
+
+
 
     # Set the initial pose above the object
     goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
@@ -344,9 +348,14 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                         desired_displacement = desired_displacement, 
                                                         force_gradient = force_gradient, 
                                                         desired_force_dimension = desired_force_dimension))
-    else:
-        # if hand is not RBO then create general hand closing mode?
+    elif handarm_params['isInPositionControl']:
+        # if hand is controlled in position mode, then call general hand controller
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
+    else:
+        # if hand is controlled in current mode, then call IIT's controller
+        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([1.0]), kp=np.array([params['kp']]), hand_max_aperture = hand_max_aperture, name  = 'softhand_close', 
+            bounding_box=np.array([bounding_box.x, bounding_box.y, bounding_box.z]), object_weight=np.array([0.4]), object_type='object', object_pose=object_frame))
+
 
 
     # 4b. Switch when hand closing time ends
@@ -381,7 +390,6 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     else:
         # if hand is not RBO then create general hand closing mode?
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = '1'))
-
 
     # 8b. Switch when hand closing time ends
     control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration = hand_opening_time))
@@ -651,7 +659,7 @@ def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
 
 # ================================================================================================
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params, object_type):
+def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, bounding_box, handarm_params, object_type):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
 
@@ -675,18 +683,18 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
     elif grasp_type == 'SurfaceGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type)
+        return create_surface_grasp(T_object_in_base, bounding_box, support_surface_frame, handarm_params, object_type)
     else:
         raise "Unknown grasp type: ", grasp_type
 
 # ================================================================================================
-def hybrid_automaton_without_motion_sequence(grasp_type, T_object_in_base, T_ifco_in_base, T_wall_in_base, handarm_params, object_type):
+def hybrid_automaton_without_motion_sequence(grasp_type, T_object_in_base, bounding_box, T_ifco_in_base, T_wall_in_base, handarm_params, object_type):
 
     print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == '-WallGrasp':
         return create_wall_grasp(T_object_in_base, T_ifco_in_base, T_wall_in_base, handarm_params, object_type)
     elif grasp_type == '-SurfaceGrasp':
-        return create_surface_grasp(T_object_in_base, T_ifco_in_base, handarm_params, object_type)
+        return create_surface_grasp(T_object_in_base, bounding_box, T_ifco_in_base, handarm_params, object_type)
     else:
         raise "Unknown grasp type: ", grasp_type
 
