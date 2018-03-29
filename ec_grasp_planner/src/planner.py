@@ -72,7 +72,6 @@ class GraspPlanner():
         rospy.init_node('ec_planner')
         s = rospy.Service('run_grasp_planner', plan_srv.RunGraspPlanner, lambda msg: self.handle_run_grasp_planner(msg))
         self.tf_listener = tf.TransformListener()
-        self.tf_publisher = tf.TransformBroadcaster()
         self.args = args
 
     # ------------------------------------------------------------------------------------------------
@@ -117,7 +116,6 @@ class GraspPlanner():
 
             robot_base_frame = self.args.robot_base_frame
 
-            object_frame = self.args.object_frame
             object_frame = objects[0].transform
 
             time = rospy.Time(0)
@@ -184,7 +182,6 @@ class GraspPlanner():
             ifco_in_base = camera_in_base.dot(ifco_in_camera.dot(tra.rotation_matrix(math.radians(180.0), [1, 0, 0])))
 
             previous_objects_in_base = []
-            previous_bounding_boxes = []
 
             while True:
                 rospy.wait_for_service('object_pose')
@@ -218,47 +215,8 @@ class GraspPlanner():
 
 
             ha, self.rviz_frames = hybrid_automaton_without_motion_sequence(self.grasp_type, objects_in_base[0], ifco_in_base, wall_in_base,
-                                                                    self.handarm_params, self.object_type, self.tf_listener, self.tf_publisher)
-=======
-        object_frame = objects[0].transform
+                                                                    self.handarm_params, self.object_type)
 
-        time = rospy.Time(0)
-        graph.header.stamp = time
-        object_frame.header.stamp = time
-        bounding_box = objects[0].boundingbox
-
-        # --------------------------------------------------------
-        # Get grasp from graph representation
-        grasp_path = None
-        while grasp_path is None:
-            # Get the geometry graph frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
-            graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
-
-
-            # Get the object frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, object_frame.header.frame_id, time, rospy.Duration(2.0))
-            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)
-            object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
-
-            object_in_base = camera_in_base.dot(object_in_camera)
-
-            print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
-
-            # Find a path in the ECE graph
-            hand_node_id = [n.label for n in graph.nodes].index("Positioning")
-            object_node_id = [n.label for n in graph.nodes].index("Slide")
-
-            grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
-
-            rospy.sleep(0.3)
-
-        # --------------------------------------------------------
-        # Turn grasp into hybrid automaton
-        ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
-                                                                self.handarm_params, self.object_type)
-
->>>>>>> master
         # --------------------------------------------------------
         # Output the hybrid automaton
 
@@ -285,7 +243,7 @@ class GraspPlanner():
         return plan_srv.RunGraspPlannerResponse(ha.xml())
 
 # ================================================================================================
-def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type, tf_listener, tf_publisher):
+def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type):
 
     # Get the relevant parameters for hand object combination
     if (object_type in handarm_params['surface_grasp']):            
@@ -305,48 +263,20 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     down_speed = params['down_speed']
     up_speed = params['up_speed']
     go_down_velocity = params['go_down_velocity']
-
-    # tf_listener.waitForTransform("iit_hand_palm_link", "iiwa_link_hand_palm", rospy.Time.now(), rospy.Duration(1000.0))
-    # ee_in_hand_palm = tf_listener.asMatrix("iit_hand_palm_link", Header(0, rospy.Time(), "iiwa_link_hand_palm"))
-
-    # print("Acquired ee in hand_palm tf")
-
-    # signature_in_hand_palm = tra.translation_matrix([0.0298,-0.003,0.0986]).dot(tra.euler_matrix(0.2938,0.0529, 0.0078))
-
-    # signature_in_ee = signature_in_hand_palm.dot(ee_in_hand_palm)
-
-    # while(True):
-    #     tf_publisher.sendTransform((-0.001, -0.002, 0.003), (0.989, 0.148, -0.026, 0.008), rospy.Time.now(), "gs1", "iiwa_link_hand_palm")
-        # tf_publisher.sendTransform(tra.translation_from_matrix(signature_in_ee), tf.transformations.quaternion_from_matrix(signature_in_ee), rospy.Time.now(), "gs2", "iiwa_link_hand_palm")
-    
-    signature_in_ee = tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013]))
-
-    ee_in_signature = tra.inverse_matrix(signature_in_ee)
-
-    
-    
+    ee_in_goal_frame = params['ee_in_goal_frame']
 
     # Set the initial pose above the object
     goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
     goal_[:3,3] = tra.translation_from_matrix(object_frame) #this does nothing now
     goal_ =  goal_.dot(hand_transform) #this is the pre-grasp transform of the signature frame expressed in the world
 
-    goal_ = goal_.dot(ee_in_signature)
-
-    # while(True):
-    #     # tf_publisher.sendTransform((-0.001, -0.002, 0.003), (0.989, 0.148, -0.026, 0.008), rospy.Time.now(), "gs1", "iiwa_link_hand_palm")
-    #     tf_publisher.sendTransform(tra.translation_from_matrix(signature_in_ee), tf.transformations.quaternion_from_matrix(signature_in_ee), rospy.Time.now(), "gs2", "iiwa_link_hand_palm")
-    #     tf_publisher.sendTransform(tra.translation_from_matrix(goal_), tf.transformations.quaternion_from_matrix(goal_), rospy.Time.now(), "goal", "world")
-    #     tf_publisher.sendTransform(tra.translation_from_matrix(object_frame), tf.transformations.quaternion_from_matrix(object_frame), rospy.Time.now(), "object", "world")
-    
+    goal_ = goal_.dot(ee_in_goal_frame)
 
     #the grasp frame is symmetrical - check which side is nicer to reach
     #this is a hacky first version for our WAM
     zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
     if goal_[0][0]<0:
         goal_ = goal_.dot(zflip_transform)
-
-
 
     # hand pose above object
     pre_grasp_pose = goal_.dot(pregrasp_transform) #this does nothing now
@@ -750,13 +680,13 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         raise "Unknown grasp type: ", grasp_type
 
 # ================================================================================================
-def hybrid_automaton_without_motion_sequence(grasp_type, T_object_in_base, T_ifco_in_base, T_wall_in_base, handarm_params, object_type, tf_listener, tf_publisher):
+def hybrid_automaton_without_motion_sequence(grasp_type, T_object_in_base, T_ifco_in_base, T_wall_in_base, handarm_params, object_type):
 
     print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == '-WallGrasp':
         return create_wall_grasp(T_object_in_base, T_ifco_in_base, T_wall_in_base, handarm_params, object_type)
     elif grasp_type == '-SurfaceGrasp':
-        return create_surface_grasp(T_object_in_base, T_ifco_in_base, handarm_params, object_type, tf_listener, tf_publisher)
+        return create_surface_grasp(T_object_in_base, T_ifco_in_base, handarm_params, object_type)
     else:
         raise "Unknown grasp type: ", grasp_type
 
@@ -907,8 +837,6 @@ if __name__ == '__main__':
                         help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
     parser.add_argument('--robot_base_frame', type=str, default = 'base_link',
                         help='Name of the robot base frame.')
-    parser.add_argument('--object_frame', type=str, default = 'object',
-                        help='Name of the object frame.')
     parser.add_argument('--bypass', action='store_true', default = False,
                         help='Whether to bypass graph.')
     # parser.add_argument('--handarm', type=str, default = 'RBOHand2WAM',
