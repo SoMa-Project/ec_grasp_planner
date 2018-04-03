@@ -1,4 +1,5 @@
 # Grasp Planner based on Environmental Constraint Exploitation
+CAUTION: If you plan on running a specific branch, please read the README.md in that branch. This README.md is only valid for the current branch.
 
 ## Table of Contents
 
@@ -165,14 +166,12 @@ catkin build ec_grasp_planner
 
 ---
 
-## Usage <a name="usage"></a>
+## Starting the planner node <a name="usage"></a>
 
 ```
 planner.py [-h] [--ros_service_call] [--file_output]
-                [--grasp {any,EdgeGrasp,WallGrasp,SurfaceGrasp}]
-                [--grasp_id GRASP_ID] [--rviz]
-                [--robot_base_frame ROBOT_BASE_FRAME]
-                [--object_frame OBJECT_FRAME] [--handarm HANDARM]
+                [--rviz][--robot_base_frame ROBOT_BASE_FRAME]
+                [--object_frame OBJECT_FRAME]
 
 Find path in graph and turn it into a hybrid automaton.
 
@@ -182,24 +181,34 @@ optional arguments:
                         called /update_hybrid_automaton. (default: False)
   --file_output         Whether to write the hybrid automaton to a file called
                         hybrid_automaton.xml. (default: False)
-  --grasp {any,EdgeGrasp,WallGrasp,SurfaceGrasp}
-                        Which grasp type to use. (default: any)
-  --grasp_id GRASP_ID   Which specific grasp to use. Ignores any values < 0.
-                        (default: -1)
   --rviz                Whether to send marker messages that can be seen in
                         RViz and represent the chosen grasping motion.
                         (default: False)
   --robot_base_frame ROBOT_BASE_FRAME
-                        Name of the robot base frame. (default: world)
+                        Name of the robot base frame. (default: base_link)
   --object_frame OBJECT_FRAME
                         Name of the object frame. (default: object)
-  --handarm HANDARM     Python class that contains configuration parameters
-                        for hand and arm-specific properties. (default:
-                        RBOHand2WAM)
-
 ```
-
 ---
+
+This will start the planner node which then waits for a service call.
+
+## Calling the service <a name="usage"></a>
+
+Step 1: start the planner in the background in simulation:
+`rosrun ec_grasp_planner planner.py --rviz --file_output --robot_base_frame world`
+ 
+ for the real world demo in the RBO lab use instead:
+`rosrun ec_grasp_planner planner.py --rviz --file_output`
+
+Step 2, call the rosservice
+`rosservice call /run_grasp_planner "object_type: 'Apple' grasp_type: 'SurfaceGrasp' handarm_type: 'RBOHand2Kuka'"`
+
+object_type can be specified to do certain object-specific behaviours. Right now there is only a default behaviour which is the same for all objects.
+
+grasp_type should be one of {any,EdgeGrasp,WallGrasp,SurfaceGrasp}. In this version only SurfaceGrasp is supported.
+
+handarm_type should match your specific robot/hand combination, i.e. RBOHand2Kuka for the rbo hand mounted omn the KUKA iiwa.  The value must match one of the class names in handarm_parameters.py.
 
 ## Examples  <a name="examples"></a>
 
@@ -217,7 +226,11 @@ rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data
 rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example1.rviz
 
 # select which type of grasp you want
-rosrun ec_grasp_planner planner.py --rviz --robot_base_frame camera_rgb_optical_frame --grasp WallGrasp
+rosrun ec_grasp_planner planner.py --rviz --robot_base_frame camera_rgb_optical_frame
+
+# execute grasp
+rosservice call /run_grasp_planner "object_type: 'Apple' grasp_type: 'SurfaceGrasp' handarm_type: 'RBOHand2Kuka'"
+
 ```
 
 In RViz you should be able to see the geometry graph and the wall grasp published as **visualization_msgs/MarkerArray** under the topic names **geometry_graph_marker** and **planned_grasp_path**:
@@ -244,7 +257,11 @@ rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data
 rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example2.rviz
 
 # select an edge grasp and visualize the result in RViz
-rosrun ec_grasp_planner planner.py --robot_base_frame camera_rgb_optical_frame --grasp EdgeGrasp --rviz
+rosrun ec_grasp_planner planner.py --robot_base_frame camera_rgb_optical_frame --rviz
+
+# execute grasp
+rosservice call /run_grasp_planner "object_type: 'Punnet' grasp_type: 'SurfaceGrasp' handarm_type: 'RBOHand2Kuka'"
+
 ```
 
 Depending on your input the result in RViz could look like this:
@@ -286,14 +303,3 @@ rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rvi
 In RViz you should be able to see the planned surface grasp and in Gazebo the robot moves its hand towards the cylinder until contact (https://youtu.be/Q91U9r83Vl0):
 
 <img src="docs/example3_grasp.png" alt="Grasp" width="250" /> <img src="docs/example3_gazebo_final.png" alt="Gazebo" width="250" />
-
-### Using rosservice call  <a name="example4"></a>
-
-Step 1, start the planner in the background in simulation:
-`rosrun ec_grasp_planner planner.py --rviz --file_output --robot_base_frame world`
-in real life for RBO:
-`rosrun ec_grasp_planner planner.py --rviz --file_output`
-
-Step 2, call with rosservice
-`rosservice call /run_grasp_planner "object_type: 'Apple' grasp_type: 'SurfaceGrasp' handarm_type: 'RBOHand2Kuka'"`
-
