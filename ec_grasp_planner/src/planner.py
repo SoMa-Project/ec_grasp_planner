@@ -90,6 +90,7 @@ class GraspPlanner():
             res = call_vision(self.object_type)
             graph = res.graph
             objects = res.objects.objects
+            print("Objects found: " + str(len(objects)))
         except rospy.ServiceException, e:
             raise rospy.ServiceException("Vision service call failed: %s" % e)
             return plan_srv.RunGraspPlannerResponse("")
@@ -203,7 +204,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
 
     # Set the directions to use TRIK controller with
     # Down speed is positive because it is defined on the EE frame
-    dirDown = tra.translation_matrix([0, 0, -down_speed]);
+    dirDown = tra.translation_matrix([0, 0, down_speed]);
     # Up speed is also positive because it is defined on the world frame
     dirUp = tra.translation_matrix([0, 0, up_speed]);
 
@@ -240,7 +241,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
                                              controller_name='GoDown',
                                              goal_is_relative='1',
                                              name="GoDown",
-                                             reference_frame="world",
+                                             reference_frame="EE",
                                              v_max=go_down_velocity))
 
     force  = np.array([0, 0, downward_force, 0, 0, 0])
