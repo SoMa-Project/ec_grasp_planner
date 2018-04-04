@@ -22,7 +22,6 @@ import smach_ros
 import tf
 from tf import transformations as tra
 import numpy as np
-import tf_conversions.posemath as pm
 
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Pose
@@ -41,15 +40,10 @@ from geometry_graph_msgs.msg import Graph
 
 from ec_grasp_planner import srv as plan_srv
 
-from ifco_pose_estimator import srv as ifco_srv
-from object_segmentation import srv as object_srv
-
 from visualization_msgs.msg import MarkerArray
 from visualization_msgs.msg import Marker
 
-
 from pregrasp_msgs import srv as vision_srv
-
 
 import pyddl
 
@@ -89,134 +83,56 @@ class GraspPlanner():
 
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
-        
-        
+        rospy.wait_for_service('compute_ec_graph')
 
-        # make sure those frames exist and we can transform between them
-        # self.tf_listener.waitForTransform(object_frame, robot_base_frame, rospy.Time(), rospy.Duration(10.0))
+        try:
+            call_vision = rospy.ServiceProxy('compute_ec_graph', vision_srv.ComputeECGraph)
+            res = call_vision(self.object_type)
+            graph = res.graph
+            objects = res.objects.objects
+        except rospy.ServiceException, e:
+            raise rospy.ServiceException("Vision service call failed: %s" % e)
+            return plan_srv.RunGraspPlannerResponse("")
+
+        robot_base_frame = self.args.robot_base_frame
+        object_frame = objects[0].transform
+
+        time = rospy.Time(0)
+        graph.header.stamp = time
+        object_frame.header.stamp = time
+        bounding_box = objects[0].boundingbox
 
         # --------------------------------------------------------
         # Get grasp from graph representation
-        if not self.args.bypass:
-            print("Using graph")
+        grasp_path = None
+        while grasp_path is None:
+            # Get the geometry graph frame in robot base frame
+            self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
+            graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
 
 
-            # this might need to be moved out when our internal vision is merged to ecto
-            rospy.wait_for_service('compute_ec_graph')
+            # Get the object frame in robot base frame
+            self.tf_listener.waitForTransform(robot_base_frame, object_frame.header.frame_id, time, rospy.Duration(2.0))
+            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)
+            object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
 
+            object_in_base = camera_in_base.dot(object_in_camera)
 
-            try:
-                call_vision = rospy.ServiceProxy('compute_ec_graph', vision_srv.ComputeECGraph)
-                res = call_vision(self.object_type)
-                graph = res.graph
-                objects = res.objects.objects
-            except rospy.ServiceException, e:
-                raise rospy.ServiceException("Vision service call failed: %s" % e)
-                return plan_srv.RunGraspPlannerResponse("")
+            print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
 
-            robot_base_frame = self.args.robot_base_frame
+            # Find a path in the ECE graph
+            hand_node_id = [n.label for n in graph.nodes].index("Positioning")
+            object_node_id = [n.label for n in graph.nodes].index("Slide")
 
-            object_frame = objects[0].transform
+            grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
 
-            time = rospy.Time(0)
-            graph.header.stamp = time
-            object_frame.header.stamp = time
-            bounding_box = objects[0].boundingbox
+            rospy.sleep(0.3)
 
-            # --------------------------------------------------------
-            # Get grasp from graph representation
-            grasp_path = None
-            while grasp_path is None:
-                # Get the geometry graph frame in robot base frame
-                self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
-                graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
-
-
-                # Get the object frame in robot base frame
-                self.tf_listener.waitForTransform(robot_base_frame, object_frame.header.frame_id, time, rospy.Duration(2.0))
-                camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)
-                object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
-
-                object_in_base = camera_in_base.dot(object_in_camera)
-
-                print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
-
-                # Find a path in the ECE graph
-                hand_node_id = [n.label for n in graph.nodes].index("Positioning")
-                object_node_id = [n.label for n in graph.nodes].index("Slide")
-
-                grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
-
-                rospy.sleep(0.3)
-
-            # --------------------------------------------------------
-            # Turn grasp into hybrid automaton
-            ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base, bounding_box,
-                                                                    self.handarm_params, self.object_type)
+        # --------------------------------------------------------
+        # Turn grasp into hybrid automaton
+        ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base, bounding_box,
+                                                                self.handarm_params, self.object_type)
                                                 
-        else:
-            print("Bypassing graph")
-
-            # Get the camera frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, "camera", rospy.Time.now(), rospy.Duration(1000.0))
-            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "camera"))
-
-            print("Acquired camera in base tf")
-
-
-            rospy.wait_for_service('ifco_pose')
-            try:
-                compute_ifco_pose = rospy.ServiceProxy('ifco_pose', ifco_srv.ifco_pose)
-                max_tries = 5
-                max_fitness = 0.008
-                publish_ifco = True
-                res_ifco = compute_ifco_pose(max_tries, max_fitness, publish_ifco)
-            except rospy.ServiceException, e:
-                print "Ifco service call failed: %s"%e
-            print "Ifco service call succeeded"
-            
-            # Get the ifco frame in camera frame
-            ifco_in_camera = pm.toMatrix(pm.fromMsg(res_ifco.pose))
-
-            # Get the ifco frame in robot base frame
-            ifco_in_base = camera_in_base.dot(ifco_in_camera.dot(tra.rotation_matrix(math.radians(180.0), [1, 0, 0])))
-
-            previous_objects_in_base = []
-
-            while True:
-                rospy.wait_for_service('object_pose')
-                try:
-                    compute_object_pose = rospy.ServiceProxy('object_pose', object_srv.object_pose)
-                    res_object = compute_object_pose(res_ifco.pose)
-                except rospy.ServiceException, e:
-                    print "Object service call failed: %s"%e
-                    continue
-                print "Object service call succeeded"
-
-                # Get the object frames and their bounding boxes in robot base frame
-                objects_in_base = []
-                bounding_boxes = []
-                for counter, object_in_camera in enumerate(res_object.object_poses):
-                    objects_in_base.append(camera_in_base.dot(pm.toMatrix(pm.fromMsg(object_in_camera))))
-                    bounding_boxes.append(res_object.bounding_boxes[counter])
-
-                for bounding_box in bounding_boxes:
-                    print(bounding_box.x)
-
-                print "Objects found: "
-                print(len(objects_in_base))
-
-                if len(objects_in_base) > 0 and len(objects_in_base) == len(previous_objects_in_base):
-                    break
-                previous_objects_in_base = list(objects_in_base)
-
-            wall_in_base = ifco_in_base.dot(tra.concatenate_matrices(tra.translation_matrix([0.28, 0, 0]),tra.rotation_matrix(math.radians(-90.0), [0, 0, 1]),tra.rotation_matrix(math.radians(90.0), [1, 0, 0])))
-
-
-
-            ha, self.rviz_frames = hybrid_automaton_without_motion_sequence(self.grasp_type, objects_in_base[0], bounding_boxes[0], ifco_in_base, wall_in_base,
-                                                                    self.handarm_params, self.object_type)
-
         # --------------------------------------------------------
         # Output the hybrid automaton
 
@@ -688,17 +604,6 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         raise "Unknown grasp type: ", grasp_type
 
 # ================================================================================================
-def hybrid_automaton_without_motion_sequence(grasp_type, T_object_in_base, bounding_box, T_ifco_in_base, T_wall_in_base, handarm_params, object_type):
-
-    print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
-    if grasp_type == '-WallGrasp':
-        return create_wall_grasp(T_object_in_base, T_ifco_in_base, T_wall_in_base, handarm_params, object_type)
-    elif grasp_type == '-SurfaceGrasp':
-        return create_surface_grasp(T_object_in_base, bounding_box, T_ifco_in_base, handarm_params, object_type)
-    else:
-        raise "Unknown grasp type: ", grasp_type
-
-# ================================================================================================
 def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_labels, verbose = False):
     locations = ['l'+str(i) for i in range(len(graph.nodes))]
 
@@ -845,8 +750,6 @@ if __name__ == '__main__':
                         help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
     parser.add_argument('--robot_base_frame', type=str, default = 'base_link',
                         help='Name of the robot base frame.')
-    parser.add_argument('--bypass', action='store_true', default = False,
-                        help='Whether to bypass graph.')
     # parser.add_argument('--handarm', type=str, default = 'RBOHand2WAM',
     #                     help='Python class that contains configuration parameters for hand and arm-specific properties.')
 
