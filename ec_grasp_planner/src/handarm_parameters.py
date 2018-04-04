@@ -239,6 +239,7 @@ class RBOHandO2KUKA(RBOHand2):
         self['surface_grasp']['object']['hand_closing_duration'] = 6
             
         self['surface_grasp']['object']['hand_opening_duration'] = 2
+
         # time of soft hand closing
         self['surface_grasp']['object']['down_speed'] = 0.05
         self['surface_grasp']['object']['up_speed'] = 0.05
@@ -247,6 +248,8 @@ class RBOHandO2KUKA(RBOHand2):
         self['isForceControllerAvailable'] = False
 
         self['isInPositionControl'] = True
+        #not used for rbo but needed in current implementation
+        self['surface_grasp']['object']['hand_max_aperture'] = np.array([0.0])
 
         self['surface_grasp']['object']['final_goal'] = np.array([0.0, 0.0, 0.0, -0.6, 0.0, 0.0, 0.0])
 
