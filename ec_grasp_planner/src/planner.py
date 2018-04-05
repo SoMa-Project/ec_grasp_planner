@@ -246,6 +246,9 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
 
     force  = np.array([0, 0, downward_force, 0, 0, 0])
     # 3b. Switch when goal is reached
+
+    # 4b. Switch when hand closing time ends
+    # control_sequence.append(ha.TimeSwitch('GoDown', 'softhand_close', duration = 1))
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                  'softhand_close',
                                                  goal = force,
@@ -301,10 +304,12 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     pre_placement_offset = [-0.10,	0.40,	0.23] #placement pose relative to the ifco position    
     
     #new parameters
-    ifco_pos = tra.translation_from_matrix(support_surface_frame)
-    pre_placement_pose = np.dot(tra.translation_matrix(ifco_pos + pre_placement_offset),tra.rotation_matrix(math.radians(180),[1, 0 , 0]))    
-    #pre_placement_joint_config = np.array([0.70, 0, 0, -1.57, 0, 1.20, 0])  
-    placement_going_down_time = 4  
+    # ifco_pos = tra.translation_from_matrix(support_surface_frame)
+    # pre_placement_pose = np.dot(tra.translation_matrix(ifco_pos + pre_placement_offset),tra.rotation_matrix(math.radians(180),[1, 0 , 0]))    
+    # pre_placement_joint_config = np.array([0.70, 0, 0, -1.57, 0, 1.20, 0])  
+    placement_going_down_time = 2  
+
+    pre_placement_pose = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.33793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
 
     # 7.1. Go to Preplacement
     control_sequence.append(ha.InterpolatedHTransformControlMode(pre_placement_pose, controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement'))
