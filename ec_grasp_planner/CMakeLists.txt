@@ -71,6 +71,7 @@ find_package(catkin REQUIRED COMPONENTS
  generate_messages(
    DEPENDENCIES
    std_msgs
+   geometry_graph_msgs
  )
 
 ################################################
@@ -105,7 +106,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ec_grasp_planner
-#  CATKIN_DEPENDS geometry_graph_msgs hybrid_automaton_msgs
+  CATKIN_DEPENDS geometry_graph_msgs hybrid_automaton_msgs
 #  DEPENDS system_lib
 )
 

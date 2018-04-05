@@ -19,16 +19,16 @@ class BaseHandArm(dict):
         self['edge_grasp'] = {}
         self['surface_grasp'] = {}
 
-        # surface grasp parameters for differnt objects
+        # surface grasp parameters for different objects
         # 'object' is the default parameter set
         self['surface_grasp']['object'] = {}
         self['surface_grasp']['punet'] = {}
 
-        # wall grasp parameters for differnt objects
+        # wall grasp parameters for different objects
         self['wall_grasp']['object'] = {}
         self['wall_grasp']['object'] = {}
 
-        # wall grasp parameters for differnt objects
+        # wall grasp parameters for different objects
         self['edge_grasp']['object'] = {}
         self['edge_grasp']['object'] = {}
 
@@ -43,10 +43,10 @@ class RBOHand2(BaseHandArm):
         self['mesh_file_scale'] = 0.1
 
 
-# This map defines all grasp parameter such as poses and configurations for a specific robot system
+# This map defines all grasp parameters such as poses and configurations for a specific robot system
 
 # Define this map for your system if you want to port the planner
-#Rbo hand 2 (P24 fingers and rotated palm) mounted on WAM.
+# Rbo hand 2 (P24 fingers and rotated palm) mounted on WAM.
 class RBOHandP24WAM(RBOHand2):
     def __init__(self, **kwargs):
         super(RBOHandP24WAM, self).__init__()
@@ -60,7 +60,7 @@ class RBOHandP24WAM(RBOHand2):
         # transformation (only rotation) between object frame and hand palm frame
         # the convention at our lab is: x along the fingers and z normal on the palm.
         # please follow the same convention
-        self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, -0.05, 0.3]),
+        self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
                                                                                 tra.concatenate_matrices(
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(90.), [0, 0, 1]),
@@ -69,7 +69,7 @@ class RBOHandP24WAM(RBOHand2):
 
         # above the object, in hand palm frame
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0.0, 0, 0.0]), tra.rotation_matrix(math.radians(10.0), [0, 1, 0]))
+            tra.translation_matrix([-0.05, 0, 0.0]), tra.rotation_matrix(math.radians(10.0), [0, 1, 0]))
 
         # at grasp position, in hand palm frame
         self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0.0, 0.05]),
@@ -88,7 +88,7 @@ class RBOHandP24WAM(RBOHand2):
                                                                                                 [0, 1, 0]))
 
         # the maximum allowed force for pushing down
-        self['surface_grasp']['object']['downward_force'] = 7. # might be +10/-7 ??
+        self['surface_grasp']['object']['downward_force'] = 4 # might be +10/-7 ??
 
         #drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
@@ -103,6 +103,8 @@ class RBOHandP24WAM(RBOHand2):
         # time of soft hand closing
         self['surface_grasp']['object']['down_speed'] = 0.35
         self['surface_grasp']['object']['up_speed'] = 0.35
+        self['surface_grasp']['object']['go_down_velocity'] = np.array(
+            [0.125, 0.06])  # first value: rotational, second translational
 
 
         #####################################################################################
@@ -161,84 +163,53 @@ class RBOHandP24WAM(RBOHand2):
         self['wall_grasp']['object']['wall_force'] = 3.0
 
 
+class RBOHandP11WAM(RBOHandP24WAM):
+    def __init__(self, **kwargs):
+        RBOHandP24WAM.__init__(self, **kwargs)
+
+class RBOHandP24_opposableThumbWAM(RBOHand2):
+    def __init__(self, **kwargs):
+        RBOHandP24WAM.__init__(self, **kwargs)
 
 #Rbo hand 2 (Ocado version with long fingers and rotated palm) mounted on WAM.
-class RBOHandO2WAM(RBOHand2):
+class RBOHandO2WAM(RBOHandP24WAM):
     def __init__(self, **kwargs):
         super(RBOHandO2WAM, self).__init__()
 
-        # you can define a default strategy for all objects by setting the second field to  'object'
-        # for object-specific strategies set it to the object label
-
-        # transformation between object frame and hand palm frame
-        # the convention at our lab is: x along the fingers and z normal on the palm.
-        # please follow the same convention
-        self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
-                                                                                tra.concatenate_matrices(
-                                                                                    tra.rotation_matrix(
-                                                                                        math.radians(90.), [0, 0, 1]),
-                                                                                    tra.rotation_matrix(
-                                                                                        math.radians(180.), [1, 0, 0])))
-
+        # This setup can grasp an Ocado punnet from IFCO
         # above the object, in hand palm frame
+        # palm shifted back more than P24 due to increased size of fingers
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0, 0, 0.0]), tra.rotation_matrix(math.radians(-30.0), [0, 1, 0]))
+            tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(20.0), [0, 1, 0]))
 
-        # at grasp position, in hand palm frame
-        self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0.0, 0.05]),
-                                                                                 tra.rotation_matrix(math.radians(30.0),
-                                                                                                     [0, 1, 0]))
-        # first motion after grasp, in hand palm frame only rotation
-        self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.0, 0.0, 0.0]),
-            tra.rotation_matrix(math.radians(-15.),
-                                [0, 1, 0]))
-
-        # second motion after grasp, in hand palm frame
-        self['surface_grasp']['object']['go_up_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0, -0.3]),
-                                                                            tra.rotation_matrix(math.radians(-20.),
-                                                                                                [0, 1, 0]))
-        # the maximum allowed force for pushing down
-        self['surface_grasp']['object']['downward_force'] = 7.
-
-        #drop configuration - this is system specific!
-        self['surface_grasp']['object']['drop_off_config'] = np.array(
-            [0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
-
-        #synergy type for soft hand closing
-        self['surface_grasp']['object']['hand_closing_synergy'] = 1
-
-        #time of soft hand closing
-        self['surface_grasp']['object']['hand_closing_duration'] = 5
-
-        # time of soft hand closing
-        self['surface_grasp']['object']['down_speed'] = 0.35
-        self['surface_grasp']['object']['up_speed'] = 0.35
-
-        self['isForceControllerAvailable'] = True
+        # increase rotation so fingers ar almost orthogonal to the punnet
+        self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.03, 0.0, 0.05]),
+            tra.rotation_matrix(math.radians(50.0),
+            tra.rotation_matrix(math.radians(50.0),
+                                [0, 1, 0])))
 
 
 class RBOHandO2KUKA(RBOHand2):
     def __init__(self, **kwargs):
         super(RBOHandO2KUKA, self).__init__()
 
-        hand_name = rospy.get_param('hand_name', 'iit_hand')
         # you can define a default strategy for all objects by setting the second field to  'object'
         # for object-specific strategies set it to the object label
 
         # transformation between object frame and hand palm frame
         # the convention at our lab is: x along the fingers and z normal on the palm.
         # please follow the same convention
+        
         self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.15]),
                                                                                 tra.concatenate_matrices(
                                                                                     tra.rotation_matrix(
-                                                                                        math.radians(0.), [0, 0, 1]),
+                                                                                        math.radians(90.), [0, 0, 1]),
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(180.), [1, 0, 0])))
-
         # above the object, in hand palm frame
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0, 0, 0.0]), tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
+            tra.translation_matrix([0.0, 0.0, 0.0]), tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
 
         # at grasp position, in hand palm frame
         self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0.0, 0.05]),
@@ -265,28 +236,30 @@ class RBOHandO2KUKA(RBOHand2):
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
 
         #time of soft hand closing
-        if hand_name=="rbo_hand":
-            self['surface_grasp']['object']['hand_closing_duration'] = 6
-        else:
-            self['surface_grasp']['object']['hand_closing_duration'] = 2
-
+        self['surface_grasp']['object']['hand_closing_duration'] = 6
+            
         self['surface_grasp']['object']['hand_opening_duration'] = 2
+
         # time of soft hand closing
         self['surface_grasp']['object']['down_speed'] = 0.05
         self['surface_grasp']['object']['up_speed'] = 0.05
+        self['surface_grasp']['object']['go_down_velocity'] = np.array([0.125, 0.06]) # first value: rotational, second translational only RBO relevent 
 
         self['isForceControllerAvailable'] = False
 
+        self['isInPositionControl'] = True
+        #not used for rbo but needed in current implementation
+        self['surface_grasp']['object']['hand_max_aperture'] = np.array([0.0])
+
         self['surface_grasp']['object']['final_goal'] = np.array([0.0, 0.0, 0.0, -0.6, 0.0, 0.0, 0.0])
+
+        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.0, 0.0])
 
         #####################################################################################
         # below are parameters for wall grasp with PO2 fingers (Ocado RBO hand)
         #####################################################################################
         #time of soft hand closing
-        if hand_name=="rbo_hand":
-            self['wall_grasp']['object']['hand_closing_duration'] = 7
-        else:
-            self['wall_grasp']['object']['hand_closing_duration'] = 2
+        self['wall_grasp']['object']['hand_closing_duration'] = 6
 
         self['wall_grasp']['object']['hand_opening_duration'] = 2
 
@@ -341,3 +314,21 @@ class RBOHandO2KUKA(RBOHand2):
         self['wall_grasp']['object']['go_up_velocity'] = 0.1 #first value: rotational, second translational
         self['wall_grasp']['object']['slide_velocity'] = 0.08
         self['wall_grasp']['object']['wall_force'] = 2.5
+
+class PISAHandKUKA(RBOHandO2KUKA):
+    def __init__(self, **kwargs):
+        super(PISAHandKUKA, self).__init__()
+
+        self['surface_grasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.15])
+
+        self['surface_grasp']['object']['hand_closing_duration'] = 2
+
+        self['wall_grasp']['object']['hand_closing_duration'] = 2
+
+        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+
+        self['surface_grasp']['object']['hand_max_aperture'] = np.array([0.25])
+
+        self['isInPositionControl'] = False
+
+        self['surface_grasp']['object']['kp'] = 4
