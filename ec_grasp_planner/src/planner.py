@@ -301,7 +301,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     # # 7.b  Switch when joint is reached
     # control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'softhand_open', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))
 
-    pre_placement_offset = [-0.10,	0.40,	0.23] #placement pose relative to the ifco position    
+    # pre_placement_offset = [-0.10,	0.40,	0.23] #placement pose relative to the ifco position    
     
     #new parameters
     # ifco_pos = tra.translation_from_matrix(support_surface_frame)
@@ -319,7 +319,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     control_sequence.append(ha.FramePoseSwitch('Preplacement', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
 
     # 7.2. Go Down
-    control_sequence.append(ha.InterpolatedHTransformControlMode(dirDown, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(-dirDown, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
  
     # 7.2b. Switch after a certain amount of time
     control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = placement_going_down_time))
@@ -341,7 +341,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     finishedMode = ha.ControlMode(name  = 'finished')
     finishedSet = ha.ControlSet()
     finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'InterpolatedJointController', goal  = np.zeros(7),
-                                   goal_is_relative = 0, v_max = '[0,0]', a_max = '[0,0]'))
+                                   goal_is_relative = 1, v_max = '[0,0]', a_max = '[0,0]'))
     finishedMode.set(finishedSet)  
     control_sequence.append(finishedMode)    
     
