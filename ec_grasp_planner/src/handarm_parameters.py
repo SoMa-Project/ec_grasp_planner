@@ -242,7 +242,7 @@ class RBOHandO2KUKA(RBOHand2):
 
         # time of soft hand closing
         self['surface_grasp']['object']['down_speed'] = 0.05
-        self['surface_grasp']['object']['up_speed'] = 0.05
+        self['surface_grasp']['object']['up_speed'] = 0.1
         self['surface_grasp']['object']['go_down_velocity'] = np.array([0.125, 0.06]) # first value: rotational, second translational only RBO relevent 
 
         self['isForceControllerAvailable'] = False
@@ -331,4 +331,4 @@ class PISAHandKUKA(RBOHandO2KUKA):
 
         self['isInPositionControl'] = False
 
-        self['surface_grasp']['object']['kp'] = 4
+        self['surface_grasp']['object']['kp'] = 6

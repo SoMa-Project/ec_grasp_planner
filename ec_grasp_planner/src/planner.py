@@ -15,6 +15,7 @@ import datetime
 
 from random import randint
 from random import uniform
+from random import randrange
 
 import smach
 import smach_ros
@@ -96,12 +97,14 @@ class GraspPlanner():
             return plan_srv.RunGraspPlannerResponse("")
 
         robot_base_frame = self.args.robot_base_frame
-        object_frame = objects[0].transform
+
+        object_id = randrange(0,len(objects))
+        object_frame = objects[object_id].transform
 
         time = rospy.Time(0)
         graph.header.stamp = time
         object_frame.header.stamp = time
-        bounding_box = objects[0].boundingbox
+        bounding_box = objects[object_id].boundingbox
 
         # --------------------------------------------------------
         # Get grasp from graph representation
@@ -307,9 +310,9 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     # ifco_pos = tra.translation_from_matrix(support_surface_frame)
     # pre_placement_pose = np.dot(tra.translation_matrix(ifco_pos + pre_placement_offset),tra.rotation_matrix(math.radians(180),[1, 0 , 0]))    
     # pre_placement_joint_config = np.array([0.70, 0, 0, -1.57, 0, 1.20, 0])  
-    placement_going_down_time = 2  
+    placement_going_down_time = 4  
 
-    pre_placement_pose = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.33793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+    pre_placement_pose = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
 
     # 7.1. Go to Preplacement
     control_sequence.append(ha.InterpolatedHTransformControlMode(pre_placement_pose, controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement'))
@@ -319,7 +322,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     control_sequence.append(ha.FramePoseSwitch('Preplacement', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
 
     # 7.2. Go Down
-    control_sequence.append(ha.InterpolatedHTransformControlMode(-dirDown, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(-2 * dirDown, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
  
     # 7.2b. Switch after a certain amount of time
     control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = placement_going_down_time))
