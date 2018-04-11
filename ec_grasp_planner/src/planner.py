@@ -716,6 +716,37 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
     return plan
 
 # ================================================================================================
+def grasp_heuristics(ifco_pos, object_pos):
+    #ifco dimensions
+    xd = 0.4 
+    yd = 0.8 
+    #boundary width from which to go for a wall_grasp
+    e = 0.1
+    object_pos_in_ifco = tra.translation_from_matrix((object_pos - ifco_pos))
+    x = object_pos_in_ifco[0]
+    y = object_pos_in_ifco[1]
+
+    #                      ROBOT
+    #                      wall4         
+    #                 =============
+    #          wall3  |           |  wall1
+    #                 |           |
+    #                 =============
+    #                      wall2         
+
+    if abs(x) < xd - e and abs(y) < yd - e:
+        return "surface_grasp"
+    elif y > yd - e:
+        return "wall1"
+    elif y < -yd + e:
+        return "wall3"
+    elif x > xd - e:
+        return "wall2"
+    elif x < -xd + e:
+        return "wall4"
+    else:
+        return "object not in ifco"
+# ================================================================================================
 def publish_rviz_markers(frames, frame_id, handarm_params):
 
     timestamp = rospy.Time.now()
