@@ -186,8 +186,7 @@ class RBOHandO2WAM(RBOHandP24WAM):
         self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.03, 0.0, 0.05]),
             tra.rotation_matrix(math.radians(50.0),
-            tra.rotation_matrix(math.radians(50.0),
-                                [0, 1, 0])))
+                                [0, 1, 0]))
 
 
 #TODO: this needs to be adapted similar to match the frames above!
