@@ -132,9 +132,13 @@ class GraspPlanner():
 
             rospy.sleep(0.3)
 
+
+        self.tf_listener.waitForTransform(robot_base_frame, "/ifco", rospy.Time.now(), rospy.Duration(100.0))
+        ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "ifco"))
+
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
-        ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base, bounding_box,
+        ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, ifco_in_base, object_in_base, bounding_box,
                                                                 self.handarm_params, self.object_type)
                                                 
         # --------------------------------------------------------
@@ -637,7 +641,7 @@ def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
 
 # ================================================================================================
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, bounding_box, handarm_params, object_type):
+def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, ifco_in_base, T_object_in_base, bounding_box, handarm_params, object_type):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
 
@@ -645,8 +649,12 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
     #grasp_frame = grasp_frames[grasp_type]
     support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
     support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-    grasp_type, wall_id = grasp_heuristics(support_surface_frame, T_object_in_base)
 
+    
+    
+    
+    grasp_type, wall_id = grasp_heuristics(ifco_in_base, T_object_in_base)
+    print("GRASP HEURISTICS " + grasp_type + " " + wall_id)
     print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == 'EdgeGrasp':
         raise "Edge grasp is not supported yet"
@@ -754,10 +762,12 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
 # ================================================================================================
 def grasp_heuristics(ifco_pos, object_pos):
     #ifco dimensions
-    xd = 0.38 
-    yd = 0.56 
+    xd = 0.38/2 
+    yd = 0.56/2 
     #boundary width from which to go for a wall_grasp
-    e = 0.1
+    e = 0.15
+    print(object_pos)
+    print(ifco_pos)
     object_pos_in_ifco = tra.translation_from_matrix((object_pos - ifco_pos))
     x = object_pos_in_ifco[0]
     y = object_pos_in_ifco[1]
@@ -769,7 +779,7 @@ def grasp_heuristics(ifco_pos, object_pos):
     #                 |           |
     #                 =============
     #                      wall2         
-
+    print("GRASP HEURISTICS x:" + str(x) + " y:" + str(y))
     if abs(x) < xd - e and abs(y) < yd - e:
         return "SurfaceGrasp", "NoWall"
     elif y > yd - e:
@@ -796,7 +806,7 @@ def get_wall_tf(wall1_tf, wall_id):
     elif wall_id == 'wall4':
         rotation_angle = 90
     return tra.concatenate_matrices(wall1_tf, tra.rotation_matrix(
-                    math.radians(rotation_angle), [0, 0, 1]))
+                    math.radians(rotation_angle), [0, 1, 0]))
 
 # ================================================================================================
 def publish_rviz_markers(frames, frame_id, handarm_params):
