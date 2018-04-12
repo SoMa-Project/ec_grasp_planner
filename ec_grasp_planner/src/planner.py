@@ -71,14 +71,9 @@ class GraspPlanner():
 
     # ------------------------------------------------------------------------------------------------
     def handle_run_grasp_planner(self, req):
-
+        
         print('Handling grasp planner service call')
         self.object_type = req.object_type
-        self.grasp_type = req.grasp_type
-        grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
-        if self.grasp_type not in grasp_choices:
-            raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp]")
-            return
 
         #todo: more failure handling here for bad service parameters
 
@@ -122,6 +117,20 @@ class GraspPlanner():
 
             object_in_base = camera_in_base.dot(object_in_camera)
 
+            self.tf_listener.waitForTransform(robot_base_frame, "/ifco", rospy.Time.now(), rospy.Duration(100.0))
+            ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "ifco"))
+            #get grasp type
+            self.grasp_type = req.grasp_type
+            if self.grasp_type == 'UseHeuristics':
+                self.grasp_type, wall_id = grasp_heuristics(ifco_in_base, object_in_base)
+                print("GRASP HEURISTICS " + self.grasp_type + " " + wall_id)
+            else:                
+                wall_id = "wall1"
+                grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
+                if self.grasp_type not in grasp_choices:
+                    raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp]")
+                    return
+
             print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
 
             # Find a path in the ECE graph
@@ -133,13 +142,12 @@ class GraspPlanner():
             rospy.sleep(0.3)
 
 
-        self.tf_listener.waitForTransform(robot_base_frame, "/ifco", rospy.Time.now(), rospy.Duration(100.0))
-        ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "ifco"))
+        
 
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
-        ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, ifco_in_base, object_in_base, bounding_box,
-                                                                self.handarm_params, self.object_type)
+        ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base, bounding_box,
+                                                                self.handarm_params, self.object_type, wall_id)
                                                 
         # --------------------------------------------------------
         # Output the hybrid automaton
@@ -641,20 +649,15 @@ def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
 
 # ================================================================================================
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, ifco_in_base, T_object_in_base, bounding_box, handarm_params, object_type):
+def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, bounding_box, handarm_params, object_type, wall_id):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
 
-    #grasp_type = graph.nodes[int(motion_sequence[-1].sig[1][1:])].label
+    grasp_type = graph.nodes[int(motion_sequence[-1].sig[1][1:])].label
     #grasp_frame = grasp_frames[grasp_type]
     support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
-    support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-
-    
-    
-    
-    grasp_type, wall_id = grasp_heuristics(ifco_in_base, T_object_in_base)
-    print("GRASP HEURISTICS " + grasp_type + " " + wall_id)
+    support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))       
+       
     print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == 'EdgeGrasp':
         raise "Edge grasp is not supported yet"
@@ -765,7 +768,7 @@ def grasp_heuristics(ifco_pos, object_pos):
     xd = 0.38/2 
     yd = 0.56/2 
     #boundary width from which to go for a wall_grasp
-    e = 0.15
+    e = 0.1
     print(object_pos)
     print(ifco_pos)
     object_pos_in_ifco = tra.translation_from_matrix((object_pos - ifco_pos))
@@ -779,7 +782,7 @@ def grasp_heuristics(ifco_pos, object_pos):
     #                 |           |
     #                 =============
     #                      wall2         
-    print("GRASP HEURISTICS x:" + str(x) + " y:" + str(y))
+    #print("GRASP HEURISTICS x:" + str(x) + " y:" + str(y))
     if abs(x) < xd - e and abs(y) < yd - e:
         return "SurfaceGrasp", "NoWall"
     elif y > yd - e:
