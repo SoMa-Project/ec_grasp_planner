@@ -612,8 +612,8 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
     #grasp_type = graph.nodes[int(motion_sequence[-1].sig[1][1:])].label
     #grasp_frame = grasp_frames[grasp_type]
     support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
-    ifco_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-    grasp_type, wall_id = grasp_heuristics(ifco_frame, T_object_in_base)
+    support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
+    grasp_type, wall_id = grasp_heuristics(support_surface_frame, T_object_in_base)
 
     print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == 'EdgeGrasp':
@@ -629,11 +629,11 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         wall_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         wall1_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(wall_frame_node.transform))
         wall_frame = get_wall_tf(wall1_frame, wall_id)
-        return create_wall_grasp(T_object_in_base, ifco_frame, wall_frame, handarm_params, object_type)
+        return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame, handarm_params, object_type)
     elif grasp_type == 'SurfaceGrasp':
         #support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         #support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-        return create_surface_grasp(T_object_in_base, bounding_box, ifco_frame, handarm_params, object_type)
+        return create_surface_grasp(T_object_in_base, bounding_box, support_surface_frame, handarm_params, object_type)
     else:
         raise "Unknown grasp type: ", grasp_type
 
