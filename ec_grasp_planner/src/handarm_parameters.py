@@ -332,3 +332,5 @@ class PISAHandKUKA(RBOHandO2KUKA):
         self['isInPositionControl'] = False
 
         self['surface_grasp']['object']['kp'] = 6
+        self['wall_grasp']['object']['kp'] = 6
+        self['wall_grasp']['object']['hand_max_aperture'] = np.array([0.25])
