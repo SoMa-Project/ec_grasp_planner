@@ -327,8 +327,10 @@ class PISAHandKUKA(RBOHandO2KUKA):
 
         self['surface_grasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
 
-        self['surface_grasp']['object']['hand_max_aperture'] = np.array([0.25])
+        self['surface_grasp']['object']['hand_max_aperture'] = 0.25
 
         self['isInPositionControl'] = False
 
         self['surface_grasp']['object']['kp'] = 6
+        self['wall_grasp']['object']['kp'] = 6
+        self['wall_grasp']['object']['hand_max_aperture'] = 0.25
