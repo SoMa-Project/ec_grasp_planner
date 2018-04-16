@@ -46,6 +46,8 @@ from visualization_msgs.msg import Marker
 
 from pregrasp_msgs import srv as vision_srv
 
+from xper_data import srv as xper_srv
+
 import pyddl
 
 import rospkg
@@ -131,6 +133,13 @@ class GraspPlanner():
                     obj_bbox_uncertainty_offset = self.handarm_params['object']['obj_bbox_uncertainty_offset']
                 self.grasp_type, wall_id = grasp_heuristics(ifco_in_base, object_in_base, bounding_box, obj_bbox_uncertainty_offset)
                 print("GRASP HEURISTICS " + self.grasp_type + " " + wall_id)
+
+                call_xper = rospy.ServiceProxy('pregrasp_pose', xper_srv.ProvidePreGraspPose)
+                res = call_xper(pm.toMsg(pm.fromMatrix(ifco_in_base)), pm.toMsg(pm.fromMatrix(object_in_base)))
+                print("REACHABILITY & EXPERIMENTS node proposes a " + res.grasp_type + " grasp")
+                print("approach_direction: " + str(res.approach_direction))
+                print("hand_orientation: " + str(res.hand_orientation))
+                print("plane_orientation: " + str(res.plane_orientation))
             else:                
                 wall_id = "wall1"
                 grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
