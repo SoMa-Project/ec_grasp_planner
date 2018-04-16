@@ -191,7 +191,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     place_time = handarm_params['place_duration']    
     down_IFCO_speed = handarm_params['down_IFCO_speed']
     up_IFCO_speed = handarm_params['up_IFCO_speed']
-    down_tote_speed = handarm_params['down_IFCO_speed']
+    down_tote_speed = handarm_params['down_tote_speed']
     
 
 
@@ -213,7 +213,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     # Up speed is also positive because it is defined on the world frame
     up_IFCO_twist = tra.translation_matrix([0, 0, up_IFCO_speed]);
     # Down speed is negative because it is defined on the world frame
-    down_IFCO_twist = tra.translation_matrix([0, 0, -down_tote_speed]);
+    down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed]);
 
     # Set the frames to visualize with RViz
     rviz_frames = []
@@ -235,7 +235,8 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
                                              controller_name='GoDown',
                                              goal_is_relative='1',
                                              name="GoDown",
-                                             reference_frame="EE"))
+                                             reference_frame="EE",
+                                             v_max=down_IFCO_speed))
 
     # 2b. Switch when force-torque sensor is triggered
     force  = np.array([0, 0, downward_force, 0, 0, 0])
@@ -281,7 +282,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     control_sequence.append(ha.FramePoseSwitch('Preplacement', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
 
     # 6. Go Down
-    control_sequence.append(ha.InterpolatedHTransformControlMode(down_tote_speed, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(down_tote_twist, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
  
     # 6b. Switch after a certain amount of time
     control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = place_time))
@@ -338,7 +339,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     # Up speed is also positive because it is defined on the world frame
     up_IFCO_twist = tra.translation_matrix([0, 0, up_IFCO_speed]);
     # Down speed is negative because it is defined on the world frame
-    down_IFCO_twist = tra.translation_matrix([0, 0, -down_tote_speed]);
+    down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed]);
     # Slide speed is positive because it is defined on the EE frame
     slide_IFCO_twist = tra.translation_matrix([0, 0, slide_IFCO_speed]);
 
@@ -440,7 +441,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     control_sequence.append(ha.FramePoseSwitch('Preplacement', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
 
     # 8. Go Down
-    control_sequence.append(ha.InterpolatedHTransformControlMode(down_tote_speed, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(down_tote_twist, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
  
     # 8b. Switch after a certain amount of time
     control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = place_time))

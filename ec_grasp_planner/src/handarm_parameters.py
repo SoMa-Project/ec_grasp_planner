@@ -190,7 +190,7 @@ class RBOHandO2WAM(RBOHandP24WAM):
                                 [0, 1, 0])))
 
 
-class KUKA(RBOHand2):
+class KUKA(BaseHandArm):
     def __init__(self, **kwargs):
         super(KUKA, self).__init__()
 
@@ -247,6 +247,10 @@ class RBOHandO2KUKA(KUKA):
         # RBO specific params irrespective of grasp type 
         ####################################################################################
 
+        self['mesh_file'] = "package://ec_grasp_planner/data/softhand_right_colored.dae"
+
+        self['mesh_file_scale'] = 0.1
+        
         self['hand_closing_duration'] = 6
 
         self['hand_opening_duration'] = 2
