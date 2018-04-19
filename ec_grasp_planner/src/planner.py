@@ -175,17 +175,27 @@ class GraspPlanner():
         return plan_srv.RunGraspPlannerResponse(ha.xml())
 
 # ================================================================================================
+def getParam(obj_type_params, obj_params, paramKey):
+    param = obj_type_params.get(paramKey)
+    if param is None:
+        param = obj_params.get(paramKey)
+    return param
+
+
+# ================================================================================================
 def create_surface_grasp(object_frame, bounding_box, support_surface_frame, handarm_params, object_type):
 
     # Get the relevant parameters for hand object combination
+    obj_type_params = {}
+    obj_params = {}
     if (object_type in handarm_params['surface_grasp']):            
-        params = handarm_params['surface_grasp'][object_type]
-    else:
-        params = handarm_params['surface_grasp']['object']
+        obj_type_params = handarm_params['surface_grasp'][object_type]
+    if 'object' in handarm_params['surface_grasp']:
+        obj_params = handarm_params['surface_grasp']['object']
 
-    hand_transform = params['hand_transform']
-    downward_force = params['downward_force']
-    ee_in_goal_frame = params['ee_in_goal_frame']
+    hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')
+    downward_force = getParam(obj_type_params, obj_params, 'downward_force')
+    ee_in_goal_frame = getParam(obj_type_params, obj_params, 'ee_in_goal_frame')
 
     lift_time = handarm_params['lift_duration']
     place_time = handarm_params['place_duration']    
@@ -314,17 +324,19 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
 def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_frame, handarm_params, object_type):
 
     # Get the parameters from the handarm_parameters.py file
-    if (object_type in handarm_params['wall_grasp']):
-        params = handarm_params['wall_grasp'][object_type]
-    else:
-        params = handarm_params['wall_grasp']['object']
+    obj_type_params = {}
+    obj_params = {}
+    if (object_type in handarm_params['surface_grasp']):            
+        obj_type_params = handarm_params['surface_grasp'][object_type]
+    if 'object' in handarm_params['surface_grasp']:
+        obj_params = handarm_params['surface_grasp']['object']
 
-    hand_transform = params['hand_transform']
-    downward_force = params['downward_force']
-    wall_force = params['wall_force']
-    slide_IFCO_speed = params['slide_speed']
-    pre_approach_transform = params['pre_approach_transform']
-    post_grasp_transform = params['post_grasp_transform']
+    hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')
+    downward_force = getParam(obj_type_params, obj_params, 'downward_force')
+    wall_force = getParam(obj_type_params, obj_params, 'wall_force')
+    slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
+    pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
+    post_grasp_transform = getParam(obj_type_params, obj_params, 'post_grasp_transform')
 
     lift_time = handarm_params['lift_duration']
     place_time = handarm_params['place_duration']    
