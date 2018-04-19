@@ -22,14 +22,12 @@ class BaseHandArm(dict):
         # surface grasp parameters for different objects
         # 'object' is the default parameter set
         self['surface_grasp']['object'] = {}
-        self['surface_grasp']['punet'] = {}
+        self['surface_grasp']['cucumber'] = {}
 
         # wall grasp parameters for different objects
         self['wall_grasp']['object'] = {}
-        self['wall_grasp']['object'] = {}
 
         # wall grasp parameters for different objects
-        self['edge_grasp']['object'] = {}
         self['edge_grasp']['object'] = {}
 
 
@@ -302,9 +300,9 @@ class PISAHandKUKA(KUKA):
 
         self['surface_grasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.15])
 
-        # self['surface_grasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
 
-        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+        self['surface_grasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
 
         self['surface_grasp']['object']['kp'] = 6
 
