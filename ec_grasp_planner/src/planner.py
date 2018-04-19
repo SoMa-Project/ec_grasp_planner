@@ -263,7 +263,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                         desired_force_dimension = desired_force_dimension))
     else:
         # if hand is not RBO then create general hand closing mode?
-        control_sequence.append(ha.SimpleRBOHandControlMode(goal = np.array([1])))
+        control_sequence.append(ha.SimpleRBOHandControlMode(name  = 'softhand_close', goal = np.array([1])))
 
 
     # 4b. Switch when hand closing time ends
@@ -445,8 +445,9 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                                            force_gradient=force_gradient,
                                                            desired_force_dimension=desired_force_dimension))
     else:
-        # just close the hand
-        control_sequence.append(ha.close_rbohand())
+        # if hand is not RBO then create general hand closing mode?
+        control_sequence.append(ha.SimpleRBOHandControlMode(name  = 'softhand_close', goal = np.array([1])))
+
 
     # 5b. Switch when hand closing duration ends
     control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=hand_closing_duration))
@@ -509,11 +510,8 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
 
     downward_force = params['table_force']
-    sliding_dist = params['sliding_dist']
     up_dist = params['up_dist']
-    lift_dist = params['lift_dist']
     down_dist = params['down_dist']
-    wall_force = params['wall_force']
     pre_approach_transform = params['pre_approach_transform']
     drop_off_config = params['drop_off_config']
     go_down_velocity = params['go_down_velocity']
@@ -579,7 +577,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     # 2b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'LiftHand',
+                                                 'SlideToEdge',
                                                  goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND",
@@ -635,8 +633,8 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                                            force_gradient=force_gradient,
                                                            desired_force_dimension=desired_force_dimension))
     else:
-        # just close the hand
-        control_sequence.append(ha.close_rbohand())
+        # if hand is not RBO then create general hand closing mode?
+        control_sequence.append(ha.SimpleRBOHandControlMode(name='softhand_close', goal=np.array([1])))
 
     # 5b. Switch when hand closing duration ends
     control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=hand_closing_duration))
