@@ -5,6 +5,8 @@ import yaml
 import math
 import numpy as np
 from tf import transformations as tra
+import operator
+import random
 
 import rospkg
 from tornado.concurrent import return_future
@@ -74,6 +76,7 @@ class multi_object_params:
 
         return h
 
+    #object-envirtionment-hand based heuristic valeu for grasping
     def heuristic(self, object, ec, strategy, hand):
 
         object_params = self.data[object['type']][hand][strategy]
@@ -84,6 +87,36 @@ class multi_object_params:
 
         return h
 
+    # find the max probability and if there are more than one return one randomly
+    def argmax_h(self, grasp_dict):
+        # find max probablity in list
+        max_probability = max(grasp_dict.iteritems(), key=operator.itemgetter(1))[1]
+        print(max_probability)
+
+        # select all items with max probability
+        max_probability_dict = {k:v for k,v in grasp_dict.items() if float(v) == max_probability}
+        print (max_probability_dict)
+
+        # select randomly one of the itmes
+        max_random_item = self.sample_from_pdf(max_probability_dict)
+        print (max_random_item)
+
+        return max_random_item
+
+    def sample_from_pdf(self, pdf_dict):
+
+        # normalize pdf
+        pdf_normalized = pdf_dict
+        sum_ = sum(pdf_dict.values())
+        pdf_normalized.update((x, y/sum_) for x, y in pdf_normalized.items())
+
+        # sample probabilistically
+        sampled_item = (np.random.choice(pdf_normalized.keys(), p=pdf_normalized.values()))
+        return sampled_item
+
+    def process_objects_ecs(self, objects, ecs, h_process_type = "argmax", hand_type = "RBOHandP24"):
+
+        return (objects[0],ecs[0])
 
 if __name__ == "__main__":
     # testing the code inline
@@ -98,11 +131,31 @@ if __name__ == "__main__":
     strategy = 'WallGrasp'
     hand = 'RBOHandP24'
 
-    print obj_tf
-    print ec
+    # print obj_tf
+    # print ec
 
     foo = multi_object_params()
     foo.load_object_params()
-    h_val = foo.heuristic(obj,ec,strategy,hand)
+    h_val = h_val = foo.heuristic(obj,ec,strategy,hand)
+    g_l = {"g1": h_val}
+    print("h(g1)={}".format(h_val))
 
-    print("H({}, {}, {}) = {}".format(obj["type"], strategy, hand, h_val))
+    #second EC
+    ec = tra.concatenate_matrices(
+        tra.translation_matrix([-0.05, 0, 0.0]),
+        tra.rotation_matrix(math.radians(15.0), [0, 0, 1]),
+        tra.rotation_matrix(math.radians(10.0), [0, 1, 0]))
+
+    h_val = foo.heuristic(obj, ec, strategy, hand)
+    print("h(g2)={}".format(h_val))
+    g_l['g2'] = h_val
+
+    print (g_l)
+    argmax_h = foo.argmax_h(g_l)
+
+    print("argmax(h) = {}".format(argmax_h))
+
+    # h_val = foo.heuristic(obj, ec, strategy, hand)
+    #
+    #
+    # print("H({}, {}, {}) = {}".format(obj["type"], strategy, hand, h_val))
