@@ -57,6 +57,8 @@ import tf_conversions.posemath as pm
 
 import handarm_parameters
 
+import multi_object_params as mop
+
 markers_rviz = MarkerArray()
 frames_rviz = []
 
@@ -67,6 +69,8 @@ class GraspPlanner():
         s = rospy.Service('run_grasp_planner', plan_srv.RunGraspPlanner, lambda msg: self.handle_run_grasp_planner(msg))
         self.tf_listener = tf.TransformListener()
         self.args = args
+        # initialize the object-EC selection handler class
+        self.multi_object_handler = mop.multi_object_params(args.object_params_file)
 
     # ------------------------------------------------------------------------------------------------
     def handle_run_grasp_planner(self, req):
@@ -99,8 +103,34 @@ class GraspPlanner():
 
         time = rospy.Time(0)
         graph.header.stamp = time
-        object_frame.header.stamp = time
+        object_frame.header.stamp = time # TODO why do we need to change the time in the header?
         bounding_box = objects[0].boundingbox
+
+        # this should ctach if the framse in the graph and objects are not in the same reference frame
+        if (objects[0].transform.header.frame_id == graph.header.frame_id):
+            rospy.logerr("Inconsistent reference frame for ECE Graph and Objects! Both must be in the same reference frame!")
+            return -1
+
+        # build list of objects
+        object_list = []
+        for i in len(objects):
+            obj_tmp = {}
+            obj_tmp['type'] = self.object_type
+            obj_tmp['features'] = objects[i]
+            object_list.append(obj_tmp)
+
+        # selecting list of goal nodes based on requested strategy type
+        goal_node_labels = [self.grasp_type]
+        if self.grasp_type == "Auto":
+            goal_node_labels = ['SurfaceGrasp', 'WallGrasp', 'EdgeGrasp']
+        node_list = [n for i, n in enumerate(graph.nodes) if n.label in goal_node_labels]
+
+        # we assume that all objects are on the same plain, so all EC can be exploited for any of the objects
+        (chosen_object, chosen_node) = self.multi_object_handler.process_objects_ecs(object_list,
+                                                                                     node_list,
+                                                                                     req.object_heuristic_function,
+                                                                                     req.handarm_type)
+
 
         # --------------------------------------------------------
         # Get grasp from graph representation
@@ -112,10 +142,9 @@ class GraspPlanner():
 
 
             # Get the object frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, object_frame.header.frame_id, time, rospy.Duration(2.0))
-            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)
-            object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
-
+            self.tf_listener.waitForTransform(robot_base_frame, chosen_object.header.frame_id, time, rospy.Duration(2.0))
+            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, chosen_object.header)
+            object_in_camera = pm.toMatrix(pm.fromMsg(chosen_object.pose))
             object_in_base = camera_in_base.dot(object_in_camera)
 
             print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
@@ -124,7 +153,11 @@ class GraspPlanner():
             hand_node_id = [n.label for n in graph.nodes].index("Positioning")
             object_node_id = [n.label for n in graph.nodes].index("Slide")
 
-            grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
+            #strategy selection based on grasp type
+            # grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
+
+            #strategy selection based on object-ec-hand heuristic
+            grasp_path = find_a_path(hand_node_id, object_node_id, graph, chosen_node, verbose=True)
 
             rospy.sleep(0.3)
 
@@ -523,11 +556,15 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         raise "Unknown grasp type: ", grasp_type
 
 # ================================================================================================
-def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_labels, verbose = False):
+def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_list, verbose = False):
     locations = ['l'+str(i) for i in range(len(graph.nodes))]
 
     connections = [('connected', 'l'+str(e.node_id_start), 'l'+str(e.node_id_end)) for e in graph.edges]
-    grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
+    # strategy selectio based on grasp type
+    # grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
+
+    # strategy selectio based on heuristics
+    grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n in goal_node_list or n.label+'_'+str(i) in goal_node_list]
 
     # define possible actions
     domain = pyddl.Domain((
@@ -672,7 +709,8 @@ if __name__ == '__main__':
                         help='Name of the robot base frame.')
     # parser.add_argument('--handarm', type=str, default = 'RBOHand2WAM',
     #                     help='Python class that contains configuration parameters for hand and arm-specific properties.')
-
+    parser.add_argument('--object_params_file', type=str, default='object_param.yaml',
+                        help='Name of the file containing parameters for object-EC selection when multiple objects are present')
 
     # args = parser.parse_args()
     args = parser.parse_args(rospy.myargv()[1:])
