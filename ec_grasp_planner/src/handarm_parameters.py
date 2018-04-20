@@ -18,6 +18,10 @@ class BaseHandArm(dict):
         self['wall_grasp'] = {}        
         self['edge_grasp'] = {}
         self['surface_grasp'] = {}
+        self['object'] = {}
+        self['punnet'] = {}
+        self['netbag'] = {}
+        self['salad'] = {}
 
         # surface grasp parameters for different objects
         # 'object' is the default parameter set
@@ -215,6 +219,16 @@ class KUKA(BaseHandArm):
 
         self['hand_closing_synergy'] = 1
 
+
+        ####################################################################################
+        # General vision related params 
+        ####################################################################################
+
+        self['object']['obj_bbox_uncertainty_offset'] = 0.02
+        self['netbag']['obj_bbox_uncertainty_offset'] = 0.05
+        self['punnet']['obj_bbox_uncertainty_offset'] = 0.08
+        self['salad']['obj_bbox_uncertainty_offset'] = 0.1
+
         #####################################################################################
         # Common surface grasp params
         #####################################################################################
@@ -320,11 +334,6 @@ class PISAHandKUKA(KUKA):
         ####################################################################################        
 
         self['wall_grasp']['object']['kp'] = 6
-
-        self['wall_grasp']['object']['obj_bbox_uncertainty_offset'] = 0.02
-        self['wall_grasp']['netbag']['obj_bbox_uncertainty_offset'] = 0.05
-        self['wall_grasp']['punnet']['obj_bbox_uncertainty_offset'] = 0.08
-        self['wall_grasp']['salad']['obj_bbox_uncertainty_offset'] = 0.1
 
         self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.025, 0])
         
