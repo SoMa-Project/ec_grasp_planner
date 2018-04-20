@@ -23,9 +23,14 @@ class BaseHandArm(dict):
         # 'object' is the default parameter set
         self['surface_grasp']['object'] = {}
         self['surface_grasp']['cucumber'] = {}
+        self['surface_grasp']['punnet'] = {}
+        self['surface_grasp']['netbag'] = {}
 
         # wall grasp parameters for different objects
         self['wall_grasp']['object'] = {}
+        self['wall_grasp']['punnet'] = {}
+        self['wall_grasp']['salad'] = {}
+        self['wall_grasp']['netbag'] = {}
 
         # wall grasp parameters for different objects
         self['edge_grasp']['object'] = {}
@@ -201,7 +206,7 @@ class KUKA(BaseHandArm):
         self['up_IFCO_speed'] = 0.03
         self['down_tote_speed'] = 0.05
 
-        self['lift_duration'] = 10
+        self['lift_duration'] = 13
         self['place_duration'] = 5
 
         self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
@@ -271,7 +276,7 @@ class RBOHandO2KUKA(KUKA):
         # RBO specific params for wall grasp
         ####################################################################################
 
-        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, 0, -0.1])
+        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, 0, 0])
         self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.01, 0, -0.02]),
                                                                  tra.rotation_matrix(math.radians(-10.), [0, 1, 0]))
 
@@ -286,9 +291,9 @@ class PISAHandKUKA(KUKA):
         # IIT specific params irrespective of grasp type 
         ####################################################################################
 
-        self['hand_closing_duration'] = 3
+        self['hand_closing_duration'] = 2
 
-        self['hand_opening_duration'] = 3
+        self['hand_opening_duration'] = 2
 
         self['hand_max_aperture'] = 0.25
 
@@ -304,6 +309,10 @@ class PISAHandKUKA(KUKA):
 
         self['surface_grasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
 
+        self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.025, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+
+        self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+
         self['surface_grasp']['object']['kp'] = 6
 
         ####################################################################################
@@ -311,7 +320,14 @@ class PISAHandKUKA(KUKA):
         ####################################################################################        
 
         self['wall_grasp']['object']['kp'] = 6
-        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.025, -0.1])
+
+        self['wall_grasp']['object']['obj_bbox_uncertainty_offset'] = 0.02
+        self['wall_grasp']['netbag']['obj_bbox_uncertainty_offset'] = 0.05
+        self['wall_grasp']['punnet']['obj_bbox_uncertainty_offset'] = 0.08
+        self['wall_grasp']['salad']['obj_bbox_uncertainty_offset'] = 0.1
+
+        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.025, 0])
+        
         self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.01, 0, -0.02]),
-                                                                 tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
+                                                                 tra.rotation_matrix(math.radians(-7.), [0, 1, 0]))
         

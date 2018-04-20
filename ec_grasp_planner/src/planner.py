@@ -117,8 +117,8 @@ class GraspPlanner():
 
             object_in_base = camera_in_base.dot(object_in_camera)
 
-            self.tf_listener.waitForTransform(robot_base_frame, "/ifco", rospy.Time.now(), rospy.Duration(2.0))
-            ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, rospy.Time(), "ifco"))
+            self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
+            ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
             #get grasp type
             self.grasp_type = req.grasp_type
             if self.grasp_type == 'UseHeuristics':
@@ -271,8 +271,9 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
         # if hand is controlled in position mode, then call general hand controller
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
     else:
+        kp = getParam(obj_type_params, obj_params, 'kp')
         # if hand is controlled in current mode, then call IIT's controller
-        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([1.0]), kp=np.array([params['kp']]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = 'softhand_close', 
+        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([1.0]), kp=np.array([kp]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = 'softhand_close', 
             bounding_box=np.array([bounding_box.x, bounding_box.y, bounding_box.z]), object_weight=np.array([0.4]), object_type='object', object_pose=object_frame))
 
     # 3b. Switch when hand closing time ends
@@ -326,16 +327,23 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     # Get the parameters from the handarm_parameters.py file
     obj_type_params = {}
     obj_params = {}
-    if (object_type in handarm_params['surface_grasp']):            
-        obj_type_params = handarm_params['surface_grasp'][object_type]
-    if 'object' in handarm_params['surface_grasp']:
-        obj_params = handarm_params['surface_grasp']['object']
+    if (object_type in handarm_params['wall_grasp']):            
+        obj_type_params = handarm_params['wall_grasp'][object_type]
+    if 'object' in handarm_params['wall_grasp']:
+        obj_params = handarm_params['wall_grasp']['object']
 
     hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')
     downward_force = getParam(obj_type_params, obj_params, 'downward_force')
     wall_force = getParam(obj_type_params, obj_params, 'wall_force')
     slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
     pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
+
+    offset = getParam(obj_type_params, obj_params, 'obj_bbox_uncertainty_offset')
+    if abs(object_frame[:3,0].dot(wall_frame[:3,0])) > abs(object_frame[:3,1].dot(wall_frame[:3,0])):
+        pre_approach_transform[2,3] = -bounding_box.y/2 - offset 
+    else:
+        pre_approach_transform[2,3] = -bounding_box.x/2 - offset
+
     post_grasp_transform = getParam(obj_type_params, obj_params, 'post_grasp_transform')
 
     lift_time = handarm_params['lift_duration']
@@ -367,6 +375,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     pre_approach_pose = ec_frame.dot(pre_approach_transform)
 
     # Rviz debug frames
+    rviz_frames.append(object_frame)
     rviz_frames.append(wall_frame)
     rviz_frames.append(ec_frame)
     rviz_frames.append(pre_approach_pose)
@@ -430,10 +439,11 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = handarm_params['hand_closing_synergy']))
     else:
         # if hand is controlled in current mode, then call IIT's controller
-        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([1.0]), kp=np.array([params['kp']]), 
-                                                                hand_max_aperture = handarm_params["hand_max_aperture"], name  = 'softhand_close', 
-                                                                bounding_box=np.array([bounding_box.x, bounding_box.y, bounding_box.z]), 
-                                                                object_weight=np.array([0.4]), object_type='object', object_pose=object_frame))
+        kp = getParam(obj_type_params, obj_params, 'kp')
+        # if hand is controlled in current mode, then call IIT's controller
+        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([1.0]), kp=np.array([kp]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = 'softhand_close', 
+            bounding_box=np.array([bounding_box.x, bounding_box.y, bounding_box.z]), object_weight=np.array([0.4]), object_type='object', object_pose=object_frame))
+
 
     # 5b. Switch when hand closing duration ends
     control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=handarm_params['hand_closing_duration']))
