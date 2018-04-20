@@ -79,6 +79,8 @@ class GraspPlanner():
 
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
+        # Get the relevant parameters for hand object combination
+
         rospy.wait_for_service('compute_ec_graph')
 
         try:
@@ -122,7 +124,11 @@ class GraspPlanner():
             #get grasp type
             self.grasp_type = req.grasp_type
             if self.grasp_type == 'UseHeuristics':
-                self.grasp_type, wall_id = grasp_heuristics(ifco_in_base, object_in_base)
+                if self.object_type in self.handarm_params:
+                    obj_bbox_uncertainty_offset = self.handarm_params[self.object_type]['obj_bbox_uncertainty_offset']
+                else:
+                    obj_bbox_uncertainty_offset = self.handarm_params['object']['obj_bbox_uncertainty_offset']
+                self.grasp_type, wall_id = grasp_heuristics(ifco_in_base, object_in_base, bounding_box, obj_bbox_uncertainty_offset)
                 print("GRASP HEURISTICS " + self.grasp_type + " " + wall_id)
             else:                
                 wall_id = "wall1"
@@ -185,7 +191,7 @@ def getParam(obj_type_params, obj_params, paramKey):
 # ================================================================================================
 def create_surface_grasp(object_frame, bounding_box, support_surface_frame, handarm_params, object_type):
 
-    # Get the relevant parameters for hand object combination
+    # Get the parameters from the handarm_parameters.py file
     obj_type_params = {}
     obj_params = {}
     if (object_type in handarm_params['surface_grasp']):            
@@ -327,7 +333,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     # Get the parameters from the handarm_parameters.py file
     obj_type_params = {}
     obj_params = {}
-    if (object_type in handarm_params['wall_grasp']):            
+    if object_type in handarm_params['wall_grasp']:            
         obj_type_params = handarm_params['wall_grasp'][object_type]
     if 'object' in handarm_params['wall_grasp']:
         obj_params = handarm_params['wall_grasp']['object']
@@ -338,7 +344,10 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
     pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
 
-    offset = getParam(obj_type_params, obj_params, 'obj_bbox_uncertainty_offset')
+    vision_params = {}
+    if object_type in handarm_params:
+        vision_params = handarm_params[object_type]
+    offset = getParam(vision_params, handarm_params['object'], 'obj_bbox_uncertainty_offset')
     if abs(object_frame[:3,0].dot(wall_frame[:3,0])) > abs(object_frame[:3,1].dot(wall_frame[:3,0])):
         pre_approach_transform[2,3] = -bounding_box.y/2 - offset 
     else:
@@ -628,17 +637,30 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
     return plan
 
 # ================================================================================================
-def grasp_heuristics(ifco_pos, object_pos):
+def grasp_heuristics(ifco_pose, object_pose, bounding_box, uncertainty_offset):
     #ifco dimensions
     xd = 0.38/2 
-    yd = 0.56/2 
+    yd = 0.58/2 
     #boundary width from which to go for a wall_grasp
-    e = 0.1
-    print(object_pos)
-    print(ifco_pos)
-    object_pos_in_ifco = tra.translation_from_matrix((object_pos - ifco_pos))
-    x = object_pos_in_ifco[0]
-    y = object_pos_in_ifco[1]
+    e = 0.08
+    # print(object_pos)
+    # print(ifco_pos)
+
+    corner1_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, bounding_box.y/2 + uncertainty_offset, 0]))
+    corner2_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, -bounding_box.y/2 - uncertainty_offset, 0]))
+    corner3_in_base = object_pose.dot(tra.translation_matrix([-bounding_box.x/2 - uncertainty_offset, -bounding_box.y/2 - uncertainty_offset, 0]))
+    corner4_in_base = object_pose.dot(tra.translation_matrix([-bounding_box.x/2 - uncertainty_offset, bounding_box.y/2 + uncertainty_offset, 0]))
+
+    max_x = max([corner1_in_base[0,3], corner2_in_base[0,3], corner3_in_base[0,3], corner4_in_base[0,3]])
+    min_x = min([corner1_in_base[0,3], corner2_in_base[0,3], corner3_in_base[0,3], corner4_in_base[0,3]])
+    max_y = max([corner1_in_base[1,3], corner2_in_base[1,3], corner3_in_base[1,3], corner4_in_base[1,3]])
+    min_y = min([corner1_in_base[1,3], corner2_in_base[1,3], corner3_in_base[1,3], corner4_in_base[1,3]])
+
+    ifco_x = ifco_pose[0,3]
+    ifco_y = ifco_pose[1,3]
+
+    x = max(abs(max_x - ifco_x), abs(min_x - ifco_x))
+    y = max(abs(max_y - ifco_y), abs(min_y - ifco_y))
 
     #                      ROBOT
     #                      wall4         
@@ -647,17 +669,30 @@ def grasp_heuristics(ifco_pos, object_pos):
     #                 |           |
     #                 =============
     #                      wall2         
-    #print("GRASP HEURISTICS x:" + str(x) + " y:" + str(y))
+    #
+    print("GRASP HEURISTICS x:" + str(x) + " y:" + str(y))
     if abs(x) < xd - e and abs(y) < yd - e:
         return "SurfaceGrasp", "NoWall"
     elif y > yd - e:
-        return "WallGrasp", "wall1" 
+        if x > xd - e:
+            return "WallGrasp", "wall2"
+        else:
+            return "WallGrasp", "wall1"
     elif y < -yd + e:
-        return "WallGrasp", "wall3" 
+        if x < -xd + e:
+            return "WallGrasp", "wall4" 
+        else:
+            return "WallGrasp", "wall3" 
     elif x > xd - e:
-        return "WallGrasp", "wall2" 
+        if y < -yd + e:
+            return "WallGrasp", "wall3" 
+        else:
+            return "WallGrasp", "wall2" 
     elif x < -xd + e:
-        return "WallGrasp", "wall4" 
+        if y > yd - e:
+            return "WallGrasp", "wall1" 
+        else:
+            return "WallGrasp", "wall4" 
     else:
         return "object not in ifco", "NoWall"
 
