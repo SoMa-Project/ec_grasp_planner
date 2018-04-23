@@ -669,7 +669,9 @@ def grasp_heuristics(ifco_pose, object_pose, bounding_box, uncertainty_offset):
         y = max_y - ifco_y
     else:
         y = min_y - ifco_y
-
+    
+    elongated_x = (max_x - min_x)/(max_y - min_y) > 2
+    elongated_y = (max_y - min_y)/(max_x - min_x) > 2
 
     #                      ROBOT
     #                      wall4         
@@ -683,22 +685,22 @@ def grasp_heuristics(ifco_pose, object_pose, bounding_box, uncertainty_offset):
     if abs(x) < xd - e and abs(y) < yd - e:
         return "SurfaceGrasp", "NoWall"
     elif y > yd - e:
-        if x > xd - e:
+        if x > xd - e and not elongated_x:
             return "WallGrasp", "wall2"
         else:
             return "WallGrasp", "wall1"
     elif y < -yd + e:
-        if x < -xd + e:
+        if x < -xd + e and not elongated_x:
             return "WallGrasp", "wall4" 
         else:
             return "WallGrasp", "wall3" 
     elif x > xd - e:
-        if y < -yd + e:
+        if y < -yd + e and not elongated_y:
             return "WallGrasp", "wall3" 
         else:
             return "WallGrasp", "wall2" 
     elif x < -xd + e:
-        if y > yd - e:
+        if y > yd - e and not elongated_y:
             return "WallGrasp", "wall1" 
         else:
             return "WallGrasp", "wall4" 
