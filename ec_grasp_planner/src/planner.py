@@ -103,6 +103,9 @@ class GraspPlanner():
         object_frame.header.stamp = time
         bounding_box = objects[object_id].boundingbox
 
+        self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
+        ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
+
         # --------------------------------------------------------
         # Get grasp from graph representation
         grasp_path = None
@@ -116,11 +119,9 @@ class GraspPlanner():
             self.tf_listener.waitForTransform(robot_base_frame, object_frame.header.frame_id, time, rospy.Duration(2.0))
             camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)
             object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
-
             object_in_base = camera_in_base.dot(object_in_camera)
 
-            self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
-            ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
+            
             #get grasp type
             self.grasp_type = req.grasp_type
             if self.grasp_type == 'UseHeuristics':
@@ -153,7 +154,7 @@ class GraspPlanner():
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
         ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base, bounding_box,
-                                                                self.handarm_params, self.object_type, wall_id)
+                                                                self.handarm_params, self.object_type, wall_id, ifco_in_base)
                                                 
         # --------------------------------------------------------
         # Output the hybrid automaton
@@ -523,7 +524,7 @@ def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
 
 # ================================================================================================
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, bounding_box, handarm_params, object_type, wall_id):
+def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, bounding_box, handarm_params, object_type, wall_id, ifco_in_base):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
 
@@ -543,9 +544,9 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
     elif grasp_type == 'WallGrasp':
         #support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
         #support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-        wall_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
-        wall1_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(wall_frame_node.transform))
-        wall_frame = get_wall_tf(wall1_frame, wall_id)
+        # wall_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
+        # wall1_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(wall_frame_node.transform))
+        wall_frame = get_wall_tf(ifco_in_base, wall_id)
         return create_wall_grasp(T_object_in_base, bounding_box, support_surface_frame, wall_frame, handarm_params, object_type)
     elif grasp_type == 'SurfaceGrasp':
         #support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
@@ -697,18 +698,20 @@ def grasp_heuristics(ifco_pose, object_pose, bounding_box, uncertainty_offset):
         return "object not in ifco", "NoWall"
 
 # ================================================================================================
-def get_wall_tf(wall1_tf, wall_id):
+def get_wall_tf(ifco_tf, wall_id):
     # rotate the tf following the wall id see figure in grasp_heuristics()
+    wall4_tf = ifco_tf.dot(tra.rotation_matrix(
+                    math.radians(90), [1, 0, 0]))
     rotation_angle = 0
     if wall_id == 'wall1':
-        return wall1_tf
-    elif wall_id == 'wall2':
         rotation_angle = -90
+    elif wall_id == 'wall2':
+        rotation_angle = 180
     elif wall_id == 'wall3':
-        rotation_angle = -180
-    elif wall_id == 'wall4':
         rotation_angle = 90
-    return tra.concatenate_matrices(wall1_tf, tra.rotation_matrix(
+    elif wall_id == 'wall4':
+        return wall4_tf
+    return tra.concatenate_matrices(wall4_tf, tra.rotation_matrix(
                     math.radians(rotation_angle), [0, 1, 0]))
 
 # ================================================================================================
