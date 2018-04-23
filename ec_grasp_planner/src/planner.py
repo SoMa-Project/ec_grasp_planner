@@ -660,8 +660,16 @@ def grasp_heuristics(ifco_pose, object_pose, bounding_box, uncertainty_offset):
     ifco_x = ifco_pose[0,3]
     ifco_y = ifco_pose[1,3]
 
-    x = max(abs(max_x - ifco_x), abs(min_x - ifco_x))
-    y = max(abs(max_y - ifco_y), abs(min_y - ifco_y))
+    if abs(max_x - ifco_x) > abs(min_x - ifco_x):
+        x = max_x - ifco_x
+    else:
+        x = min_x - ifco_x
+
+    if abs(max_y - ifco_y) > abs(min_y - ifco_y):
+        y = max_y - ifco_y
+    else:
+        y = min_y - ifco_y
+
 
     #                      ROBOT
     #                      wall4         
