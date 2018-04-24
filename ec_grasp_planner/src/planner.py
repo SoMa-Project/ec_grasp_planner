@@ -664,18 +664,21 @@ def grasp_heuristics(ifco_pose, object_pose, bounding_box, uncertainty_offset):
     max_y = max([corner1_in_base[1,3], corner2_in_base[1,3], corner3_in_base[1,3], corner4_in_base[1,3]])
     min_y = min([corner1_in_base[1,3], corner2_in_base[1,3], corner3_in_base[1,3], corner4_in_base[1,3]])
 
-    ifco_x = ifco_pose[0,3]
-    ifco_y = ifco_pose[1,3]
+    # ifco_x = ifco_pose[0,3]
+    # ifco_y = ifco_pose[1,3]
 
-    if abs(max_x - ifco_x) > abs(min_x - ifco_x):
-        x = max_x - ifco_x
-    else:
-        x = min_x - ifco_x
+    # if abs(max_x - ifco_x) > abs(min_x - ifco_x):
+        # x = max_x - ifco_x
+    # else:
+        # x = min_x - ifco_x
 
-    if abs(max_y - ifco_y) > abs(min_y - ifco_y):
-        y = max_y - ifco_y
-    else:
-        y = min_y - ifco_y
+    # if abs(max_y - ifco_y) > abs(min_y - ifco_y):
+        # y = max_y - ifco_y
+    # else:
+        # y = min_y - ifco_y
+    object_pos_in_ifco = tra.translation_from_matrix((object_pose - ifco_pose))
+    x = object_pos_in_ifco[0]
+    y = object_pos_in_ifco[1]
     
     elongated_x = (max_x - min_x)/(max_y - min_y) > 2
     elongated_y = (max_y - min_y)/(max_x - min_x) > 2
