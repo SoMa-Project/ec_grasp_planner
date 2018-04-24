@@ -560,6 +560,7 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
     locations = ['l'+str(i) for i in range(len(graph.nodes))]
 
     connections = [('connected', 'l'+str(e.node_id_start), 'l'+str(e.node_id_end)) for e in graph.edges]
+
     grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
 
     # define possible actions
@@ -640,17 +641,20 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
 # ================================================================================================
 def grasp_heuristics(ifco_pose, object_pose, bounding_box, uncertainty_offset):
     #ifco dimensions
-    xd = 0.38/2 
-    yd = 0.58/2 
+    xd = 0.36/2 
+    yd = 0.56/2 
     #boundary width from which to go for a wall_grasp
     e = 0.08
-    # print(object_pos)
-    # print(ifco_pos)
 
-    corner1_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, bounding_box.y/2 + uncertainty_offset, 0]))
-    corner2_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, -bounding_box.y/2 - uncertainty_offset, 0]))
-    corner3_in_base = object_pose.dot(tra.translation_matrix([-bounding_box.x/2 - uncertainty_offset, -bounding_box.y/2 - uncertainty_offset, 0]))
-    corner4_in_base = object_pose.dot(tra.translation_matrix([-bounding_box.x/2 - uncertainty_offset, bounding_box.y/2 + uncertainty_offset, 0]))
+    # corner1_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, bounding_box.y/2 + uncertainty_offset, 0]))
+    # corner2_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, -bounding_box.y/2 - uncertainty_offset, 0]))
+    # corner3_in_base = object_pose.dot(tra.translation_matrix([-bounding_box.x/2 - uncertainty_offset, -bounding_box.y/2 - uncertainty_offset, 0]))
+    # corner4_in_base = object_pose.dot(tra.translation_matrix([-bounding_box.x/2 - uncertainty_offset, bounding_box.y/2 + uncertainty_offset, 0]))
+    corner1_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2, bounding_box.y/2, 0]))
+    corner2_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2, -bounding_box.y/2, 0]))
+    corner3_in_base = object_pose.dot(tra.translation_matrix([-bounding_box.x/2, -bounding_box.y/2, 0]))
+    corner4_in_base = object_pose.dot(tra.translation_matrix([-bounding_box.x/2, bounding_box.y/2, 0]))
+
 
     max_x = max([corner1_in_base[0,3], corner2_in_base[0,3], corner3_in_base[0,3], corner4_in_base[0,3]])
     min_x = min([corner1_in_base[0,3], corner2_in_base[0,3], corner3_in_base[0,3], corner4_in_base[0,3]])
