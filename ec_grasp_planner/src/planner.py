@@ -559,7 +559,10 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
 def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_labels, verbose = False):
     locations = ['l'+str(i) for i in range(len(graph.nodes))]
 
-    connections = [('connected', 'l'+str(e.node_id_start), 'l'+str(e.node_id_end)) for e in graph.edges]
+    # connections = [('connected', 'l'+str(e.node_id_start), 'l'+str(e.node_id_end)) for e in graph.edges]
+
+    connections = [('connected', 'l0', 'l1')] + [('connected', 'l0', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels] + [('connected', 'l1', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
+
 
     grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
 
