@@ -338,5 +338,5 @@ class PISAHandKUKA(KUKA):
         self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.025, 0])
         
         self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.01, 0, -0.02]),
-                                                                 tra.rotation_matrix(math.radians(-7.), [0, 1, 0]))
+                                                                 tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
         
