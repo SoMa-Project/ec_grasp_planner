@@ -356,6 +356,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
 
     post_grasp_transform = getParam(obj_type_params, obj_params, 'post_grasp_transform')
 
+    rotate_time = handarm_params['rotate_duration']
     lift_time = handarm_params['lift_duration']
     place_time = handarm_params['place_duration']    
     down_IFCO_speed = handarm_params['down_IFCO_speed']
@@ -463,7 +464,9 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
         ha.InterpolatedHTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', goal_is_relative='1', reference_frame='EE'))
 
     # 6b. Switch when hand rotated
-    control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp', controller='PostGraspRotate', epsilon='0.01', goal_is_relative='1', reference_frame = 'EE'))
+    # control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp', controller='PostGraspRotate', epsilon='0.01', goal_is_relative='1', reference_frame = 'EE'))
+    control_sequence.append(ha.TimeSwitch('PostGraspRotate', 'GoUp', duration = rotate_time))
+
 
     # 7. Lift upwards (+z in world frame)
     control_sequence.append(
@@ -644,10 +647,10 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
 # ================================================================================================
 def grasp_heuristics(ifco_pose, object_pose, bounding_box, uncertainty_offset):
     #ifco dimensions
-    xd = 0.36/2 
-    yd = 0.56/2 
+    xd = 0.37/2 
+    yd = 0.57/2 
     #boundary width from which to go for a wall_grasp
-    e = 0.08
+    e = 0.12
 
     # corner1_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, bounding_box.y/2 + uncertainty_offset, 0]))
     # corner2_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, -bounding_box.y/2 - uncertainty_offset, 0]))
