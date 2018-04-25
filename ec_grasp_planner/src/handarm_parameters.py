@@ -35,6 +35,7 @@ class BaseHandArm(dict):
         self['wall_grasp']['punnet'] = {}
         self['wall_grasp']['salad'] = {}
         self['wall_grasp']['netbag'] = {}
+        self['wall_grasp']['mango'] = {}
 
         # wall grasp parameters for different objects
         self['edge_grasp']['object'] = {}
@@ -210,6 +211,7 @@ class KUKA(BaseHandArm):
         self['up_IFCO_speed'] = 0.03
         self['down_tote_speed'] = 0.05
 
+        self['rotate_duration'] = 3
         self['lift_duration'] = 13
         self['place_duration'] = 5
 
@@ -336,7 +338,9 @@ class PISAHandKUKA(KUKA):
         self['wall_grasp']['object']['kp'] = 6
 
         self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.025, 0])
+
+        self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.04, 0])
         
-        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.01, 0, -0.02]),
+        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
                                                                  tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
         
