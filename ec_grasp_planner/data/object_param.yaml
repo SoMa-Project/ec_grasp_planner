@@ -1,25 +1,25 @@
   apple:
-    RBOHandP24:
+    RBOHandO2WAM:
       SurfaceGrasp: {'success': 1}
       WallGrasp: {'success': 1}
       EdgeGrasp: {'success': 0}
   cucumber:
-    RBOHandP24:
+    RBOHandO2WAM:
       SurfaceGrasp: {'success': 1}
       WallGrasp: {'success': [1, 0.8, 0.7, 0] , 'angle': [0, 180, 360], 'epsilon': 20}
       EdgeGrasp: {'success': 0}
   netbag:
-    RBOHandP24:
+    RBOHandO2WAM:
       SurfaceGrasp: {'success': 0}
       WallGrasp: {'success': 1}
       EdgeGrasp: {'success': 0}
-  punet:
-    RBOHandP24:
+  punnet:
+    RBOHandO2WAM:
       SurfaceGrasp: {'success': 0.5}
       WallGrasp: {'success': [0.8, 0.8, 0], 'angle': [90, 270] , 'epsilon': 20}
       EdgeGrasp: {'success': 0}
   letuch:
-    RBOHandP24:
+    RBOHandO2WAM:
       SurfaceGrasp: {'success':1}
       WallGrasp: {'success': 0.5}
       EdgeGrasp: {'success': 0.25}
