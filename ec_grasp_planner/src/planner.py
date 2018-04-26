@@ -106,17 +106,29 @@ class GraspPlanner():
         object_frame.header.stamp = time # TODO why do we need to change the time in the header?
         bounding_box = objects[0].boundingbox
 
-        # this should ctach if the framse in the graph and objects are not in the same reference frame
-        if (objects[0].transform.header.frame_id == graph.header.frame_id):
-            rospy.logerr("Inconsistent reference frame for ECE Graph and Objects! Both must be in the same reference frame!")
-            return -1
+        # print("objects type {}, object type {}".format(type(objects), type(objects[0])))
+        # this should catch if the framse in the graph and objects are not in the same reference frame
+        # if (objects[0].transform.header.frame_id == graph.header.frame_id):
+        #     rospy.logerr("Inconsistent reference frame for ECE Graph and Objects! Both must be in the same reference frame!")
+        #     return -1
 
         # build list of objects
         object_list = []
-        for i in len(objects):
+        for o in objects:
             obj_tmp = {}
             obj_tmp['type'] = self.object_type
-            obj_tmp['features'] = objects[i]
+
+            # the TF must be in the same reference frame as the EC frames
+            # Get the object frame in robot base frame
+            self.tf_listener.waitForTransform(robot_base_frame, o.transform.header.frame_id, time,
+                                              rospy.Duration(2.0))
+            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, o.transform.header)
+            object_in_camera = pm.toMatrix(pm.fromMsg(o.transform.pose))
+            object_in_base = camera_in_base.dot(object_in_camera)
+            obj_tmp['frame'] = object_in_base
+
+            obj_tmp['bounding_box'] = o.boundingbox
+
             object_list.append(obj_tmp)
 
         # selecting list of goal nodes based on requested strategy type
@@ -125,13 +137,19 @@ class GraspPlanner():
             goal_node_labels = ['SurfaceGrasp', 'WallGrasp', 'EdgeGrasp']
         node_list = [n for i, n in enumerate(graph.nodes) if n.label in goal_node_labels]
 
+        # Get the geometry graph frame in robot base frame
+        self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
+        graph_in_base_transform = self.tf_listener.asMatrix(robot_base_frame, graph.header)
+
+
         # we assume that all objects are on the same plain, so all EC can be exploited for any of the objects
         (chosen_object, chosen_node) = self.multi_object_handler.process_objects_ecs(object_list,
                                                                                      node_list,
+                                                                                     graph_in_base_transform,
                                                                                      req.object_heuristic_function,
                                                                                      req.handarm_type)
-
-
+        print("ID object: {}, ec: {}".format(chosen_object, chosen_node))
+        # print("object: ({}) {}, ec: ({}) {}".format(chosen_object, objects[chosen_object], chosen_node, node_list[chosen_node]) )
         # --------------------------------------------------------
         # Get grasp from graph representation
         grasp_path = None
