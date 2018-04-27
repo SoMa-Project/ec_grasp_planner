@@ -528,6 +528,11 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     # apply hand transformation
     ec_frame = (ec_frame.dot(hand_transform))
 
+    #the grasp frame is symmetrical - we flip so that the hand axis always points away from the robot base
+    zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
+    if ec_frame[0][0]<0:
+        goal_ = ec_frame.dot(zflip_transform)
+
 
     # the pre-approach pose should be:
     # - floating above and behind the object,
@@ -598,18 +603,19 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     # 4. Go towards the wall to slide object to wall
 
     #this is the tr from ec_frame to edge frame in ec_frame
-    delta = np.linalg.inv(ec_frame).dot(edge_frame)
+    delta = np.linalg.inv(edge_frame).dot(ec_frame)
 
     #this is the distance to the edge, given by the z axis of the edge frame
     dist = delta[2,3]
 
     # slide to the edge
-    dirEdge = ec_frame.dot(tra.translation_matrix([0, 0, dist]))
+    dirEdge = ec_frame.dot(tra.translation_matrix([dist, 0, 0]))
     #TODO sliding_distance should be computed from wall and hand frame.
 
     # slide direction is given by the normal of the wall
     #dirEdge[:3, 3] = edge_frame[:3, :3].dot(dirEdge[:3, 3])
     rviz_frames.append(dirEdge)
+    #rviz_frames.append(edge_frame)
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(dirEdge, controller_name='SlideToEdge', goal_is_relative='1',
                                              name="SlideToEdge", reference_frame="world",
