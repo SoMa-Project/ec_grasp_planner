@@ -253,7 +253,7 @@ class KUKA(BaseHandArm):
         self['wall_grasp']['object']['downward_force'] = 2.
 
         self['wall_grasp']['object']['wall_force'] = 3.5
-
+        
         self['wall_grasp']['object']['slide_speed'] = 0.05
 
 class RBOHandO2KUKA(KUKA):
@@ -270,7 +270,7 @@ class RBOHandO2KUKA(KUKA):
         
         self['hand_closing_duration'] = 6
 
-        self['hand_opening_duration'] = 2
+        self['hand_opening_duration'] = 4
 
         self['isInPositionControl'] = True
 
@@ -278,7 +278,13 @@ class RBOHandO2KUKA(KUKA):
         # RBO specific params for surface grasp
         ####################################################################################
 
-        self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.15]),
+        self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, -0.03, 0.15]),
+                                                                                tra.concatenate_matrices(
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(90.), [0, 0, 1]),
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(180.), [1, 0, 0])))
+        self['surface_grasp']['punnet']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, -0.055, 0.15]),
                                                                                 tra.concatenate_matrices(
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(90.), [0, 0, 1]),
@@ -292,9 +298,9 @@ class RBOHandO2KUKA(KUKA):
         # RBO specific params for wall grasp
         ####################################################################################
 
-        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, 0, 0])
-        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.01, 0, -0.02]),
-                                                                 tra.rotation_matrix(math.radians(-10.), [0, 1, 0]))
+        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, 0, -0.03])
+        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
+                                                                 tra.rotation_matrix(math.radians(-5), [0, 1, 0]))
 
 
 
