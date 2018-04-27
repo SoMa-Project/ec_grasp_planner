@@ -359,9 +359,9 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
         vision_params = handarm_params[object_type]
     offset = getParam(vision_params, handarm_params['object'], 'obj_bbox_uncertainty_offset')
     if abs(object_frame[:3,0].dot(wall_frame[:3,0])) > abs(object_frame[:3,1].dot(wall_frame[:3,0])):
-        pre_approach_transform[2,3] = -bounding_box.y/2 - offset 
+        pre_approach_transform[2,3] = pre_approach_transform[2,3] - bounding_box.y/2 - offset 
     else:
-        pre_approach_transform[2,3] = -bounding_box.x/2 - offset
+        pre_approach_transform[2,3] = pre_approach_transform[2,3] - bounding_box.x/2 - offset
 
     post_grasp_transform = getParam(obj_type_params, obj_params, 'post_grasp_transform')
 
@@ -659,7 +659,7 @@ def grasp_heuristics(ifco_pose, object_pose, bounding_box, uncertainty_offset):
     xd = 0.37/2 
     yd = 0.57/2 
     #boundary width from which to go for a wall_grasp
-    e = 0.12
+    e = 0.13
 
     # corner1_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, bounding_box.y/2 + uncertainty_offset, 0]))
     # corner2_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, -bounding_box.y/2 - uncertainty_offset, 0]))
