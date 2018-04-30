@@ -210,6 +210,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
         obj_params = handarm_params['surface_grasp']['object']
 
     hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')
+    object_approach_transform = getParam(obj_type_params, obj_params, 'object_approach_transform')
     downward_force = getParam(obj_type_params, obj_params, 'downward_force')
     ee_in_goal_frame = getParam(obj_type_params, obj_params, 'ee_in_goal_frame')
 
@@ -229,7 +230,9 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     goal_ = goal_.dot(hand_transform) #this is the pre-grasp transform of the signature frame expressed in the world
     goal_ = goal_.dot(ee_in_goal_frame)
 
-    
+    approach_goal_ = np.copy(object_frame)
+    approach_goal_ = approach_goal_.dot(object_approach_transform)
+    approach_goal_ = approach_goal_.dot(ee_in_goal_frame)
 
     # Set the twists to use TRIK controller with
 
@@ -255,24 +258,28 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
  
     # 2. Go down onto the object (relative in EE frame) - Godown
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(down_IFCO_twist,
-                                             controller_name='GoDown',
-                                             goal_is_relative='1',
-                                             name="GoDown",
-                                             reference_frame="EE",
-                                             v_max=down_IFCO_speed))
-
+    # control_sequence.append(
+    #     ha.InterpolatedHTransformControlMode(down_IFCO_twist,
+    #                                          controller_name='GoDown',
+    #                                          goal_is_relative='1',
+    #                                          name="GoDown",
+    #                                          reference_frame="EE",
+    #                                          v_max=down_IFCO_speed))
+    # control_sequence.append(ha.InterpolatedHTransformControlMode(approach_goal_, controller_name = 'GoDown', goal_is_relative='0', name = 'GoDown'))
+    control_sequence.append(ha.SlerpControlMode(approach_goal_, controller_name = 'GoDown', goal_is_relative='0', name = 'GoDown'))
+    
     # 2b. Switch when force-torque sensor is triggered
-    force  = np.array([0, 0, downward_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'softhand_close',
-                                                 goal = force,
-                                                 norm_weights = np.array([0, 0, 1, 0, 0, 0]),
-                                                 jump_criterion = "THRESH_UPPER_BOUND",
-                                                 goal_is_relative = '1',
-                                                 frame_id = 'world',
-                                                 port = '2'))
+    # force  = np.array([0, 0, downward_force, 0, 0, 0])
+    # control_sequence.append(ha.ForceTorqueSwitch('GoDown',
+    #                                              'softhand_close',
+    #                                              goal = force,
+    #                                              norm_weights = np.array([0, 0, 1, 0, 0, 0]),
+    #                                              jump_criterion = "THRESH_UPPER_BOUND",
+    #                                              goal_is_relative = '1',
+    #                                              frame_id = 'world',
+    #                                              port = '2'))
+    control_sequence.append(ha.FramePoseSwitch('GoDown', 'softhand_close', controller = 'GoDown', epsilon = '0.01'))
+ 
 
     desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
     force_gradient = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
