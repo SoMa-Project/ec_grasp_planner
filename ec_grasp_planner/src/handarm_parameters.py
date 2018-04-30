@@ -327,6 +327,8 @@ class PISAHandKUKA(KUKA):
 
         self['surface_grasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.15])
 
+        self['surface_grasp']['object']['object_approach_transform'] = tra.translation_matrix([0.0, 0.0, 0.07])
+
         self['surface_grasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
 
         self['surface_grasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
