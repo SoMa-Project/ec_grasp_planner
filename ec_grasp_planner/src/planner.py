@@ -279,27 +279,30 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     #                                              port = '2'))
     control_sequence.append(ha.FramePoseSwitch('GoDown', 'softhand_close', controller = 'GoDown', epsilon = '0.01'))
  
-
-    desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
-    force_gradient = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
-    desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0]) 
     # 3. Maintain the position
-    if handarm_params['isForceControllerAvailable']:   
+    # 3b. Switch when hand closing time ends
+    if handarm_params['isForceControllerAvailable']:
+        desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
+        force_gradient = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
+        desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])    
         control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_close', synergy = handarm_params['hand_closing_synergy'],
                                                         desired_displacement = desired_displacement, 
                                                         force_gradient = force_gradient, 
                                                         desired_force_dimension = desired_force_dimension))
+        control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration = handarm_params['hand_closing_duration']))
     elif handarm_params['isInPositionControl']:
         # if hand is controlled in position mode, then call general hand controller
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
+        control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration = handarm_params['hand_closing_duration']))
+    elif handarm_params['IMUGrasp']:
+        control_sequence.append(ha.IMUGraspControlMode(object_frame, name = 'softhand_close'))
+        control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration = handarm_params['IMU_closing_duration']))
     else:
         kp = getParam(obj_type_params, obj_params, 'kp')
         # if hand is controlled in current mode, then call IIT's controller
         control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([1.0]), kp=np.array([kp]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = 'softhand_close', 
             bounding_box=np.array([bounding_box.x, bounding_box.y, bounding_box.z]), object_weight=np.array([0.4]), object_type='object', object_pose=object_frame))
-
-    # 3b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration = handarm_params['hand_closing_duration']))
+        control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration = handarm_params['hand_closing_duration']))
 
     # 4. Lift upwards
     control_sequence.append(ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
