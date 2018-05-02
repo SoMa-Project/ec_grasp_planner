@@ -13,9 +13,7 @@ import math
 import yaml
 import datetime
 
-from random import randint
-from random import uniform
-from random import randrange
+from random import SystemRandom
 
 import smach
 import smach_ros
@@ -97,7 +95,8 @@ class GraspPlanner():
 
         robot_base_frame = self.args.robot_base_frame
 
-        object_id = randrange(0,len(objects))
+        object_id = SystemRandom().randrange(0,len(objects))
+        
         object_frame = objects[object_id].transform
 
         time = rospy.Time(0)
