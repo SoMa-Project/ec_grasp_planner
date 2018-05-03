@@ -761,7 +761,14 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
     locations = ['l'+str(i) for i in range(len(graph.nodes))]
 
     connections = [('connected', 'l'+str(e.node_id_start), 'l'+str(e.node_id_end)) for e in graph.edges]
-    grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
+
+    # grasping_locations_tmp = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
+    # random edge selection
+    # tuning purpose we might use l5 ec
+    grasping_locations_tmp = ['l'+str(i) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
+    print("graps locations: {}".format(grasping_locations_tmp))
+    grasping_locations = [('is_grasping_location', np.random.choice(grasping_locations_tmp))]
+    print("random graps location: {}".format(grasping_locations))
 
     # define possible actions
     domain = pyddl.Domain((
