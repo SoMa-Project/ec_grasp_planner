@@ -502,7 +502,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     initial_jointConf = params['initial_goal']
 
-    # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
+    # transformation between hand and EC frame (which is positioned like object and oriented like edge?) at grasp time
     hand_transform = params['hand_transform']
 
     # transformation to apply after grasping
@@ -522,38 +522,42 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     global rviz_frames
     rviz_frames = []
 
-    # this is the EC frame. It is positioned like object and oriented to the wall
+    # this is the EC frame. It is positioned like object and oriented to the edge?
     ec_frame = np.copy(edge_frame)
     ec_frame[:3, 3] = tra.translation_from_matrix(object_frame)
     # apply hand transformation
     ec_frame = (ec_frame.dot(hand_transform))
 
     #the grasp frame is symmetrical - we flip so that the hand axis always points away from the robot base
+    # TODO check for edge EC if this stands
     zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
     if ec_frame[0][0]<0:
         goal_ = ec_frame.dot(zflip_transform)
 
 
     # the pre-approach pose should be:
-    # - floating above and behind the object,
-    # - fingers pointing downwards
-    # - palm facing the object and wall
+    # - floating above the object
+    # -- position above the object depend the relative location of the edge to the object and the object bounding box
+    #   TODO define pre_approach_transform(egdeTF, objectTF, objectBB)
+    # - fingers pointing toward the edge (edge x-axis orthogonal to palm frame x-axis)
+    # - palm normal perpendicualr to surface normal
     pre_approach_pose = ec_frame.dot(pre_approach_transform)
 
 
     # Rviz debug frames
-    #rviz_frames.append(edge_frame)
+    rviz_frames.append(edge_frame)
     #rviz_frames.append(ec_frame)
     #rviz_frames.append(position_behind_object)
-    rviz_frames.append(pre_approach_pose)
     rviz_frames.append(ec_frame)
+    rviz_frames.append(pre_approach_pose)
+
 
     # use the default synergy
     hand_synergy = 1
 
     control_sequence = []
 
-    # 0. initial position above ifco
+    # 0. initial position above table
     control_sequence.append(
         ha.JointControlMode(initial_jointConf, name='InitialJointConfig', controller_name='initialJointCtrl'))
 
@@ -600,7 +604,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     # TODO partners: this can be replaced by a frame pose switch if your robot is able to do small motions precisely
 #    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.2))
 
-    # 4. Go towards the wall to slide object to wall
+    # 4. Go towards the edge to slide object to edge
 
     #this is the tr from ec_frame to edge frame in ec_frame
     delta = np.linalg.inv(edge_frame).dot(ec_frame)
@@ -610,7 +614,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     # slide to the edge
     dirEdge = ec_frame.dot(tra.translation_matrix([dist, 0, 0]))
-    #TODO sliding_distance should be computed from wall and hand frame.
+    #TODO sliding_distance should be computed from edge and hand frame.
 
     # slide direction is given by the normal of the wall
     #dirEdge[:3, 3] = edge_frame[:3, :3].dot(dirEdge[:3, 3])
