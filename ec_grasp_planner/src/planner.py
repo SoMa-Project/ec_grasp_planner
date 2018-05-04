@@ -523,6 +523,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     rviz_frames = []
 
     # this is the EC frame. It is positioned like object and oriented to the edge?
+    # TODO rename EC_FRAME to initial_slide_frame
     ec_frame = np.copy(edge_frame)
     ec_frame[:3, 3] = tra.translation_from_matrix(object_frame)
     # apply hand transformation
@@ -594,6 +595,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                                  frame_id='world',
                                                  port='2'))
 
+
     # 3. Lift upwards so the hand doesn't slide on table surface
 #    dirLift = tra.translation_matrix([0, 0, lift_dist])
 #    control_sequence.append(
@@ -612,13 +614,21 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     #this is the distance to the edge, given by the z axis of the edge frame
     dist = delta[2,3]
 
-    # slide to the edge
-    dirEdge = ec_frame.dot(tra.translation_matrix([dist, 0, 0]))
-    #TODO sliding_distance should be computed from edge and hand frame.
+    # handPalm pose on the edge right before grasping
+    hand_on_edge_pose = ec_frame.dot(tra.translation_matrix([dist, 0, 0]))
+
+    # direction toward the edge and distance without any rotation in worldFrame
+    dirEdge = np.identity(4)
+    # relative distance from initial slide position to final hand on the edge position
+    distance_to_edge = hand_on_edge_pose - ec_frame
+    dirEdge[:3, 3] = tra.translation_from_matrix(distance_to_edge)
+    # debug output
+    print("edgeDir: {}".format(dirEdge))
+
 
     # slide direction is given by the normal of the wall
     #dirEdge[:3, 3] = edge_frame[:3, :3].dot(dirEdge[:3, 3])
-    rviz_frames.append(dirEdge)
+    rviz_frames.append(hand_on_edge_pose)
     #rviz_frames.append(edge_frame)
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(dirEdge, controller_name='SlideToEdge', goal_is_relative='1',
