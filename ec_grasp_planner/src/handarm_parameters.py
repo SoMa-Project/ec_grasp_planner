@@ -321,9 +321,9 @@ class PISAHandKUKA(KUKA):
 
         self['hand_max_aperture'] = 0.25
 
-        self['isInPositionControl'] = False
+        self['isInPositionControl'] = True
 
-        self['IMUGrasp'] = True
+        self['IMUGrasp'] = False
 
         ####################################################################################
         # IIT specific params for surface grasp
