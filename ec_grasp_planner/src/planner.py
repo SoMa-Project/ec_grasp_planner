@@ -133,13 +133,6 @@ class GraspPlanner():
                     obj_bbox_uncertainty_offset = self.handarm_params['object']['obj_bbox_uncertainty_offset']
                 self.grasp_type, wall_id = grasp_heuristics(ifco_in_base, object_in_base, bounding_box, obj_bbox_uncertainty_offset)
                 print("GRASP HEURISTICS " + self.grasp_type + " " + wall_id)
-
-                call_xper = rospy.ServiceProxy('pregrasp_pose', xper_srv.ProvidePreGraspPose)
-                res = call_xper(pm.toMsg(pm.fromMatrix(ifco_in_base)), pm.toMsg(pm.fromMatrix(object_in_base)))
-                print("REACHABILITY & EXPERIMENTS node proposes a " + res.grasp_type + " grasp")
-                print("approach_direction: " + str(res.approach_direction))
-                print("hand_orientation: " + str(res.hand_orientation))
-                print("plane_orientation: " + str(res.plane_orientation))
             else:                
                 wall_id = "wall1"
                 grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
@@ -199,7 +192,7 @@ def getParam(obj_type_params, obj_params, paramKey):
 
 
 # ================================================================================================
-def create_surface_grasp(object_frame, bounding_box, support_surface_frame, handarm_params, object_type):
+def create_surface_grasp(object_frame, bounding_box, support_surface_frame, handarm_params, object_type, ifco_in_base):
 
     # Get the parameters from the handarm_parameters.py file
     obj_type_params = {}
@@ -230,6 +223,14 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     goal_ = goal_.dot(hand_transform) #this is the pre-grasp transform of the signature frame expressed in the world
     goal_ = goal_.dot(ee_in_goal_frame)
 
+    call_xper = rospy.ServiceProxy('pregrasp_pose', xper_srv.ProvidePreGraspPose)
+    res = call_xper(pm.toMsg(pm.fromMatrix(ifco_in_base)), pm.toMsg(pm.fromMatrix(object_frame)), pm.toMsg(pm.fromMatrix(goal_)), "surface")
+    print("REACHABILITY & EXPERIMENTS node proposes: ")
+    print("approach_direction: " + str(res.approach_direction))
+    print("hand_orientation: " + str(res.hand_orientation))
+    print("plane_orientation: " + str(res.plane_orientation))
+    print(pm.toMatrix(pm.fromMsg(res.reachable_hand_pose)))
+
     approach_goal_ = np.copy(object_frame)
     approach_goal_ = approach_goal_.dot(object_approach_transform)
     approach_goal_ = approach_goal_.dot(ee_in_goal_frame)
@@ -247,6 +248,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     rviz_frames = []
     rviz_frames.append(object_frame)
     rviz_frames.append(goal_)
+    rviz_frames.append(pm.toMatrix(pm.fromMsg(res.reachable_hand_pose)))
 
     # assemble controller sequence
     control_sequence = []
@@ -348,7 +350,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
 
 
 # ================================================================================================
-def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_frame, handarm_params, object_type):
+def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_frame, handarm_params, object_type, ifco_in_base):
 
     # Get the parameters from the handarm_parameters.py file
     obj_type_params = {}
@@ -404,11 +406,18 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
 
     pre_approach_pose = ec_frame.dot(pre_approach_transform)
 
+    call_xper = rospy.ServiceProxy('pregrasp_pose', xper_srv.ProvidePreGraspPose)
+    res = call_xper(pm.toMsg(pm.fromMatrix(ifco_in_base)), pm.toMsg(pm.fromMatrix(object_frame)), pm.toMsg(pm.fromMatrix(pre_approach_pose)), "wall")
+    print("REACHABILITY & EXPERIMENTS node proposes: ")
+    print("approach_direction: " + str(res.approach_direction))
+    print("hand_orientation: " + str(res.hand_orientation))
+    print("plane_orientation: " + str(res.plane_orientation))
+    print(pm.toMatrix(pm.fromMsg(res.reachable_hand_pose)))
+
     # Rviz debug frames
     rviz_frames.append(object_frame)
-    rviz_frames.append(wall_frame)
-    rviz_frames.append(ec_frame)
     rviz_frames.append(pre_approach_pose)
+    rviz_frames.append(pm.toMatrix(pm.fromMsg(res.reachable_hand_pose)))
 
     control_sequence = []
 
@@ -569,11 +578,11 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         # wall_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         # wall1_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(wall_frame_node.transform))
         wall_frame = get_wall_tf(ifco_in_base, wall_id)
-        return create_wall_grasp(T_object_in_base, bounding_box, support_surface_frame, wall_frame, handarm_params, object_type)
+        return create_wall_grasp(T_object_in_base, bounding_box, support_surface_frame, wall_frame, handarm_params, object_type, ifco_in_base)
     elif grasp_type == 'SurfaceGrasp':
         #support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         #support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-        return create_surface_grasp(T_object_in_base, bounding_box, support_surface_frame, handarm_params, object_type)
+        return create_surface_grasp(T_object_in_base, bounding_box, support_surface_frame, handarm_params, object_type, ifco_in_base)
     else:
         raise "Unknown grasp type: ", grasp_type
 
