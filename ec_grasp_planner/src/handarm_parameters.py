@@ -349,4 +349,49 @@ class PISAHandKUKA(KUKA):
         
         self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
                                                                  tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
+
+
+class PISAGripperKUKA(KUKA):
+    def __init__(self, **kwargs):
+        super(PISAGripperKUKA, self).__init__()
+
+        ####################################################################################
+        # IIT specific params irrespective of grasp type 
+        ####################################################################################
+
+        #self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.55431, 0.49756, 0.26512]), tra.quaternion_matrix([-0.663, 0.12789, 0.73342, 0.078571]))
+
+        self['hand_closing_duration'] = 2
+
+        self['hand_opening_duration'] = 2
+
+        self['hand_max_aperture'] = 0.25
+
+        self['isInPositionControl'] = True
+
+        ####################################################################################
+        # IIT specific params for surface grasp
+        ####################################################################################
+
+        self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0, 0.0]),
+                                                                                tra.concatenate_matrices(
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(90.), [0, 0, 1]),
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(180.), [1, 0, 0])))
+
+        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.0, 0.0])
+
+        self['surface_grasp']['object']['kp'] = 6
+
+        ####################################################################################
+        # IIT specific params for wall grasp
+        ####################################################################################        
+
+        self['wall_grasp']['object']['kp'] = 6
+
+        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.025, 0])
+        
+        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
+                                                                 tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
         
