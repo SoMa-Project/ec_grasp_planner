@@ -258,29 +258,32 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     # 1b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
  
-    # 2. Go down onto the object (relative in EE frame) - Godown
-    # control_sequence.append(
-    #     ha.InterpolatedHTransformControlMode(down_IFCO_twist,
-    #                                          controller_name='GoDown',
-    #                                          goal_is_relative='1',
-    #                                          name="GoDown",
-    #                                          reference_frame="EE",
-    #                                          v_max=down_IFCO_speed))
-    # control_sequence.append(ha.InterpolatedHTransformControlMode(approach_goal_, controller_name = 'GoDown', goal_is_relative='0', name = 'GoDown'))
-    control_sequence.append(ha.SlerpControlMode(approach_goal_, controller_name = 'GoDown', goal_is_relative='0', name = 'GoDown'))
+    if handarm_params['IMUGrasp']:
+        control_sequence.append(ha.SlerpControlMode(approach_goal_, controller_name = 'GoDown', goal_is_relative='0', name = 'GoDown'))
+        control_sequence.append(ha.FramePoseSwitch('GoDown', 'softhand_close', controller = 'GoDown', epsilon = '0.01'))
+    else:
+        # 2. Go down onto the object (relative in EE frame) - Godown
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(down_IFCO_twist,
+                                                 controller_name='GoDown',
+                                                 goal_is_relative='1',
+                                                 name="GoDown",
+                                                 reference_frame="EE",
+                                                 v_max=down_IFCO_speed))
+        control_sequence.append(ha.InterpolatedHTransformControlMode(approach_goal_, controller_name = 'GoDown', goal_is_relative='0', name = 'GoDown'))
+        
+        
+        # 2b. Switch when force-torque sensor is triggered
+        force  = np.array([0, 0, downward_force, 0, 0, 0])
+        control_sequence.append(ha.ForceTorqueSwitch('GoDown',
+                                                     'softhand_close',
+                                                     goal = force,
+                                                     norm_weights = np.array([0, 0, 1, 0, 0, 0]),
+                                                     jump_criterion = "THRESH_UPPER_BOUND",
+                                                     goal_is_relative = '1',
+                                                     frame_id = 'world',
+                                                     port = '2'))
     
-    # 2b. Switch when force-torque sensor is triggered
-    # force  = np.array([0, 0, downward_force, 0, 0, 0])
-    # control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-    #                                              'softhand_close',
-    #                                              goal = force,
-    #                                              norm_weights = np.array([0, 0, 1, 0, 0, 0]),
-    #                                              jump_criterion = "THRESH_UPPER_BOUND",
-    #                                              goal_is_relative = '1',
-    #                                              frame_id = 'world',
-    #                                              port = '2'))
-    control_sequence.append(ha.FramePoseSwitch('GoDown', 'softhand_close', controller = 'GoDown', epsilon = '0.01'))
- 
     # 3. Maintain the position
     # 3b. Switch when hand closing time ends
     if handarm_params['isForceControllerAvailable']:
