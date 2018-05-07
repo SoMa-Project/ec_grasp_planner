@@ -218,7 +218,7 @@ class RBOHandP24WAM(RBOHand2):
         self['edge_grasp']['object']['drop_off_config'] = np.array(
             [0.25118, 0.649543, -0.140991, 1.79668, 0.0720235, 0.453135, -1.03957])
 
-        self['edge_grasp']['object']['table_force'] = 1.5
+        self['edge_grasp']['object']['table_force'] = 5.5
         self['edge_grasp']['object']['up_dist'] = 0.2
         self['edge_grasp']['object']['down_dist'] = 0.25
         self['edge_grasp']['object']['go_down_velocity'] = np.array(
