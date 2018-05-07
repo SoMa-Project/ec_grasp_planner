@@ -203,7 +203,7 @@ class RBOHandP24WAM(RBOHand2):
                 tra.rotation_matrix(
                     math.radians(0.), [1, 0, 0]),
                 tra.rotation_matrix(
-                    math.radians(0.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                    math.radians(18.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
                 tra.rotation_matrix(  # this makes the fingers point downwards
                     math.radians(0.0), [0, 0, 1]),
             ))
