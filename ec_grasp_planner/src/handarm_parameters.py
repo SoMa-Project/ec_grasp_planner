@@ -218,6 +218,14 @@ class RBOHandP24WAM(RBOHand2):
         self['edge_grasp']['object']['drop_off_config'] = np.array(
             [0.25118, 0.649543, -0.140991, 1.79668, 0.0720235, 0.453135, -1.03957])
 
+        # object hand over configuration - this is system specific!
+        self['edge_grasp']['object']['hand_over_config'] = np.array(
+            [0.650919, 1.04026, -0.940386, 1.30763, 0.447859, 0.517442, 0.0633935])
+
+
+        # the force with which the person pulls the object out of the hand
+        self['edge_grasp']['object']['hand_over_force'] = 1.5
+
         self['edge_grasp']['object']['table_force'] = 5.5
         self['edge_grasp']['object']['up_dist'] = 0.2
         self['edge_grasp']['object']['down_dist'] = 0.25
