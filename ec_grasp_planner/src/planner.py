@@ -514,6 +514,9 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     down_dist = params['down_dist']
     pre_approach_transform = params['pre_approach_transform']
     drop_off_config = params['drop_off_config']
+    hand_over_config = params['hand_over_config']
+    hand_over_force = params['hand_over_force']
+
     go_down_velocity = params['go_down_velocity']
     slide_velocity = params['slide_velocity']
     hand_closing_duration = params['hand_closing_duration']
@@ -680,21 +683,29 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
         ha.FramePoseSwitch('GoUp', 'GoDropOff', controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
                            reference_frame="world"))
 
-    # 8. Go to drop off configuration
+    # 8. Go to hand over configuration configuration
     control_sequence.append(
-        ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
+        ha.JointControlMode(hand_over_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
 
     # 8.b  Switch when configuration is reached
-    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'finished', controller='GoToDropJointConfig',
+    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'wait_for_handover', controller='GoToDropJointConfig',
                                                         epsilon=str(math.radians(7.))))
 
-    # 9. Block joints to finish motion and hold object in air
-    finishedMode = ha.ControlMode(name='finished')
-    finishedSet = ha.ControlSet()
-    finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
+    # 9. Block joints to hold object in air util human takes over
+    waitForHandoverMode = ha.ControlMode(name='wait_for_handover')
+    waitForHandoverSet = ha.ControlSet()
+    waitForHandoverSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
                                   goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
-    finishedMode.set(finishedSet)
-    control_sequence.append(finishedMode)
+    waitForHandoverMode.set(waitForHandoverSet)
+    control_sequence.append(waitForHandoverMode)
+
+    # wait until forece is exerted by human on EE while taking the object to release object
+    control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open', name='human_interaction_handover', goal=np.zeros(6),
+                                                   norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='0',
+                                                   epsilon=hand_over_force, negate='1'))
+
+    # open hand and go into gravity compensation mode
+    control_sequence.append(ha.ControlMode(name='softhand_open'))
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
