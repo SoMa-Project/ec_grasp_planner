@@ -570,6 +570,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                                         epsilon=str(math.radians(7.))))
 
     # 1. Go above the object
+    # TODO hand pose relative to object should depend on bounding box size and edge location
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(pre_approach_pose, controller_name='GoAboveObject', goal_is_relative='0',
                                              name="PreGrasp"))
@@ -590,7 +591,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     # 2b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'SlideToEdge',
+                                                 'Pause_1',
                                                  goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND",
@@ -598,19 +599,15 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                                  frame_id='world',
                                                  port='2'))
 
-
-    # 3. Lift upwards so the hand doesn't slide on table surface
-#    dirLift = tra.translation_matrix([0, 0, lift_dist])
-#    control_sequence.append(
-#        ha.InterpolatedHTransformControlMode(dirLift, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
-#                                             reference_frame="world"))
-
-    # 3b. We switch after a short time as this allows us to do a small, precise lift motion
-    # TODO partners: this can be replaced by a frame pose switch if your robot is able to do small motions precisely
-#    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.2))
+    # gravity compensation before sliding due to safety reasons
+    # safety_force_3 triggers at the begining of slide controller on WAM
+    # bypasseing issue by pause between Control Modes
+    # TODO: fix issue on WAM controller
+    control_sequence.append(ha.GravityCompensationMode(name = 'Pause_1'))
+    # time switch - to end pause
+    control_sequence.append(ha.TimeSwitch('Pause_1', 'SlideToEdge', duration=0.02))
 
     # 4. Go towards the edge to slide object to edge
-
     #this is the tr from ec_frame to edge frame in ec_frame
     delta = np.linalg.inv(edge_frame).dot(ec_frame)
 
@@ -624,23 +621,24 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     dirEdge = np.identity(4)
     # relative distance from initial slide position to final hand on the edge position
     distance_to_edge = hand_on_edge_pose - ec_frame
+    # TODO might need tuning based on object and palm frame
     dirEdge[:3, 3] = tra.translation_from_matrix(distance_to_edge)
-    # debug output
-    print("edgeDir: {}".format(dirEdge))
+    # no lifting motion applied while sliding
+    dirEdge[2, 3] = 0
 
-
-    # slide direction is given by the normal of the wall
-    #dirEdge[:3, 3] = edge_frame[:3, :3].dot(dirEdge[:3, 3])
+    # slide direction is given by the x-axis of the edge
     rviz_frames.append(hand_on_edge_pose)
-    #rviz_frames.append(edge_frame)
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(dirEdge, controller_name='SlideToEdge', goal_is_relative='1',
                                              name="SlideToEdge", reference_frame="world",
                                              v_max=slide_velocity))
 
-    # 4b. Switch when the f/t sensor is triggered with normal force from wall
     # 4b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('SlideToEdge', 'softhand_close', controller='SlideToEdge', epsilon='0.01'))
+    control_sequence.append(ha.FramePoseSwitch('SlideToEdge', 'softhand_close',
+                                               controller='SlideToEdge',
+                                               epsilon='0.01',
+                                               reference_frame="world",
+                                               goal_is_relative='1'))
 
     # 5. Maintain contact while closing the hand
     if handarm_params['isForceControllerAvailable']:
@@ -659,7 +657,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
         # if hand is not RBO then create general hand closing mode?
         control_sequence.append(ha.SimpleRBOHandControlMode(name='softhand_close', goal=np.array([1])))
 
-    # 5b. Switch when hand closing duration ends
+    # 5b time switch for closing hand  to post grasp rotation to increase graps success - TODO might be not needed check it
     control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=hand_closing_duration))
 
     # 6. Move hand after closing and before lifting it up
