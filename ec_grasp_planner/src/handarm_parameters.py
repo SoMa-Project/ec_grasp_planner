@@ -222,7 +222,7 @@ class RBOHandP24WAM(RBOHand2):
         self['edge_grasp']['object']['up_dist'] = 0.2
         self['edge_grasp']['object']['down_dist'] = 0.25
         self['edge_grasp']['object']['go_down_velocity'] = np.array(
-            [0.125, 0.06])  # first value: rotational, second translational
+            [0.125, 0.03])  # first value: rotational, second translational
         self['edge_grasp']['object']['slide_velocity'] = np.array([0.125, 0.03])
 
 class RBOHandP11WAM(RBOHandP24WAM):
