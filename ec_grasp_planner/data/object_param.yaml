@@ -16,7 +16,7 @@
   punnet:
     RBOHandO2WAM:
       SurfaceGrasp: {'success': 0.5}
-      WallGrasp: {'success': [0.8, 0.8, 0], 'angle': [90, 270] , 'epsilon': 20}
+      WallGrasp: {'success': [0.8, 0.8, 0], 'angle': [0, 180, 360] , 'epsilon': 20}
       EdgeGrasp: {'success': 0}
   letuch:
     RBOHandO2WAM:
