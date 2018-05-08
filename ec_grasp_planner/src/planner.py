@@ -520,6 +520,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     go_down_velocity = params['go_down_velocity']
     slide_velocity = params['slide_velocity']
     hand_closing_duration = params['hand_closing_duration']
+    palm_edge_offset = params['palm_edge_offset']
 
     # Get the pose above the object
     global rviz_frames
@@ -611,8 +612,9 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     #this is the tr from ec_frame to edge frame in ec_frame
     delta = np.linalg.inv(edge_frame).dot(ec_frame)
 
-    #this is the distance to the edge, given by the z axis of the edge frame
-    dist = delta[2,3]
+    # this is the distance to the edge, given by the z axis of the edge frame
+    # add some extra forward distance to avoid grasping the edge of the table palm_edge_offset
+    dist = delta[2,3] + np.sign(delta[2,3])*palm_edge_offset
 
     # handPalm pose on the edge right before grasping
     hand_on_edge_pose = ec_frame.dot(tra.translation_matrix([dist, 0, 0]))
@@ -625,6 +627,8 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     dirEdge[:3, 3] = tra.translation_from_matrix(distance_to_edge)
     # no lifting motion applied while sliding
     dirEdge[2, 3] = 0
+
+
 
     # slide direction is given by the x-axis of the edge
     rviz_frames.append(hand_on_edge_pose)
