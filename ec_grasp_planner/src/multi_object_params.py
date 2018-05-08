@@ -41,7 +41,7 @@ class multi_object_params:
         with open(file, 'r') as stream:
             try:
                 self.data =yaml.load(stream)
-                print("data loaded")
+                # print("data loaded")
             except yaml.YAMLError as exc:
                 print(exc)
 
@@ -56,30 +56,43 @@ class multi_object_params:
 
 ## --------------------------------------------------------- ##
     # return probability based on object and ec features
-    def pdf_object_ec(self, object, ec_frame):
+    def pdf_object_ec(self, object, ec_frame, strategy):
         h = -1
         success = object['success']
-        print object
+        object_frame = object['frame']
 
+        # if object-ec angle is given, get h_val for this feature
+        # h_angle(relative object orientation to EC):
+        # the optimal orientation values +/- epsilon = x probability - given in the object_param.yaml
         if object.get('angle',0):
-            object_frame = object['frame']
             obj_x_axis = object_frame[0:3, 0]
 
             for idx, val in enumerate(object['angle']):
                 ec_x_axis = ec_frame[0:3, 0]
                 angle_epsilon = object['epsilon']
-
-                if (math.fabs(angle_between(obj_x_axis, ec_x_axis) - math.radians(val))
-                        <= math.radians(angle_epsilon)):
+                diff_angle = math.fabs(angle_between(obj_x_axis, ec_x_axis) - math.radians(val))
+                # print("obj_x = {}, ec_x = {}, eps = {}, optimalDeg = {}, copare = {}".format(
+                #     obj_x_axis, ec_x_axis, angle_epsilon, val, diff_angle))
+                if (diff_angle <= math.radians(angle_epsilon)):
                     h = success[idx]
                     break
             # if the angle was not within the given bounded sets
             # take the last value from the list of success values
             if h == -1:
                 h = success[-1]
+                # print (" *** no good angle found")
             # if there are no other criteria for h
         else:
             h = success
+
+        # distance form EC (wall end edge)
+        # this is the tr from object_frame to ec_frame in object frame
+        if (strategy in ["WallGrasp", "EdgeGrasp"]):
+            delta = np.linalg.inv(ec_frame).dot(object_frame)
+            # this is the distance between object and EC
+            dist = delta[2, 3]
+            # include distance to h, longer distance decreases h
+            h = h * (1/dist)
 
         return h
 
@@ -90,9 +103,8 @@ class multi_object_params:
         object_params = self.data[object['type']][hand][strategy]
         object_params['frame'] = object['frame']
         h = 1
-
-        h = h * self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame)
-
+        h = h * self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame, strategy)
+        # print(" ** h = {}".format(h))
         return h
 
 ## --------------------------------------------------------- ##
@@ -100,13 +112,11 @@ class multi_object_params:
     def argmax_h(self, h_matrix):
         # find max probablity in list
 
-
-
         # max_probability_indexes = np.argwhere(h_matrix == h_matrix.argmax())
         max_prob = h_matrix.max()
         h_matrix[h_matrix!=max_prob] = 0;
 
-            #max(h_matrix.iteritems(), key=operator.itemgetter(1))[1]
+        #max(h_matrix.iteritems(), key=operator.itemgetter(1))[1]
         # print(max_probability)
         #
         # # select all items with max probability
@@ -115,7 +125,7 @@ class multi_object_params:
 
         # select randomly one of the itmes
         ideces_sampled_max = self.sample_from_pdf(h_matrix)
-        print (ideces_sampled_max)
+        # print (ideces_sampled_max)
 
         return ideces_sampled_max
 
@@ -146,7 +156,7 @@ class multi_object_params:
         self.load_object_params()
         h_matrix = np.zeros((len(objects),len(ecs)))
 
-        # check if given hand exist
+        # iterate through all objects
         for i,o in enumerate(objects):
 
             # check if the given hand type for this object is set in the yaml
@@ -159,15 +169,20 @@ class multi_object_params:
                 ec_frame_in_base = graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))
                 h_matrix[i,j] = self.heuristic(o, ec_frame_in_base, ec.label, hand_type)
 
+        # print (" ** h_mx = {}".format(h_matrix))
+
+        # select heuristic function for choosing object and EC
+        #argmax samples from the [max (H(obj, ec)] list
         if h_process_type == "argmax":
             object_index,  ec_index = self.argmax_h(h_matrix)
+            # print(" ** h_mx[{}, {}]".format(object_index, ec_index))
             return (objects[object_index], ecs[ec_index])
-
+        # samples from [H(obj, ec)] list
         elif h_process_type == "sample":
             object_index, ec_index = self.sample_from_pdf(h_matrix)
             return (objects[object_index], ecs[ec_index])
 
-
+        # worst case jsut return the first object and ec
         return (objects[0],ecs[0])
 
 ## --------------------------------------------------------- ##
