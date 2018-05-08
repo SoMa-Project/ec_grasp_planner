@@ -20,6 +20,7 @@ import smach
 import smach_ros
 
 import tf
+from numpy.random.mtrand import choice
 from tf import transformations as tra
 import numpy as np
 
@@ -126,9 +127,7 @@ class GraspPlanner():
             object_in_camera = pm.toMatrix(pm.fromMsg(o.transform.pose))
             object_in_base = camera_in_base.dot(object_in_camera)
             obj_tmp['frame'] = object_in_base
-
             obj_tmp['bounding_box'] = o.boundingbox
-
             object_list.append(obj_tmp)
 
         # selecting list of goal nodes based on requested strategy type
@@ -148,8 +147,9 @@ class GraspPlanner():
                                                                                      graph_in_base_transform,
                                                                                      req.object_heuristic_function,
                                                                                      req.handarm_type)
-        print("ID object: {}, ec: {}".format(chosen_object, chosen_node))
-        # print("object: ({}) {}, ec: ({}) {}".format(chosen_object, objects[chosen_object], chosen_node, node_list[chosen_node]) )
+        # print(" * object type: {}, ec type: {}, heuristc funciton type: {}".format(chosen_object['type'], chosen_node.label, req.object_heuristic_function))
+
+
         # --------------------------------------------------------
         # Get grasp from graph representation
         grasp_path = None
@@ -160,12 +160,14 @@ class GraspPlanner():
 
 
             # Get the object frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, chosen_object.header.frame_id, time, rospy.Duration(2.0))
-            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, chosen_object.header)
-            object_in_camera = pm.toMatrix(pm.fromMsg(chosen_object.pose))
-            object_in_base = camera_in_base.dot(object_in_camera)
+            # self.tf_listener.waitForTransform(robot_base_frame, chosen_object.header.frame_id, time, rospy.Duration(2.0))
+            # camera_in_base = self.tf_listener.asMatrix(robot_base_frame, chosen_object.header)
+            # object_in_camera = pm.toMatrix(pm.fromMsg(chosen_object.pose))
+            # object_in_base = camera_in_base.dot(object_in_camera)
 
-            print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
+            object_in_base = chosen_object['frame']
+
+            # print(" * Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
 
             # Find a path in the ECE graph
             hand_node_id = [n.label for n in graph.nodes].index("Positioning")
@@ -175,7 +177,7 @@ class GraspPlanner():
             # grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
 
             #strategy selection based on object-ec-hand heuristic
-            grasp_path = find_a_path(hand_node_id, object_node_id, graph, chosen_node, verbose=True)
+            grasp_path = find_a_path(hand_node_id, object_node_id, graph, [chosen_node], verbose=True)
 
             rospy.sleep(0.3)
 
@@ -578,10 +580,11 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_list,
     locations = ['l'+str(i) for i in range(len(graph.nodes))]
 
     connections = [('connected', 'l'+str(e.node_id_start), 'l'+str(e.node_id_end)) for e in graph.edges]
-    # strategy selectio based on grasp type
+
+    # strategy selectio based on grasp type without heuristic
     # grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
 
-    # strategy selectio based on heuristics
+    # strategy selection based on heuristics
     grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n in goal_node_list or n.label+'_'+str(i) in goal_node_list]
 
     # define possible actions
