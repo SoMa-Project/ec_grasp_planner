@@ -226,12 +226,63 @@ class RBOHandP24WAM(RBOHand2):
         # the force with which the person pulls the object out of the hand
         self['edge_grasp']['object']['hand_over_force'] = 1.5
 
-        self['edge_grasp']['object']['table_force'] = 5.5
+        self['edge_grasp']['object']['table_force'] = 3.0
         self['edge_grasp']['object']['up_dist'] = 0.2
         self['edge_grasp']['object']['down_dist'] = 0.25
         self['edge_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.03])  # first value: rotational, second translational
         self['edge_grasp']['object']['slide_velocity'] = np.array([0.125, 0.03])
+        self['edge_grasp']['object']['palm_edge_offset'] = 0
+
+        # plush toy
+        self['edge_grasp']['plushtoy'] = {}
+
+        self['edge_grasp']['plushtoy'] = self['edge_grasp']['object']
+
+        self['edge_grasp']['plushtoy']['table_force'] = 10.0
+
+        self['edge_grasp']['plushtoy']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.03, 0, -0.23]),  # 23 cm above object
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(18.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+
+        # head band
+        self['edge_grasp']['headband'] = {}
+        self['edge_grasp']['headband'] = self['edge_grasp']['object']
+        self['edge_grasp']['headband']['table_force'] = 2.0
+        self['edge_grasp']['headband']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0, -0.23]),  # 23 cm above object
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(25.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+        self['edge_grasp']['headband']['palm_edge_offset'] = 0.01
+
+        # ticket
+        self['edge_grasp']['ticket'] = {}
+        self['edge_grasp']['ticket'] = self['edge_grasp']['object']
+        self['edge_grasp']['headband']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.03, 0, -0.23]),  # 23 cm above object
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(25.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+
+        self['edge_grasp']['headband']['palm_edge_offset'] = 0.02
 
 class RBOHandP11WAM(RBOHandP24WAM):
     def __init__(self, **kwargs):
