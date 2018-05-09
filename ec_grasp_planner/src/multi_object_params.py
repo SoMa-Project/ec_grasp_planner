@@ -57,7 +57,7 @@ class multi_object_params:
 ## --------------------------------------------------------- ##
     # return probability based on object and ec features
     def pdf_object_ec(self, object, ec_frame, strategy):
-        h = -1
+        q_val = -1
         success = object['success']
         object_frame = object['frame']
 
@@ -74,16 +74,16 @@ class multi_object_params:
                 # print("obj_x = {}, ec_x = {}, eps = {}, optimalDeg = {}, copare = {}".format(
                 #     obj_x_axis, ec_x_axis, angle_epsilon, val, diff_angle))
                 if (diff_angle <= math.radians(angle_epsilon)):
-                    h = success[idx]
+                    q_val = success[idx]
                     break
             # if the angle was not within the given bounded sets
             # take the last value from the list of success values
-            if h == -1:
-                h = success[-1]
+            if q_val == -1:
+                q_val = success[-1]
                 # print (" *** no good angle found")
-            # if there are no other criteria for h
+            # if there are no other criteria for q_val
         else:
-            h = success
+            q_val = success
 
         # distance form EC (wall end edge)
         # this is the tr from object_frame to ec_frame in object frame
@@ -91,96 +91,119 @@ class multi_object_params:
             delta = np.linalg.inv(ec_frame).dot(object_frame)
             # this is the distance between object and EC
             dist = delta[2, 3]
-            # include distance to h, longer distance decreases h
-            h = h * (1/dist)
+            # include distance to q_val, longer distance decreases q_val
+            q_val = q_val * (1/dist)
 
-        return h
+        return q_val
 
 ## --------------------------------------------------------- ##
-    #object-envirtionment-hand based heuristic valeu for grasping
-    def heuristic(self, object, ec_frame, strategy, hand):
+    # object-environment-hand based heuristic, q_value for grasping
+    def heuristic(self, object, ec_frame, strategy):
 
-        object_params = self.data[object['type']][hand][strategy]
+        object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
-        h = 1
-        h = h * self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame, strategy)
-        # print(" ** h = {}".format(h))
-        return h
+        q_val = 1
+        q_val = q_val * self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame, strategy)
+        # print(" ** q_val = {}".format(q_val))
+        return q_val
 
 ## --------------------------------------------------------- ##
     # find the max probability and if there are more than one return one randomly
-    def argmax_h(self, h_matrix):
+    def argmax_h(self, Q_matrix):
         # find max probablity in list
 
-        # max_probability_indexes = np.argwhere(h_matrix == h_matrix.argmax())
-        max_prob = h_matrix.max()
-        h_matrix[h_matrix!=max_prob] = 0;
+        ideces_of_max = np.argwhere(Q_matrix == Q_matrix.max())
+        print("ideces_of_max  = {}".format(ideces_of_max ))
 
-        #max(h_matrix.iteritems(), key=operator.itemgetter(1))[1]
-        # print(max_probability)
-        #
-        # # select all items with max probability
-        # max_probability_dict = {k:v for k,v in h_matrix.items() if float(v) == max_probability}
-        # print (max_probability_dict)
-
-        # select randomly one of the itmes
-        ideces_sampled_max = self.sample_from_pdf(h_matrix)
-        # print (ideces_sampled_max)
-
-        return ideces_sampled_max
+        return ideces_of_max[0][0], ideces_of_max[0][1]
 
 ## --------------------------------------------------------- ##
     # samples from a pdf dictionary where the values are normalized
     # returns the key of the sample
     def sample_from_pdf(self, pdf_matrix):
 
+        # reshape matrix to a vector for sampling
         pdf_array = np.reshape(pdf_matrix, pdf_matrix.shape[0]*pdf_matrix.shape[1] )
 
-        # normalize pdf
-        pdf_normalized = pdf_array/sum(pdf_array)
+        #init vector for normalization
+        pdf_normalized = np.zeros(len(pdf_array))
+
+        # normalize pdf, if all 0 all are equally possible
+        if sum(pdf_array) == 0:
+            pdf_normalized[:] = 1.0/len(pdf_array)
+        else:
+            pdf_normalized = pdf_array/sum(pdf_array)
 
         # sample probabilistically
-        # sampled_item = (np.random.choice(pdf_normalized.keys(), p=pdf_normalized.values()))
-
         sampled_item = (np.random.choice(len(pdf_normalized), p=pdf_normalized))
 
         return sampled_item // pdf_matrix.shape[1], sampled_item % pdf_matrix.shape[1]
+
+## --------------------------------------------------------- ##
+    # chose random object and ec
+    # the ec shoudl be valied for the given object
+    # if there are no valid EC then pick randomly from all
+    def random_from_Qmatrix(self, pdf_matrix):
+
+        # reshape matrix to a vector for sampling
+        pdf_array = np.reshape(pdf_matrix, pdf_matrix.shape[0] * pdf_matrix.shape[1])
+
+        # init vector for normalization
+        pdf_normalized = np.zeros(len(pdf_array))
+
+        # normalize pdf, if all 0 -> all are equally possible
+        if sum(pdf_array) == 0:
+            pdf_normalized[:] = 1.0 / len(pdf_array)
+        else:
+            # all non zero probability are = possible for random selection
+            pdf_normalized[pdf_array > 0] = 1 / len(pdf_array[pdf_array > 0])
+
+        # sample probabilistically
+        sampled_item = (np.random.choice(len(pdf_normalized), p=pdf_normalized))
+
+        return sampled_item // pdf_matrix.shape[1], sampled_item % pdf_matrix.shape[1]
+
 
 ## --------------------------------------------------------- ##
     # function called to process all objects and ECs
     # assumption1: all objects are the same type
     # objects is a dictionary with obilagorty keys: type, frame (in robot base frame)
     # ecs is a list of graph nodes (see geometry_graph)
-    def process_objects_ecs(self, objects, ecs, graph_in_base, h_process_type="argmax", hand_type="RBOHandP24WAM"):
+    def process_objects_ecs(self, objects, ecs, graph_in_base, h_process_type="argmax"):
 
+        # load parameter file
         self.load_object_params()
-        h_matrix = np.zeros((len(objects),len(ecs)))
+
+        Q_matrix = np.zeros((len(objects),len(ecs)))
 
         # iterate through all objects
         for i,o in enumerate(objects):
 
             # check if the given hand type for this object is set in the yaml
-            if not self.data[o["type"]].get(hand_type, 0):
-                print("The givne hand {} and object {} has no parameters set in the yaml {}".format(hand_type, o["type"], self.file_name))
+            if not self.data[o["type"]]:
+                print("The given object {} has no parameters set in the yaml {}".format(o["type"], self.file_name))
                 return -1
 
             for j,ec in enumerate(ecs):
                 # the ec frame must be in the same reference frame as the object
                 ec_frame_in_base = graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))
-                h_matrix[i,j] = self.heuristic(o, ec_frame_in_base, ec.label, hand_type)
+                Q_matrix[i,j] = self.heuristic(o, ec_frame_in_base, ec.label)
 
-        # print (" ** h_mx = {}".format(h_matrix))
+        print (" ** h_mx = {}".format(Q_matrix))
 
         # select heuristic function for choosing object and EC
         #argmax samples from the [max (H(obj, ec)] list
-        if h_process_type == "argmax":
-            object_index,  ec_index = self.argmax_h(h_matrix)
+        if h_process_type == "Deterministic":
+            object_index,  ec_index = self.argmax_h(Q_matrix)
             # print(" ** h_mx[{}, {}]".format(object_index, ec_index))
-            return (objects[object_index], ecs[ec_index])
+            return objects[object_index], ecs[ec_index]
         # samples from [H(obj, ec)] list
-        elif h_process_type == "sample":
-            object_index, ec_index = self.sample_from_pdf(h_matrix)
-            return (objects[object_index], ecs[ec_index])
+        elif h_process_type == "Probabilistic":
+            object_index, ec_index = self.sample_from_pdf(Q_matrix)
+            return objects[object_index], ecs[ec_index]
+        elif h_process_type == "Random":
+            object_index, ec_index = self.random_from_Qmatrix(Q_matrix)
+            return objects[object_index], ecs[ec_index]
 
         # worst case jsut return the first object and ec
         return (objects[0],ecs[0])
