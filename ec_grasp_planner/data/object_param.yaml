@@ -1,25 +1,20 @@
   apple:
-    RBOHandO2WAM:
-      SurfaceGrasp: {'success': 1}
-      WallGrasp: {'success': 1}
-      EdgeGrasp: {'success': 0}
+    SurfaceGrasp: {'success': 1}
+    WallGrasp: {'success': 1}
+    EdgeGrasp: {'success': 0}
   cucumber:
-    RBOHandO2WAM:
-      SurfaceGrasp: {'success': 1}
-      WallGrasp: {'success': [1, 0.8, 0.7, 0] , 'angle': [0, 180, 360], 'epsilon': 20}
-      EdgeGrasp: {'success': 0}
+    SurfaceGrasp: {'success': 1}
+    WallGrasp: {'success': [1, 0.8, 0.7, 0] , 'angle': [0, 180, 360], 'epsilon': 20}
+    EdgeGrasp: {'success': 0}
   netbag:
-    RBOHandO2WAM:
-      SurfaceGrasp: {'success': 0}
-      WallGrasp: {'success': 1}
-      EdgeGrasp: {'success': 0}
+    SurfaceGrasp: {'success': 0}
+    WallGrasp: {'success': 1}
+    EdgeGrasp: {'success': 0}
   punnet:
-    RBOHandO2WAM:
-      SurfaceGrasp: {'success': 0.5}
-      WallGrasp: {'success': [0.8, 0.8, 0], 'angle': [0, 180, 360] , 'epsilon': 20}
-      EdgeGrasp: {'success': 0}
-  letuch:
-    RBOHandO2WAM:
-      SurfaceGrasp: {'success':1}
-      WallGrasp: {'success': 0.5}
-      EdgeGrasp: {'success': 0.25}
+    SurfaceGrasp: {'success': 0.5}
+    WallGrasp: {'success': [0.8, 0.8, 0], 'angle': [0, 180, 360] , 'epsilon': 20}
+    EdgeGrasp: {'success': 0}
+  lettuce:
+    SurfaceGrasp: {'success':1}
+    WallGrasp: {'success': 0.5}
+    EdgeGrasp: {'success': 0.25}
