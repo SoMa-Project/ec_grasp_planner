@@ -107,12 +107,6 @@ class GraspPlanner():
         object_frame.header.stamp = time # TODO why do we need to change the time in the header?
         bounding_box = objects[0].boundingbox
 
-        # print("objects type {}, object type {}".format(type(objects), type(objects[0])))
-        # this should catch if the framse in the graph and objects are not in the same reference frame
-        # if (objects[0].transform.header.frame_id == graph.header.frame_id):
-        #     rospy.logerr("Inconsistent reference frame for ECE Graph and Objects! Both must be in the same reference frame!")
-        #     return -1
-
         # build list of objects
         object_list = []
         for o in objects:
@@ -141,13 +135,13 @@ class GraspPlanner():
         graph_in_base_transform = self.tf_listener.asMatrix(robot_base_frame, graph.header)
 
 
-        # we assume that all objects are on the same plain, so all EC can be exploited for any of the objects
+        # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
         (chosen_object, chosen_node) = self.multi_object_handler.process_objects_ecs(object_list,
                                                                                      node_list,
                                                                                      graph_in_base_transform,
-                                                                                     req.object_heuristic_function,
-                                                                                     req.handarm_type)
-        # print(" * object type: {}, ec type: {}, heuristc funciton type: {}".format(chosen_object['type'], chosen_node.label, req.object_heuristic_function))
+                                                                                     req.object_heuristic_function
+                                                                                     )
+        print(" * object type: {}, ec type: {}, heuristc funciton type: {}".format(chosen_object['type'], chosen_node.label, req.object_heuristic_function))
 
 
         # --------------------------------------------------------
@@ -158,16 +152,8 @@ class GraspPlanner():
             self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
             graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
 
-
             # Get the object frame in robot base frame
-            # self.tf_listener.waitForTransform(robot_base_frame, chosen_object.header.frame_id, time, rospy.Duration(2.0))
-            # camera_in_base = self.tf_listener.asMatrix(robot_base_frame, chosen_object.header)
-            # object_in_camera = pm.toMatrix(pm.fromMsg(chosen_object.pose))
-            # object_in_base = camera_in_base.dot(object_in_camera)
-
             object_in_base = chosen_object['frame']
-
-            # print(" * Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
 
             # Find a path in the ECE graph
             hand_node_id = [n.label for n in graph.nodes].index("Positioning")
