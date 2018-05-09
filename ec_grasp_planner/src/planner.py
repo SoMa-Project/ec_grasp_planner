@@ -352,7 +352,8 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     wall_force = getParam(obj_type_params, obj_params, 'wall_force')
     slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
     pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
-
+    scooping_angle_deg = getParam(obj_type_params, obj_params, 'scooping_angle_deg')
+    
     vision_params = {}
     if object_type in handarm_params:
         vision_params = handarm_params[object_type]
@@ -381,9 +382,9 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     # Down speed is negative because it is defined on the world frame
     down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed]);
     # Slide speed is positive because it is defined on the EE frame + rotation of the scooping angle    
-    slide_IFCO_twist = tra.rotation_matrix(math.radians(-20.), [0, 1, 0]).dot(tra.translation_matrix([0, 0, slide_IFCO_speed]));
+    slide_IFCO_twist = tra.rotation_matrix(math.radians(-scooping_angle_deg), [0, 1, 0]).dot(tra.translation_matrix([0, 0, slide_IFCO_speed]));
+    slide_IFCO_twist =  tra.translation_matrix(tra.translation_from_matrix(slide_IFCO_twist))
 
-    
     rviz_frames = []
 
     # this is the EC frame. It is positioned like object and oriented to the wall
@@ -427,7 +428,6 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
                                                  frame_id='world',
                                                  port='2'))
 
-    #displacement = np.array([0, 0, -0.05])
     displacement = np.array([0, 0, 0.05])
     relative_goal = tra.translation_matrix(displacement)
 
@@ -437,8 +437,8 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
                                              reference_frame="world"))
 
     # 3b. We switch after a short time as this allows us to do a small, precise lift motion
-    #control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0))
-    control_sequence.append(ha.FrameDisplacementSwitch('LiftHand', 'SlideToWall', epsilon = '0.01', goal = displacement, goal_is_relative = '0', jump_criterion = "NORM_L2", frame_id = 'EE'))
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=5))
+    control_sequence.append(ha.FramePoseSwitch('LiftHand', 'SlideToWall', goal_is_relative='1', goal=relative_goal, epsilon='0.01', reference_frame="world"))
 
     #control_sequence.append(ha.SlerpControlMode(relative_goal, controller_name = 'LiftHand', goal_is_relative='1', name = 'LiftHand'))
     #control_sequence.append(ha.FrameDisplacementSwitch('LiftHand', 'SlideToWall', epsilon = '0.01', goal = displacement, goal_is_relative = '1', jump_criterion = "NORM_L2", frame_id = 'EE'))
@@ -454,7 +454,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame, port='2'))
-
+                                                 
     # 5. Maintain contact while closing the hand
     if handarm_params['isForceControllerAvailable']:
         control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_close', synergy = handarm_params['hand_closing_synergy'],

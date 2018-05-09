@@ -393,8 +393,12 @@ class PISAGripperKUKA(KUKA):
 
         self['wall_grasp']['object']['kp'] = 6
 
+        scooping_angle_deg = 20        
+
+        self['wall_grasp']['object']['scooping_angle_deg'] = 20
+
         self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, -0.025, 0]),tra.rotation_matrix(
-                                                                                        math.radians(20.), [0, 1, 0]))
+                                                                                        math.radians(scooping_angle_deg), [0, 1, 0]))
         
         self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
                                                                  tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
