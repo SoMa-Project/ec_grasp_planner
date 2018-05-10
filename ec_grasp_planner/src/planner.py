@@ -270,8 +270,6 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
                                                  name="GoDown",
                                                  reference_frame="EE",
                                                  v_max=down_IFCO_speed))
-        control_sequence.append(ha.InterpolatedHTransformControlMode(approach_goal_, controller_name = 'GoDown', goal_is_relative='0', name = 'GoDown'))
-        
         
         # 2b. Switch when force-torque sensor is triggered
         force  = np.array([0, 0, downward_force, 0, 0, 0])
