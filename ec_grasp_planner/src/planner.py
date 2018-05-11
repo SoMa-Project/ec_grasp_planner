@@ -472,15 +472,15 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
 
 
     # 5b. Switch when hand closing duration ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=handarm_params['hand_closing_duration']))
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration=handarm_params['hand_closing_duration']))
 
     # 6. Rotate hand after closing and before lifting it up relative to current hand pose
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', goal_is_relative='1', reference_frame='EE'))
+    # control_sequence.append(
+    #     ha.InterpolatedHTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', goal_is_relative='1', reference_frame='EE'))
 
     # 6b. Switch when hand rotated
     # control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp', controller='PostGraspRotate', epsilon='0.01', goal_is_relative='1', reference_frame = 'EE'))
-    control_sequence.append(ha.TimeSwitch('PostGraspRotate', 'GoUp', duration = rotate_time))
+    # control_sequence.append(ha.TimeSwitch('PostGraspRotate', 'GoUp', duration = rotate_time))
 
 
     # 7. Lift upwards (+z in world frame)
