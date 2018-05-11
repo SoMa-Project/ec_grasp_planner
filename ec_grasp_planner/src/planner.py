@@ -67,6 +67,7 @@ class GraspPlanner():
         print('Handling grasp planner service call')
         self.object_type = req.object_type
         self.grasp_type = req.grasp_type
+        self.handover = req.handover
         grasp_choices = ["any", "WallGrasp", "SurfaceGrasp", "EdgeGrasp"]
         if self.grasp_type not in grasp_choices:
             raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp,EdgeGrasp]")
@@ -132,7 +133,7 @@ class GraspPlanner():
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
         ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
-                                                                self.handarm_params, self.object_type, frame_convention)
+                                                                self.handarm_params, self.object_type, frame_convention, self.handover)
 
         # --------------------------------------------------------
         # Output the hybrid automaton
@@ -159,7 +160,7 @@ class GraspPlanner():
         return plan_srv.RunGraspPlannerResponse(ha.xml())
 
 # ================================================================================================
-def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type):
+def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type, handover):
 
     # Get the relevant parameters for hand object combination
     if (object_type in handarm_params['surface_grasp']):            
@@ -173,11 +174,14 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     drop_off_config = params['drop_off_config']
     downward_force = params['downward_force']
-    hand_closing_time = params['hand_closing_duration']
+    hand_closing_duration = params['hand_closing_duration']
     hand_synergy = params['hand_closing_synergy']
     down_speed = params['down_speed']
     up_speed = params['up_speed']
     go_down_velocity = params['go_down_velocity']
+
+    hand_over_config = params['hand_over_config']
+    hand_over_force = params['hand_over_force']
 
     # Set the initial pose above the object
 
@@ -267,7 +271,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
 
     # 4b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration = hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration = hand_closing_duration))
 
     # 5. Rotate hand after closing and before lifting it up
     # relative to current hand pose
@@ -282,21 +286,61 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
  
     # 6b. Switch when joint is reached
     control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
-     
-    # 7. Go to dropOFF
-    control_sequence.append(ha.JointControlMode(drop_off_config, controller_name = 'GoToDropJointConfig', name = 'GoDropOff'))
- 
-    # 7.b  Switch when joint is reached
-    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'finished', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))    
- 
-    # 8. Block joints to finish motion and hold object in air
-    finishedMode = ha.ControlMode(name  = 'finished')
-    finishedSet = ha.ControlSet()
-    finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'JointController', goal  = np.zeros(7),
-                                   goal_is_relative = 1, v_max = '[0,0]', a_max = '[0,0]'))
-    finishedMode.set(finishedSet)  
-    control_sequence.append(finishedMode)    
-    
+
+    if handover:
+        # 7. Go to handover cfg
+        control_sequence.append(
+            ha.JointControlMode(hand_over_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
+
+        # 8.b  Switch when configuration is reached
+        control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'wait_for_handover', controller='GoToDropJointConfig',
+                                                            epsilon=str(math.radians(7.))))
+
+
+        # 9. Block joints to hold object in air util human takes over
+        waitForHandoverMode = ha.ControlMode(name='wait_for_handover')
+        waitForHandoverSet = ha.ControlSet()
+        waitForHandoverSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
+                                      goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
+        waitForHandoverMode.set(waitForHandoverSet)
+        control_sequence.append(waitForHandoverMode)
+
+        # wait until force is exerted by human on EE while taking the object to release object
+        control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open', name='human_interaction_handover', goal=np.zeros(6),
+                                                       norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='0',
+                                                       epsilon=hand_over_force, negate='1'))
+
+        # 10. open hand
+        control_sequence.append(ha.ControlMode(name='softhand_open'))
+
+        # 11. Block joints to hold object in air util human takes over
+        finishedMode = ha.ControlMode(name='finished')
+        finishedSet = ha.ControlSet()
+        finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
+                                             goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
+
+        finishedMode.set(finishedSet)
+
+        control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration=hand_closing_duration))
+
+        control_sequence.append(finishedMode)
+    else:
+
+        # 7. Go to dropOFF
+        control_sequence.append(
+            ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
+
+        # 7.b  Switch when joint is reached
+        control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'finished', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))
+
+        # 8. Block joints to finish motion and hold object in air
+        finishedMode = ha.ControlMode(name  = 'finished')
+        finishedSet = ha.ControlSet()
+        finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'JointController', goal  = np.zeros(7),
+                                       goal_is_relative = 1, v_max = '[0,0]', a_max = '[0,0]'))
+        finishedMode.set(finishedSet)
+        control_sequence.append(finishedMode)
+
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
@@ -492,7 +536,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
 # ================================================================================================
-def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_params, object_type):
+def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_params, object_type, handover):
 
     # Get the parameters from the handarm_parameters.py file
     if (object_type in handarm_params['wall_grasp']):
@@ -661,7 +705,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
         # if hand is not RBO then create general hand closing mode?
         control_sequence.append(ha.SimpleRBOHandControlMode(name='softhand_close', goal=np.array([1])))
 
-    # 5b time switch for closing hand  to post grasp rotation to increase graps success - TODO might be not needed check it
+    # 5b time switch for closing hand to post grasp rotation to increase grasp success - TODO might be not needed check it
     control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=hand_closing_duration))
 
     # 6. Move hand after closing and before lifting it up
@@ -685,29 +729,63 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
         ha.FramePoseSwitch('GoUp', 'GoDropOff', controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
                            reference_frame="world"))
 
-    # 8. Go to hand over configuration configuration
-    control_sequence.append(
-        ha.JointControlMode(hand_over_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
 
-    # 8.b  Switch when configuration is reached
-    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'wait_for_handover', controller='GoToDropJointConfig',
-                                                        epsilon=str(math.radians(7.))))
+    if handover:
+        # 8. Go to hand over configuration configuration
+        control_sequence.append(
+            ha.JointControlMode(hand_over_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
 
-    # 9. Block joints to hold object in air util human takes over
-    waitForHandoverMode = ha.ControlMode(name='wait_for_handover')
-    waitForHandoverSet = ha.ControlSet()
-    waitForHandoverSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
-                                  goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
-    waitForHandoverMode.set(waitForHandoverSet)
-    control_sequence.append(waitForHandoverMode)
+        # 8.b  Switch when configuration is reached
+        control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'wait_for_handover', controller='GoToDropJointConfig',
+                                                            epsilon=str(math.radians(7.))))
 
-    # wait until forece is exerted by human on EE while taking the object to release object
-    control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open', name='human_interaction_handover', goal=np.zeros(6),
-                                                   norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='0',
-                                                   epsilon=hand_over_force, negate='1'))
 
-    # open hand and go into gravity compensation mode
-    control_sequence.append(ha.ControlMode(name='softhand_open'))
+        # 9. Block joints to hold object in air util human takes over
+        waitForHandoverMode = ha.ControlMode(name='wait_for_handover')
+        waitForHandoverSet = ha.ControlSet()
+        waitForHandoverSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
+                                      goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
+        waitForHandoverMode.set(waitForHandoverSet)
+        control_sequence.append(waitForHandoverMode)
+
+        # wait until force is exerted by human on EE while taking the object to release object
+        control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open', name='human_interaction_handover', goal=np.zeros(6),
+                                                       norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='0',
+                                                       epsilon=hand_over_force, negate='1'))
+
+        # 10. open hand
+        control_sequence.append(ha.ControlMode(name='softhand_open'))
+
+        # 11. Block joints to hold object in air util human takes over
+        finishedMode = ha.ControlMode(name='finished')
+        finishedSet = ha.ControlSet()
+        finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
+                                             goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
+
+        finishedMode.set(finishedSet)
+
+        control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration=hand_closing_duration))
+
+        control_sequence.append(finishedMode)
+
+    else: #no handover
+
+        # 8. Go to drop off configuration configuration
+        control_sequence.append(
+            ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
+
+        # 8.b  Switch when configuration is reached
+        control_sequence.append(
+            ha.JointConfigurationSwitch('GoDropOff', 'finished', controller='GoToDropJointConfig',
+                                        epsilon=str(math.radians(7.))))
+
+        # 9. Block joints to hold object in air util human takes over
+        finishedMode = ha.ControlMode(name='finished')
+        finishedSet = ha.ControlSet()
+        finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
+                                             goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
+        finishedMode.set(finishedSet)
+        control_sequence.append(finishedMode)
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
@@ -724,7 +802,7 @@ def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
 
 # ================================================================================================
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params, object_type, frame_convention):
+def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params, object_type, frame_convention, handover):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
 
@@ -750,7 +828,7 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
             edge_frame = edge_frame.dot(x_flip_transform)
 
 
-        return create_edge_grasp(T_object_in_base, support_surface_frame, edge_frame, handarm_params, object_type)
+        return create_edge_grasp(T_object_in_base, support_surface_frame, edge_frame, handarm_params, object_type, handover)
     elif grasp_type == 'WallGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
@@ -778,7 +856,7 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
                 tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(180.0), [1, 0, 0]))
             support_surface_frame = support_surface_frame.dot(x_flip_transform)
 
-        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type)
+        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type, handover)
 
     else:
         raise "Unknown grasp type: ", grasp_type
@@ -790,12 +868,12 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_label
     connections = [('connected', 'l'+str(e.node_id_start), 'l'+str(e.node_id_end)) for e in graph.edges]
 
     # grasping_locations_tmp = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
-    # random edge selection
-    # tuning purpose we might use l5 ec
+    
+    # we randomly select one ec
     grasping_locations_tmp = ['l'+str(i) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
-    print("graps locations: {}".format(grasping_locations_tmp))
+    print("grasp locations: {}".format(grasping_locations_tmp))
     grasping_locations = [('is_grasping_location', np.random.choice(grasping_locations_tmp))]
-    print("random graps location: {}".format(grasping_locations))
+    print("random grasp location: {}".format(grasping_locations))
 
     # define possible actions
     domain = pyddl.Domain((

@@ -1,6 +1,7 @@
 string object_type
 string grasp_type
 string handarm_type
+bool handover
 ---
 string hybrid_automaton_xml
 

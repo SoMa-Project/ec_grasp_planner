@@ -94,6 +94,12 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['drop_off_config'] = np.array(
             [0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
 
+        # object hand over configuration - this is system specific!
+        self['surface_grasp']['object']['hand_over_config'] = np.array(
+            [0.650919, 1.04026, -0.940386, 1.30763, 0.447859, 0.517442, 0.0633935])
+
+
+
         #synergy type for soft hand closing
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
 
@@ -105,6 +111,10 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['up_speed'] = 0.35
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.06])  # first value: rotational, second translational
+
+        # the force with which the person pulls the object out of the hand
+        self['surface_grasp']['object']['hand_over_force'] = 2.5
+
 
 
         #####################################################################################
@@ -224,7 +234,7 @@ class RBOHandP24WAM(RBOHand2):
 
 
         # the force with which the person pulls the object out of the hand
-        self['edge_grasp']['object']['hand_over_force'] = 1.5
+        self['edge_grasp']['object']['hand_over_force'] = 2.5
 
         self['edge_grasp']['object']['table_force'] = 3.0
         self['edge_grasp']['object']['up_dist'] = 0.2
