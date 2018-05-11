@@ -353,6 +353,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
     pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
     scooping_angle_deg = getParam(obj_type_params, obj_params, 'scooping_angle_deg')
+    move_up_after_contact_goal = getParam(obj_type_params, obj_params, 'move_up_after_contact_goal')
     
     vision_params = {}
     if object_type in handarm_params:
@@ -432,8 +433,6 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
                                                  frame_id='world',
                                                  port='2'))
 
-    displacement = np.array([0, 0, 0.01])
-    relative_goal = tra.translation_matrix(displacement)
 
     # 3. Lift upwards so the hand doesn't slide on table surface
     control_sequence.append(
@@ -442,11 +441,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
 
     # 3b. We switch after a short time as this allows us to do a small, precise lift motion
     control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=5))
-    control_sequence.append(ha.FramePoseSwitch('LiftHand', 'SlideToWall', goal_is_relative='1', goal=relative_goal, epsilon='0.004', reference_frame="world"))
-
-    #control_sequence.append(ha.SlerpControlMode(relative_goal, controller_name = 'LiftHand', goal_is_relative='1', name = 'LiftHand'))
-    #control_sequence.append(ha.FrameDisplacementSwitch('LiftHand', 'SlideToWall', epsilon = '0.01', goal = displacement, goal_is_relative = '1', jump_criterion = "NORM_L2", frame_id = 'EE'))
-
+    control_sequence.append(ha.FramePoseSwitch('LiftHand', 'SlideToWall', goal_is_relative='1', goal=move_up_after_contact_goal, epsilon='0.004', reference_frame="world"))
     # 4. Go towards the wall to slide object to wall
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(slide_IFCO_twist, controller_name='SlideToWall', goal_is_relative='1',
