@@ -349,9 +349,9 @@ class PISAHandKUKA(KUKA):
         self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
                                                                  tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
 
-class CLASHHandKUKA(KUKA):
+class ClashHandKUKA(KUKA):
     def __init__(self, **kwargs):
-        super(CLASHHandKUKA, self).__init__()
+        super(ClashHandKUKA, self).__init__()
 
         ####################################################################################
         # IIT specific params irrespective of grasp type 
