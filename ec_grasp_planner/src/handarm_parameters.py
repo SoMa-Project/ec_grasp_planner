@@ -304,7 +304,6 @@ class RBOHandO2KUKA(KUKA):
 
 
 
-
 class PISAHandKUKA(KUKA):
     def __init__(self, **kwargs):
         super(PISAHandKUKA, self).__init__()
@@ -349,4 +348,48 @@ class PISAHandKUKA(KUKA):
         
         self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
                                                                  tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
+
+class CLASHHandKUKA(KUKA):
+    def __init__(self, **kwargs):
+        super(CLASHHandKUKA, self).__init__()
+
+        ####################################################################################
+        # IIT specific params irrespective of grasp type 
+        ####################################################################################
+
+        self['hand_closing_duration'] = 2
+
+        self['hand_opening_duration'] = 2
+
+        self['hand_max_aperture'] = 0.25
+
+        self['isInPositionControl'] = True
+
+        ####################################################################################
+        # IIT specific params for surface grasp
+        ####################################################################################
+
+        self['surface_grasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.15])
+
+        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+
+        self['surface_grasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+
+        self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.025, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+
+        self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+
+        self['surface_grasp']['object']['kp'] = 6
+
+        ####################################################################################
+        # IIT specific params for wall grasp
+        ####################################################################################        
+
+        self['wall_grasp']['object']['kp'] = 6
+
+        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.025, 0])
+
+        self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.04, 0])
         
+        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
+                                                                 tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
