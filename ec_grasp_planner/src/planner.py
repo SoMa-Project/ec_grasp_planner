@@ -293,9 +293,9 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     #         bounding_box=np.array([bounding_box.x, bounding_box.y, bounding_box.z]), object_weight=np.array([0.4]), object_type='object', object_pose=object_frame))
 
     # Set up goal for the CLASH hand
-    speed = np.array([0]) 
-    thumb_pos = np.array([ 30, 30, 30])
-    diff_pos = np.array([0, 0, 0])
+    speed = np.array([30]) 
+    thumb_pos = np.array([ 0, 30, 30])
+    diff_pos = np.array([30, 30, 0])
     thumb_contact_force = np.array([0]) 
     thumb_grasp_force = np.array([0]) 
     diff_contact_force = np.array([0]) 
@@ -306,7 +306,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     prox_level = np.array([0]) 
     touch_level = np.array([0]) 
     mode = np.array([0]) 
-    command_count = np.array([0]) 
+    command_count = np.array([2]) 
 
     # control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
     # control_sequence.append(ha.ros_CLASHhandControlMode( goal = speed, name  = 'softhand_close'))
@@ -317,7 +317,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
 
 
     # 3b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'finished', duration = handarm_params['hand_closing_duration']))
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'softhand_open', duration = 10))
 
     # 4. Lift upwards
     # control_sequence.append(ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
@@ -347,7 +347,9 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     #     # if hand is controlled in position mode, then call general hand controller
     #     control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = handarm_params['hand_closing_synergy']))
 
+    speed = np.array([30]) 
     thumb_pos = np.array([ 0, 0, 0])
+    diff_pos = np.array([0, 0, 0])
     control_sequence.append(ha.ros_CLASHhandControlMode(goal = np.concatenate((speed, thumb_pos, diff_pos, thumb_contact_force, 
                                                                             thumb_grasp_force, diff_contact_force, diff_grasp_force, 
                                                                             thumb_pretension, diff_pretension, force_feedback_ratio, 
