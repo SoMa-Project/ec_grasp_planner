@@ -29,6 +29,8 @@ class BaseHandArm(dict):
         self['surface_grasp']['cucumber'] = {}
         self['surface_grasp']['punnet'] = {}
         self['surface_grasp']['netbag'] = {}
+        self['surface_grasp']['salad'] = {}
+        self['surface_grasp']['mango'] = {}
 
         # wall grasp parameters for different objects
         self['wall_grasp']['object'] = {}
@@ -36,6 +38,9 @@ class BaseHandArm(dict):
         self['wall_grasp']['salad'] = {}
         self['wall_grasp']['netbag'] = {}
         self['wall_grasp']['mango'] = {}
+        self['wall_grasp']['cucumber'] = {}
+        self['wall_grasp']['apple'] = {}
+        self['wall_grasp']['banana'] = {}
 
         # wall grasp parameters for different objects
         self['edge_grasp']['object'] = {}
@@ -384,7 +389,7 @@ class PISAGripperKUKA(KUKA):
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(180.), [1, 0, 0])))
 
-        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.0, 0.0])
+        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.0, -0.12])
 
         self['surface_grasp']['object']['kp'] = 6
 
@@ -392,17 +397,34 @@ class PISAGripperKUKA(KUKA):
         # IIT specific params for wall grasp
         ####################################################################################        
 
+        self['wall_grasp']['object']['downward_force'] = 3.5
+
+        self['wall_grasp']['object']['wall_force'] = 5.5
+
+        # self['wall_grasp']['punnet']['wall_force'] = 3.5
+        # self['wall_grasp']['mango']['wall_force'] = 3.5
+
+        # self['wall_grasp']['apple']['wall_force'] = 4.5
+
+        # self['wall_grasp']['cucumber']['wall_force'] = 5.5
+
+        # self['wall_grasp']['salad']['wall_force'] = 6.5
+
+
         self['wall_grasp']['object']['kp'] = 6
 
         scooping_angle_deg = 20        
 
         self['wall_grasp']['object']['scooping_angle_deg'] = 20
 
-        self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0, 0.07]),tra.rotation_matrix(
+        self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0, -0.07]),tra.rotation_matrix(
                                                                                         math.radians(scooping_angle_deg), [0, 1, 0]))
         
         # Tranform used to define the distance to move_up after contact with ec before sliding to the wall
-        self['wall_grasp']['object']['move_up_after_contact_goal'] = tra.translation_matrix(np.array([0, 0, 0.01]))
+        self['wall_grasp']['object']['move_up_after_contact_goal'] = tra.translation_matrix(np.array([0, 0, 0.015]))
+
+        #self['wall_grasp']['punnet']['move_up_after_contact_goal'] = tra.translation_matrix(np.array([0, 0, 0.01]))
+
         
         self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
                                                                  tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
