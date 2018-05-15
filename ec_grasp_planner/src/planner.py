@@ -229,10 +229,6 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     print("plane_orientation: " + str(res.plane_orientation))
     print(pm.toMatrix(pm.fromMsg(res.reachable_hand_pose)))
 
-    approach_goal_ = np.copy(object_frame)
-    approach_goal_ = approach_goal_.dot(object_approach_transform)
-    approach_goal_ = approach_goal_.dot(ee_in_goal_frame)
-
     # Set the twists to use TRIK controller with
 
     # Down speed is positive because it is defined on the EE frame
