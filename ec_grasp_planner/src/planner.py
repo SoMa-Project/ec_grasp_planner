@@ -363,8 +363,8 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     # Set up goal for the CLASH hand
     #params for mango
     speed = np.array([30]) 
-    thumb_pos = np.array([ 0, 50, 50])
-    diff_pos = np.array([50, 50, 60])
+    thumb_pos = np.array([ 0, 30, 50])
+    diff_pos = np.array([30, 30, 60])
     thumb_contact_force = np.array([0]) 
     thumb_grasp_force = np.array([0]) 
     diff_contact_force = np.array([0]) 
