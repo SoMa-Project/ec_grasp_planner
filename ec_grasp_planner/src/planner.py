@@ -222,6 +222,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     # Set the initial pose above the object
     goal_ = np.copy(object_frame)
     goal_[:3,2] = ifco_in_base[:3,2]
+    goal_[:3,1] = np.cross(goal_[:3,2], goal_[:3,0])
     goal_ = goal_.dot(hand_transform) #this is the pre-grasp transform of the signature frame expressed in the world
     goal_ = goal_.dot(ee_in_goal_frame)
 
