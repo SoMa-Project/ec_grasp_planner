@@ -29,6 +29,8 @@ class BaseHandArm(dict):
         self['surface_grasp']['cucumber'] = {}
         self['surface_grasp']['punnet'] = {}
         self['surface_grasp']['netbag'] = {}
+        self['surface_grasp']['mango'] = {}
+        self['surface_grasp']['salad'] = {}
 
         # wall grasp parameters for different objects
         self['wall_grasp']['object'] = {}
@@ -36,6 +38,7 @@ class BaseHandArm(dict):
         self['wall_grasp']['salad'] = {}
         self['wall_grasp']['netbag'] = {}
         self['wall_grasp']['mango'] = {}
+        self['wall_grasp']['cucumber'] = {}
 
         # wall grasp parameters for different objects
         self['edge_grasp']['object'] = {}
