@@ -213,6 +213,7 @@ class KUKA(BaseHandArm):
 
         self['rotate_duration'] = 3
         self['lift_duration'] = 13
+        self['lift_duration'] = 7
         self['place_duration'] = 5
 
         self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))

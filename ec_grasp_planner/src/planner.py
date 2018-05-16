@@ -248,11 +248,24 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     # assemble controller sequence
     control_sequence = []
 
+    #initial_joint_positions = np.array([-0.09, 0.64, 0, -1.22, 0, 1.23, 0])
+    initial_joint_positions = np.array([0.17, 0.73, -0.52, -1.22, 0.38, 1.23, 0])
+    initialMode = ha.ControlMode(name  = 'initial')
+    initialSet = ha.ControlSet()
+    initialSet.add(ha.Controller( name = 'JointSpaceController', type = 'InterpolatedJointController', goal  = initial_joint_positions,
+                                   goal_is_relative = 0, v_max = '[0,0]', a_max = '[0,0]'))
+    initialMode.set(initialSet)  
+    control_sequence.append(initialMode)
+    control_sequence.append(ha.TimeSwitch('initial', 'GoDown', duration=5))    
+    #control_sequence.append(ha.JointConfigurationSwitch('initial', 'GoDown', goal = initial_joint_positions))
+    
+    
+
     # # 1. Go above the object - Pregrasp
-    control_sequence.append(ha.InterpolatedHTransformControlMode(goal_, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
+    #control_sequence.append(ha.InterpolatedHTransformControlMode(goal_, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
  
     # # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.02'))
+    #control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.02'))
 
     # bbox_estimate = bounding_box.y * 1500
     # fingers_angle = 30 - np.arcsin((bbox_estimate - 30)/(100 * 2.0)) * 180/ np.pi
@@ -350,8 +363,8 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     # Set up goal for the CLASH hand
     #params for mango
     speed = np.array([30]) 
-    thumb_pos = np.array([ 0, 30, 30])
-    diff_pos = np.array([30, 30, 30])
+    thumb_pos = np.array([ 0, 50, 50])
+    diff_pos = np.array([50, 50, 60])
     thumb_contact_force = np.array([0]) 
     thumb_grasp_force = np.array([0]) 
     diff_contact_force = np.array([0]) 
