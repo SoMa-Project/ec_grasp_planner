@@ -336,7 +336,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
 
     # 3b. We switch after a short time as this allows us to do a small, precise lift motion
 
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'softhand_close', duration=1.8))
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'softhand_close', duration=0))
     # control_sequence.append(ha.FramePoseSwitch('LiftHand', 'softhand_close', goal_is_relative='1', goal=move_up_after_contact_goal, epsilon='0.004', reference_frame="world"))
 
 
