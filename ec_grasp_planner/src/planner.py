@@ -293,8 +293,8 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     #         bounding_box=np.array([bounding_box.x, bounding_box.y, bounding_box.z]), object_weight=np.array([0.4]), object_type='object', object_pose=object_frame))
 
     # Set up goal for the CLASH hand
-    speed = np.array([0]) 
-    thumb_pos = np.array([ 30, 30, 30])
+    speed = np.array([1]) 
+    thumb_pos = np.array([ 0, 0, 0])
     diff_pos = np.array([0, 0, 0])
     thumb_contact_force = np.array([0]) 
     thumb_grasp_force = np.array([0]) 
@@ -306,7 +306,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     prox_level = np.array([0]) 
     touch_level = np.array([0]) 
     mode = np.array([0]) 
-    command_count = np.array([0]) 
+    command_count = np.array([1]) 
 
     # control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
     # control_sequence.append(ha.ros_CLASHhandControlMode( goal = speed, name  = 'softhand_close'))
@@ -431,13 +431,66 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
 
     control_sequence = []
 
+    # Set up goal for the CLASH hand
+    speed = np.array([30]) 
+    thumb_pos = np.array([ 0, 0, 00])
+    diff_pos = np.array([0, 0, 0])
+    thumb_contact_force = np.array([0]) 
+    thumb_grasp_force = np.array([0]) 
+    diff_contact_force = np.array([0]) 
+    diff_grasp_force = np.array([0]) 
+    thumb_pretension = np.array([0]) 
+    diff_pretension = np.array([0]) 
+    force_feedback_ratio = np.array([0]) 
+    prox_level = np.array([0]) 
+    touch_level = np.array([0]) 
+    mode = np.array([0]) 
+    command_count = np.array([1]) 
+
+    # control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
+    # control_sequence.append(ha.ros_CLASHhandControlMode( goal = speed, name  = 'softhand_close'))
+    control_sequence.append(ha.ros_CLASHhandControlMode(goal = np.concatenate((speed, thumb_pos, diff_pos, thumb_contact_force, 
+                                                                            thumb_grasp_force, diff_contact_force, diff_grasp_force, 
+                                                                            thumb_pretension, diff_pretension, force_feedback_ratio, 
+                                                                            prox_level, touch_level, mode, command_count)), name  = 'softhand_open_init'))
+
+    control_sequence.append(ha.TimeSwitch('softhand_open_init', 'PreGrasp', duration = handarm_params['hand_closing_duration']))
+
     # 1. Go above the object
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(pre_approach_pose, controller_name='GoAboveObject', goal_is_relative='0',
                                              name="PreGrasp"))
 
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'GoDown', controller='GoAboveObject', epsilon='0.01'))
+    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'softhand_pretension', controller='GoAboveObject', epsilon='0.01'))
+
+      # Set up goal for the CLASH hand
+    speed = np.array([0]) 
+    thumb_pos = np.array([ 0, 0, 0])
+    diff_pos = np.array([0, 0, 0])
+    thumb_contact_force = np.array([0]) 
+    thumb_grasp_force = np.array([0]) 
+    diff_contact_force = np.array([0]) 
+    diff_grasp_force = np.array([0]) 
+    thumb_pretension = np.array([0]) 
+    diff_pretension = np.array([15]) 
+    force_feedback_ratio = np.array([0]) 
+    prox_level = np.array([0]) 
+    touch_level = np.array([0]) 
+    mode = np.array([0]) 
+    command_count = np.array([0]) 
+
+    # control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
+    # control_sequence.append(ha.ros_CLASHhandControlMode( goal = speed, name  = 'softhand_close'))
+    control_sequence.append(ha.ros_CLASHhandControlMode(goal = np.concatenate((speed, thumb_pos, diff_pos, thumb_contact_force, 
+                                                                            thumb_grasp_force, diff_contact_force, diff_grasp_force, 
+                                                                            thumb_pretension, diff_pretension, force_feedback_ratio, 
+                                                                            prox_level, touch_level, mode, command_count)), name  = 'softhand_pretension'))
+
+
+    # 3b. Switch when hand closing time ends
+    control_sequence.append(ha.TimeSwitch('softhand_pretension', 'GoDown', duration = handarm_params['hand_closing_duration']))
+
 
     # 2. Go down onto the object/table, in world frame
     control_sequence.append( ha.InterpolatedHTransformControlMode(down_IFCO_twist,
@@ -463,7 +516,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
                                              reference_frame="world"))
 
     # 3b. We switch after a short time as this allows us to do a small, precise lift motion
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0))
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=2))
 
     # 4. Go towards the wall to slide object to wall
     control_sequence.append(
@@ -477,26 +530,52 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame, port='2'))
 
-    # 5. Maintain contact while closing the hand
-    if handarm_params['isForceControllerAvailable']:
-        control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_close', synergy = handarm_params['hand_closing_synergy'],
-                                                        desired_displacement = desired_displacement, 
-                                                        force_gradient = force_gradient, 
-                                                        desired_force_dimension = desired_force_dimension))
-    elif handarm_params['isInPositionControl']:
-        # if hand is controlled in position mode, then call general hand controller
-        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = handarm_params['hand_closing_synergy']))
-    else:
-        # if hand is controlled in current mode, then call IIT's controller
-        kp = getParam(obj_type_params, obj_params, 'kp')
-        # if hand is controlled in current mode, then call IIT's controller
-        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([1.0]), kp=np.array([kp]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = 'softhand_close', 
-            bounding_box=np.array([bounding_box.x, bounding_box.y, bounding_box.z]), object_weight=np.array([0.4]), object_type='object', object_pose=object_frame))
+    # # 5. Maintain contact while closing the hand
+    # if handarm_params['isForceControllerAvailable']:
+    #     control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_close', synergy = handarm_params['hand_closing_synergy'],
+    #                                                     desired_displacement = desired_displacement, 
+    #                                                     force_gradient = force_gradient, 
+    #                                                     desired_force_dimension = desired_force_dimension))
+    # elif handarm_params['isInPositionControl']:
+    #     # if hand is controlled in position mode, then call general hand controller
+    #     control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = handarm_params['hand_closing_synergy']))
+    # else:
+    #     # if hand is controlled in current mode, then call IIT's controller
+    #     kp = getParam(obj_type_params, obj_params, 'kp')
+    #     # if hand is controlled in current mode, then call IIT's controller
+    #     control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([1.0]), kp=np.array([kp]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = 'softhand_close', 
+    #         bounding_box=np.array([bounding_box.x, bounding_box.y, bounding_box.z]), object_weight=np.array([0.4]), object_type='object', object_pose=object_frame))
 
 
-    # 5b. Switch when hand closing duration ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=handarm_params['hand_closing_duration']))
+    # # 5b. Switch when hand closing duration ends
+    # control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=handarm_params['hand_closing_duration']))
 
+  # Set up goal for the CLASH hand
+    speed = np.array([30]) 
+    thumb_pos = np.array([ 0, 50, 30])
+    diff_pos = np.array([50, 50, 30])
+    thumb_contact_force = np.array([0]) 
+    thumb_grasp_force = np.array([0]) 
+    diff_contact_force = np.array([0]) 
+    diff_grasp_force = np.array([0]) 
+    thumb_pretension = np.array([15]) 
+    diff_pretension = np.array([15]) 
+    force_feedback_ratio = np.array([0]) 
+    prox_level = np.array([0]) 
+    touch_level = np.array([0]) 
+    mode = np.array([0]) 
+    command_count = np.array([1]) 
+
+    # control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
+    # control_sequence.append(ha.ros_CLASHhandControlMode( goal = speed, name  = 'softhand_close'))
+    control_sequence.append(ha.ros_CLASHhandControlMode(goal = np.concatenate((speed, thumb_pos, diff_pos, thumb_contact_force, 
+                                                                            thumb_grasp_force, diff_contact_force, diff_grasp_force, 
+                                                                            thumb_pretension, diff_pretension, force_feedback_ratio, 
+                                                                            prox_level, touch_level, mode, command_count)), name  = 'softhand_close'))
+
+
+    # 3b. Switch when hand closing time ends
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration = handarm_params['hand_closing_duration']))
     # 6. Rotate hand after closing and before lifting it up relative to current hand pose
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', goal_is_relative='1', reference_frame='EE'))
@@ -528,17 +607,44 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = place_time))
 
     # 10. Release SKU
-    if handarm_params['isForceControllerAvailable']:
-        control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_open', synergy = handarm_params['hand_closing_synergy'],
-                                                        desired_displacement = desired_displacement,
-                                                        force_gradient = force_gradient,
-                                                        desired_force_dimension = desired_force_dimension))
-    else:
-        # if hand is controlled in position mode, then call general hand controller
-        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = handarm_params['hand_closing_synergy']))
+    # if handarm_params['isForceControllerAvailable']:
+    #     control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_open', synergy = handarm_params['hand_closing_synergy'],
+    #                                                     desired_displacement = desired_displacement,
+    #                                                     force_gradient = force_gradient,
+    #                                                     desired_force_dimension = desired_force_dimension))
+    # else:
+    #     # if hand is controlled in position mode, then call general hand controller
+    #     control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = handarm_params['hand_closing_synergy']))
 
-    # 10b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration = handarm_params['hand_opening_duration']))
+    # # 10b. Switch when hand closing time ends
+    # control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration = handarm_params['hand_opening_duration']))
+
+    # Set up goal for the CLASH hand
+    speed = np.array([30]) 
+    thumb_pos = np.array([ 0, 0, 00])
+    diff_pos = np.array([0, 0, 0])
+    thumb_contact_force = np.array([0]) 
+    thumb_grasp_force = np.array([0]) 
+    diff_contact_force = np.array([0]) 
+    diff_grasp_force = np.array([0]) 
+    thumb_pretension = np.array([0]) 
+    diff_pretension = np.array([0]) 
+    force_feedback_ratio = np.array([0]) 
+    prox_level = np.array([0]) 
+    touch_level = np.array([0]) 
+    mode = np.array([0]) 
+    command_count = np.array([1]) 
+
+    # control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
+    # control_sequence.append(ha.ros_CLASHhandControlMode( goal = speed, name  = 'softhand_close'))
+    control_sequence.append(ha.ros_CLASHhandControlMode(goal = np.concatenate((speed, thumb_pos, diff_pos, thumb_contact_force, 
+                                                                            thumb_grasp_force, diff_contact_force, diff_grasp_force, 
+                                                                            thumb_pretension, diff_pretension, force_feedback_ratio, 
+                                                                            prox_level, touch_level, mode, command_count)), name  = 'softhand_open'))
+
+
+    # 3b. Switch when hand closing time ends
+    control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration = handarm_params['hand_closing_duration']))
 
     # 11. Block joints to finish motion and hold object in air
     finishedMode = ha.ControlMode(name  = 'finished')
