@@ -204,6 +204,9 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')
     downward_force = getParam(obj_type_params, obj_params, 'downward_force')
     ee_in_goal_frame = getParam(obj_type_params, obj_params, 'ee_in_goal_frame')
+    move_up_time_after_EC_contact = getParam(obj_type_params, obj_params, 'move_up_time_after_EC_contact')
+    thumb_pos_closing = getParam(obj_type_params, obj_params, 'thumb_pos')
+    diff_pos_closing = getParam(obj_type_params, obj_params, 'diff_pos')
 
     lift_time = handarm_params['lift_duration']
     place_time = handarm_params['place_duration']    
@@ -360,7 +363,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
 
     # 3b. We switch after a short time as this allows us to do a small, precise lift motion
 
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'softhand_close', duration=0))
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'softhand_close', duration=move_up_time_after_EC_contact))
     # control_sequence.append(ha.FramePoseSwitch('LiftHand', 'softhand_close', goal_is_relative='1', goal=move_up_after_contact_goal, epsilon='0.004', reference_frame="world"))
 
 
@@ -387,8 +390,8 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     # Set up goal for the CLASH hand
     #params for mango
     speed = np.array([30]) 
-    thumb_pos = np.array([ 0, 60, 30])
-    diff_pos = np.array([50, 50, 30])
+    thumb_pos = thumb_pos_closing
+    diff_pos = diff_pos_closing
     thumb_contact_force = np.array([0]) 
     thumb_grasp_force = np.array([0]) 
     diff_contact_force = np.array([0]) 

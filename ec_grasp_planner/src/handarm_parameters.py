@@ -383,6 +383,30 @@ class ClashHandKUKA(KUKA):
 
         self['surface_grasp']['object']['kp'] = 6
 
+        self['surface_grasp']['object']['move_up_time_after_EC_contact'] = 2.5
+        self['surface_grasp']['object']['thumb_pos'] = np.array([0, 30, 30])
+        self['surface_grasp']['object']['diff_pos'] = np.array([30, 30, 30])
+
+        self['surface_grasp']['mango']['move_up_time_after_EC_contact'] = 2.5
+        self['surface_grasp']['mango']['thumb_pos'] = np.array([0, 30, 30])
+        self['surface_grasp']['mango']['diff_pos'] = np.array([30, 30, 30])
+
+        self['surface_grasp']['netbag']['move_up_time_after_EC_contact'] = 2.5
+        self['surface_grasp']['netbag']['thumb_pos'] = np.array([0, 50, 50])
+        self['surface_grasp']['netbag']['diff_pos'] = np.array([50, 50, 60])
+
+        self['surface_grasp']['punnet']['move_up_time_after_EC_contact'] = 2.5
+        self['surface_grasp']['punnet']['thumb_pos'] = np.array([0, 30, 50])
+        self['surface_grasp']['punnet']['diff_pos'] = np.array([30, 30, 60])
+
+        self['surface_grasp']['cucumber']['move_up_time_after_EC_contact'] = 1.8
+        self['surface_grasp']['cucumber']['thumb_pos'] = np.array([0, 60, 30])
+        self['surface_grasp']['cucumber']['diff_pos'] = np.array([50, 50, 30])
+
+        self['surface_grasp']['salad']['move_up_time_after_EC_contact'] = 0
+        self['surface_grasp']['salad']['thumb_pos'] = np.array([0, 60, 30])
+        self['surface_grasp']['salad']['diff_pos'] = np.array([50, 50, 30])
+
         ####################################################################################
         # IIT specific params for wall grasp
         ####################################################################################        
