@@ -212,12 +212,13 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     down_tote_speed = handarm_params['down_tote_speed']
     
 
-    # zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
-    # if object_frame[0][1]<0:
-    #     object_frame = object_frame.dot(zflip_transform)
+    zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
+    if object_frame[0][1]<0:
+        object_frame = object_frame.dot(zflip_transform)
 
     # Set the initial pose above the object
     goal_ = np.copy(object_frame)
+    goal_[:3,2] = ifco_in_base[:3,2]
     goal_ = goal_.dot(hand_transform) #this is the pre-grasp transform of the signature frame expressed in the world
     goal_ = goal_.dot(ee_in_goal_frame)
 
@@ -232,11 +233,11 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     # Set the twists to use TRIK controller with
 
     # Down speed is positive because it is defined on the EE frame
-    down_IFCO_twist = tra.translation_matrix([0, 0, down_IFCO_speed]);
+    down_IFCO_twist = tra.translation_matrix([0, 0, down_IFCO_speed])
     # Up speed is also positive because it is defined on the world frame
-    up_IFCO_twist = tra.translation_matrix([0, 0, up_IFCO_speed]);
+    up_IFCO_twist = tra.translation_matrix([0, 0, up_IFCO_speed])
     # Down speed is negative because it is defined on the world frame
-    down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed]);
+    down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed])
 
     # Set the frames to visualize with RViz
     rviz_frames = []
@@ -251,9 +252,38 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     control_sequence.append(ha.InterpolatedHTransformControlMode(goal_, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
  
     # # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.02'))
 
-    # # 2. Go down onto the object (relative in EE frame) - Godown
+    # bbox_estimate = bounding_box.y * 1500
+    # fingers_angle = 30 - np.arcsin((bbox_estimate - 30)/(100 * 2.0)) * 180/ np.pi
+    # thumb_angle = 20 - np.arcsin((bbox_estimate - 30)/(100 * 2.0)) * 180/ np.pi
+    # speed = np.array([30]) 
+    # thumb_pos = np.array([ 0, thumb_angle, 0])
+    # diff_pos = np.array([fingers_angle, fingers_angle, 0])
+    # thumb_contact_force = np.array([0.08]) 
+    # thumb_grasp_force = np.array([0]) 
+    # diff_contact_force = np.array([0.08]) 
+    # diff_grasp_force = np.array([0]) 
+    # thumb_pretension = np.array([0]) 
+    # diff_pretension = np.array([0]) 
+    # force_feedback_ratio = np.array([0]) 
+    # prox_level = np.array([0]) 
+    # touch_level = np.array([0]) 
+    # mode = np.array([0]) 
+    # command_count = np.array([2]) 
+
+    # # 2. Preshape the hand
+    # control_sequence.append(ha.ros_CLASHhandControlMode(goal = np.concatenate((speed, thumb_pos, diff_pos, thumb_contact_force, 
+    #                                                                         thumb_grasp_force, diff_contact_force, diff_grasp_force, 
+    #                                                                         thumb_pretension, diff_pretension, force_feedback_ratio, 
+    #                                                                         prox_level, touch_level, mode, command_count)), name  = 'softhand_preshape'))
+
+
+    # # 2b. Switch when hand closing time ends
+    # control_sequence.append(ha.TimeSwitch('softhand_preshape', 'GoDown', duration = 3))
+
+
+    # 3. Go down onto the object (relative in EE frame) - Godown
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(down_IFCO_twist,
                                              controller_name='GoDown',
@@ -262,8 +292,8 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
                                              reference_frame="EE",
                                              v_max=down_IFCO_speed))
 
-    # # 2b. Switch when force-torque sensor is triggered
-    force  = np.array([0, 0, -2, 0, 0, 0])
+    # 3b. Switch when force-torque sensor is triggered
+    force  = np.array([0, 0, -2.5, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                  'LiftHand',
                                                  goal = force,
@@ -273,7 +303,17 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
                                                  frame_id = 'EE',
                                                  port = '2'))
 
-    up_IFCO_twist_slow = tra.translation_matrix([0, 0, 0.015]);
+    force  = np.array([0, 0, 5, 0, 0, 0])
+    control_sequence.append(ha.ForceTorqueSwitch('GoDown',
+                                                 'LiftHand',
+                                                 goal = force,
+                                                 norm_weights = np.array([0, 0, 1, 0, 0, 0]),
+                                                 jump_criterion = "THRESH_UPPER_BOUND",
+                                                 goal_is_relative = '1',
+                                                 frame_id = 'world',
+                                                 port = '2'))
+    
+    up_IFCO_twist_slow = tra.translation_matrix([0, 0, 0.015])
     move_up_after_contact_goal=tra.translation_matrix(np.array([0, 0, 0.010]))
 
     # 3. Lift upwards so the hand doesn't slide on table surface
@@ -283,8 +323,8 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
 
     # 3b. We switch after a short time as this allows us to do a small, precise lift motion
 
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'softhand_close', duration=5))
-    control_sequence.append(ha.FramePoseSwitch('LiftHand', 'softhand_close', goal_is_relative='1', goal=move_up_after_contact_goal, epsilon='0.004', reference_frame="world"))
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'softhand_close', duration=2.5))
+    # control_sequence.append(ha.FramePoseSwitch('LiftHand', 'softhand_close', goal_is_relative='1', goal=move_up_after_contact_goal, epsilon='0.004', reference_frame="world"))
 
 
 
@@ -309,35 +349,35 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
 
     # Set up goal for the CLASH hand
     #params for mango
+    speed = np.array([30]) 
+    thumb_pos = np.array([ 0, 30, 30])
+    diff_pos = np.array([30, 30, 30])
+    thumb_contact_force = np.array([0]) 
+    thumb_grasp_force = np.array([0]) 
+    diff_contact_force = np.array([0]) 
+    diff_grasp_force = np.array([0]) 
+    thumb_pretension = np.array([15]) 
+    diff_pretension = np.array([15]) 
+    force_feedback_ratio = np.array([0]) 
+    prox_level = np.array([0]) 
+    touch_level = np.array([0]) 
+    mode = np.array([0]) 
+    command_count = np.array([2]) 
+
     # speed = np.array([30]) 
-    # thumb_pos = np.array([ 0, 30, 30])
-    # diff_pos = np.array([30, 30, 30])
-    # thumb_contact_force = np.array([0]) 
+    # thumb_pos = np.array([ 0, 0, 0])
+    # diff_pos = np.array([0, 0, 0])
+    # thumb_contact_force = np.array([0.08]) 
     # thumb_grasp_force = np.array([0]) 
-    # diff_contact_force = np.array([0]) 
+    # diff_contact_force = np.array([0.08]) 
     # diff_grasp_force = np.array([0]) 
     # thumb_pretension = np.array([10]) 
     # diff_pretension = np.array([10]) 
     # force_feedback_ratio = np.array([0]) 
     # prox_level = np.array([0]) 
     # touch_level = np.array([0]) 
-    # mode = np.array([0]) 
+    # mode = np.array([5]) 
     # command_count = np.array([2]) 
-
-    speed = np.array([30]) 
-    thumb_pos = np.array([ 0, 0, 0])
-    diff_pos = np.array([0, 0, 0])
-    thumb_contact_force = np.array([0.08]) 
-    thumb_grasp_force = np.array([0]) 
-    diff_contact_force = np.array([0.08]) 
-    diff_grasp_force = np.array([0]) 
-    thumb_pretension = np.array([10]) 
-    diff_pretension = np.array([10]) 
-    force_feedback_ratio = np.array([0]) 
-    prox_level = np.array([0]) 
-    touch_level = np.array([0]) 
-    mode = np.array([5]) 
-    command_count = np.array([2]) 
 
     # control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
     # control_sequence.append(ha.ros_CLASHhandControlMode( goal = speed, name  = 'softhand_close'))

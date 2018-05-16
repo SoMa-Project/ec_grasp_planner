@@ -207,7 +207,7 @@ class KUKA(BaseHandArm):
         ####################################################################################
 
         # TRIK controller speeds
-        self['down_IFCO_speed'] = 0.03
+        self['down_IFCO_speed'] = 0.02
         self['up_IFCO_speed'] = 0.03
         self['down_tote_speed'] = 0.05
 
@@ -361,7 +361,7 @@ class ClashHandKUKA(KUKA):
 
         self['hand_opening_duration'] = 2
 
-        self['hand_max_aperture'] = 0.25
+        self['hand_max_aperture'] = 0.12
 
         self['isInPositionControl'] = True
 
@@ -376,7 +376,7 @@ class ClashHandKUKA(KUKA):
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(180.), [1, 0, 0])))
 
-        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, -0.02, -0.15])
+        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.03, -0.15])
 
         self['surface_grasp']['object']['kp'] = 6
 
