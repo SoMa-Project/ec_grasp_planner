@@ -231,14 +231,15 @@ class KUKA(BaseHandArm):
 
         self['object']['obj_bbox_uncertainty_offset'] = 0.05
         self['netbag']['obj_bbox_uncertainty_offset'] = 0.06
-        self['punnet']['obj_bbox_uncertainty_offset'] = 0.08
+        self['punnet']['obj_bbox_uncertainty_offset'] = 0.02
         self['salad']['obj_bbox_uncertainty_offset'] = 0.04
 
         #####################################################################################
         # Common surface grasp params
         #####################################################################################
 
-        self['surface_grasp']['object']['downward_force'] = 4.
+        self['surface_grasp']['object']['downward_force'] = 2.5
+        self['surface_grasp']['salad']['downward_force'] = 3
 
         #####################################################################################
         # Common wall grasp params
@@ -253,7 +254,7 @@ class KUKA(BaseHandArm):
                     math.radians(90.0), [0, 0, 1]),
             )
 
-        self['wall_grasp']['object']['downward_force'] = 1.5 #was 2 before
+        self['wall_grasp']['object']['downward_force'] = 1.5
 
         self['wall_grasp']['object']['wall_force'] = 3.5
         
@@ -382,9 +383,10 @@ class ClashHandKUKA(KUKA):
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(180.), [1, 0, 0])))
 
-        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.03, -0.15])
+        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.15])
         self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.15])
         self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.15])
+        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.005, -0.15])
 
         self['surface_grasp']['object']['kp'] = 6
 
@@ -398,25 +400,38 @@ class ClashHandKUKA(KUKA):
         self['surface_grasp']['netbag']['thumb_pos_preopen'] = np.array([ 0, -10, 0])
         self['surface_grasp']['netbag']['diff_pos_preopen'] = np.array([0, 0, 0])
 
-        self['surface_grasp']['mango']['move_up_time_after_EC_contact'] = 2.5
-        self['surface_grasp']['mango']['thumb_pos'] = np.array([0, 30, 30])
-        self['surface_grasp']['mango']['diff_pos'] = np.array([30, 30, 30])
+        self['surface_grasp']['mango']['move_up_time_after_EC_contact'] = 1.8
+        self['surface_grasp']['mango']['thumb_pos'] = np.array([0, 30, 50])
+        self['surface_grasp']['mango']['diff_pos'] = np.array([30, 30, 50])
 
-        self['surface_grasp']['netbag']['move_up_time_after_EC_contact'] = 1.8
+        self['surface_grasp']['netbag']['move_up_time_after_EC_contact'] = 1.4
         self['surface_grasp']['netbag']['thumb_pos'] = np.array([0, 50, 50])
         self['surface_grasp']['netbag']['diff_pos'] = np.array([50, 50, 60])
 
         self['surface_grasp']['punnet']['move_up_time_after_EC_contact'] = 2.5
-        self['surface_grasp']['punnet']['thumb_pos'] = np.array([0, 30, 50])
-        self['surface_grasp']['punnet']['diff_pos'] = np.array([30, 30, 60])
+        self['surface_grasp']['punnet']['thumb_pos'] = np.array([0, 10, 50])
+        self['surface_grasp']['punnet']['diff_pos'] = np.array([10, 10, 60])
 
-        self['surface_grasp']['cucumber']['move_up_time_after_EC_contact'] = 1.8
+        self['surface_grasp']['cucumber']['move_up_time_after_EC_contact'] = 1.4
         self['surface_grasp']['cucumber']['thumb_pos'] = np.array([0, 60, 30])
-        self['surface_grasp']['cucumber']['diff_pos'] = np.array([50, 50, 30])
+        self['surface_grasp']['cucumber']['diff_pos'] = np.array([60, 60, 30])
 
         self['surface_grasp']['salad']['move_up_time_after_EC_contact'] = 0
         self['surface_grasp']['salad']['thumb_pos'] = np.array([0, 60, 30])
         self['surface_grasp']['salad']['diff_pos'] = np.array([50, 50, 30])
+
+        
+        self['surface_grasp']['object']['thumb_pos_preshape'] = np.array([ 0, 0, 0])
+        self['surface_grasp']['object']['diff_pos_preshape'] = np.array([0, 0, 0])
+        self['surface_grasp']['punnet']['thumb_pos_preshape'] = np.array([ 0, -30, 0])
+        self['surface_grasp']['punnet']['diff_pos_preshape'] = np.array([-20, -20, 0])
+        self['surface_grasp']['mango']['thumb_pos_preshape'] = np.array([ 0, 10, 0])
+        self['surface_grasp']['mango']['diff_pos_preshape'] = np.array([5, 5, 5])
+        self['surface_grasp']['cucumber']['thumb_pos_preshape'] = np.array([ 0, 10, 10])
+        self['surface_grasp']['cucumber']['diff_pos_preshape'] = np.array([10, 10, 10])
+        self['surface_grasp']['netbag']['thumb_pos_preshape'] = np.array([ 0, 10, 10])
+        self['surface_grasp']['netbag']['diff_pos_preshape'] = np.array([10, 10, 10])
+        
 
         ####################################################################################
         # IIT specific params for wall grasp
@@ -432,10 +447,10 @@ class ClashHandKUKA(KUKA):
                                                                  tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
 
         self['wall_grasp']['object']['wall_force'] = 5
-        self['wall_grasp']['cucumber']['wall_force'] = 7
+        self['wall_grasp']['cucumber']['wall_force'] = 10
         self['wall_grasp']['netbag']['wall_force'] = 4
-        self['wall_grasp']['punnet']['wall_force'] = 10
-        self['wall_grasp']['netbag']['wall_force'] = 1.5
+        self['wall_grasp']['punnet']['wall_force'] = 12
+        self['wall_grasp']['salad']['wall_force'] = 1.5
 
         self['wall_grasp']['object']['thumb_pos_preshape'] = np.array([ 0, -10, 0])
         self['wall_grasp']['salad']['thumb_pos_preshape'] = np.array([ 0, -15, 0])
