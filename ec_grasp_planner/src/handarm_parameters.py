@@ -438,3 +438,4 @@ class ClashHandKUKA(KUKA):
 
         self['wall_grasp']['object']['wall_force'] = 5
         self['wall_grasp']['cucumber']['wall_force'] = 7
+        self['wall_grasp']['netbag']['wall_force'] = 4
