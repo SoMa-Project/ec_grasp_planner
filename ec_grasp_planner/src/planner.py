@@ -661,7 +661,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     control_sequence.append(ha.TimeSwitch('LiftHand', 'CloseBeforeSlide', duration=0.5)) #was 1 for the mango
 
     speed = np.array([30]) 
-    thumb_pos = np.array([ 0, -25, 0])
+    thumb_pos = np.array([ 0, -15, 0])
     diff_pos = np.array([20, 25, 0])
     thumb_contact_force = np.array([0]) 
     thumb_grasp_force = np.array([0]) 

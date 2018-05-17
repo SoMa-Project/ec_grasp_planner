@@ -232,7 +232,7 @@ class KUKA(BaseHandArm):
         self['object']['obj_bbox_uncertainty_offset'] = 0.05
         self['netbag']['obj_bbox_uncertainty_offset'] = 0.06
         self['punnet']['obj_bbox_uncertainty_offset'] = 0.08
-        self['salad']['obj_bbox_uncertainty_offset'] = 0.1
+        self['salad']['obj_bbox_uncertainty_offset'] = 0.04
 
         #####################################################################################
         # Common surface grasp params
@@ -424,7 +424,7 @@ class ClashHandKUKA(KUKA):
 
         self['wall_grasp']['object']['kp'] = 6
 
-        scooping_angle_deg = 10        
+        scooping_angle_deg = 30        
 
         self['wall_grasp']['object']['scooping_angle_deg'] = scooping_angle_deg
 
@@ -440,3 +440,4 @@ class ClashHandKUKA(KUKA):
         self['wall_grasp']['cucumber']['wall_force'] = 7
         self['wall_grasp']['netbag']['wall_force'] = 4
         self['wall_grasp']['punnet']['wall_force'] = 10
+        self['wall_grasp']['netbag']['wall_force'] = 1.5
