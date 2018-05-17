@@ -757,20 +757,20 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
                                              reference_frame="world"))
 
     # 7b. Switch after a certain amount of time
-    control_sequence.append(ha.TimeSwitch('GoUp', 'softhand_open', duration = lift_time))
+    control_sequence.append(ha.TimeSwitch('GoUp', 'Preplacement', duration = lift_time))
 
    
     # 8. Go to Preplacement
-    # control_sequence.append(ha.InterpolatedHTransformControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement'))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement'))
    
     # # 8b. Switch when hand reaches the goal pose
-    # control_sequence.append(ha.FramePoseSwitch('Preplacement', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch('Preplacement', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
 
     # # 9. Go Down
-    # control_sequence.append(ha.InterpolatedHTransformControlMode(down_tote_twist, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(down_tote_twist, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
  
     # # 9b. Switch after a certain amount of time
-    # control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = place_time))
+    control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = place_time))
 
     # 10. Release SKU
     # if handarm_params['isForceControllerAvailable']:

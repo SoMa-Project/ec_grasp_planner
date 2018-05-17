@@ -216,7 +216,7 @@ class KUKA(BaseHandArm):
 
         self['rotate_duration'] = 3
         self['lift_duration'] = 10        
-        self['place_duration'] = 2
+        self['place_duration'] = 3
 
         self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
 
@@ -361,7 +361,7 @@ class ClashHandKUKA(KUKA):
         ####################################################################################
 
         #joint config for this pose [0.75, 1.0, -0.2, -0.43, 0.2, 1.55, 1.39]
-        self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.62268, 0.54005, 0.19128]), tra.quaternion_matrix([0.9089, 0.40854, 0.076238, -0.034262]))
+        self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.562259, 0.468926, 0.299963]), tra.quaternion_matrix([0.977061, -0.20029, 0.05786, 0.04345]))
 
         self['hand_closing_duration'] = 2
 
