@@ -499,9 +499,12 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')
     downward_force = getParam(obj_type_params, obj_params, 'downward_force')
     wall_force = getParam(obj_type_params, obj_params, 'wall_force')
-    slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
-    pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
+    slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')    
     scooping_angle_deg = getParam(obj_type_params, obj_params, 'scooping_angle_deg')
+    thumb_pos_preshape = getParam(obj_type_params, obj_params, 'thumb_pos_preshape')
+
+    pre_approach_transform = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0, 0]), tra.rotation_matrix(
+                                                                                        math.radians(scooping_angle_deg), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]))
 
     vision_params = {}
     if object_type in handarm_params:
@@ -644,7 +647,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     # 2b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'LiftHand',
+                                                 'CloseBeforeSlide',
                                                  goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND",
@@ -653,15 +656,15 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
                                                  port='2'))
 
     # 3. Lift upwards so the hand doesn't slide on table surface
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
-                                             reference_frame="world"))
+    # control_sequence.append(
+    #     ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
+    #                                          reference_frame="world"))
 
-    # 3b. We switch after a short time as this allows us to do a small, precise lift motion
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'CloseBeforeSlide', duration=0.5)) #was 1 for the mango
+    # # 3b. We switch after a short time as this allows us to do a small, precise lift motion
+    # control_sequence.append(ha.TimeSwitch('LiftHand', 'CloseBeforeSlide', duration=0.5)) #was 1 for the mango
 
     speed = np.array([30]) 
-    thumb_pos = np.array([ 0, -15, 0])
+    thumb_pos = thumb_pos_preshape
     diff_pos = np.array([20, 25, 0])
     thumb_contact_force = np.array([0]) 
     thumb_grasp_force = np.array([0]) 
