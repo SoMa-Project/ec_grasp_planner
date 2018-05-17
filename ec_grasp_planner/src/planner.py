@@ -262,8 +262,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
                                    goal_is_relative = 0, v_max = '[0,0]', a_max = '[0,0]'))
     initialMode.set(initialSet)  
     control_sequence.append(initialMode)
-    control_sequence.append(ha.TimeSwitch('initial', 'softhand_open_0', duration=5))    
-    # control_sequence.append(ha.JointConfigurationSwitch('initial', 'GoDown', goal = initial_joint_positions))
+    control_sequence.append(ha.JointConfigurationSwitch('initial', 'softhand_open_init', controller = 'JointSpaceController', epsilon = str(math.radians(7.0))))
 
     speed = np.array([30]) 
     thumb_pos = thumb_pos_preopen
@@ -285,9 +284,9 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     control_sequence.append(ha.ros_CLASHhandControlMode(goal = np.concatenate((speed, thumb_pos, diff_pos, thumb_contact_force, 
                                                                             thumb_grasp_force, diff_contact_force, diff_grasp_force, 
                                                                             thumb_pretension, diff_pretension, force_feedback_ratio, 
-                                                                            prox_level, touch_level, mode, command_count)), name  = 'softhand_open_0'))
+                                                                            prox_level, touch_level, mode, command_count)), name  = 'softhand_open_init'))
     # 7b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('softhand_open_0', 'Pregrasp', duration = handarm_params['hand_opening_duration']))
+    control_sequence.append(ha.TimeSwitch('softhand_open_init', 'Pregrasp', duration = handarm_params['hand_opening_duration']))
     
     
 
@@ -589,7 +588,8 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
                                    goal_is_relative = 0, v_max = '[0,0]', a_max = '[0,0]'))
     initialMode.set(initialSet)  
     control_sequence.append(initialMode)
-    control_sequence.append(ha.TimeSwitch('initial', 'softhand_open_init', duration=5))    
+    #control_sequence.append(ha.TimeSwitch('initial', 'softhand_open_init', duration=5))    
+    control_sequence.append(ha.JointConfigurationSwitch('initial', 'softhand_open_init', controller = 'JointSpaceController', epsilon = str(math.radians(7.0))))
 
 
     # control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
