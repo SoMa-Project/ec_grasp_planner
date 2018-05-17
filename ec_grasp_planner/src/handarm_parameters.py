@@ -253,11 +253,11 @@ class KUKA(BaseHandArm):
                     math.radians(90.0), [0, 0, 1]),
             )
 
-        self['wall_grasp']['object']['downward_force'] = 2.
+        self['wall_grasp']['object']['downward_force'] = 1.5 #was 2 before
 
-        self['wall_grasp']['object']['wall_force'] = 5
+        self['wall_grasp']['object']['wall_force'] = 3.5
         
-        self['wall_grasp']['object']['slide_speed'] = 0.05
+        self['wall_grasp']['object']['slide_speed'] = 0.03
 
 class RBOHandO2KUKA(KUKA):
     def __init__(self, **kwargs):
@@ -424,7 +424,7 @@ class ClashHandKUKA(KUKA):
 
         self['wall_grasp']['object']['kp'] = 6
 
-        scooping_angle_deg = 20        
+        scooping_angle_deg = 10        
 
         self['wall_grasp']['object']['scooping_angle_deg'] = scooping_angle_deg
 
@@ -435,3 +435,6 @@ class ClashHandKUKA(KUKA):
         
         self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
                                                                  tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
+
+        self['wall_grasp']['object']['wall_force'] = 5
+        self['wall_grasp']['cucumber']['wall_force'] = 7

@@ -658,7 +658,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
                                              reference_frame="world"))
 
     # 3b. We switch after a short time as this allows us to do a small, precise lift motion
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'CloseBeforeSlide', duration=1))
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'CloseBeforeSlide', duration=0.5)) #was 1 for the mango
 
     speed = np.array([30]) 
     thumb_pos = np.array([ 0, -10, 0])
