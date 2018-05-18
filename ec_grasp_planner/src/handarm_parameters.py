@@ -239,7 +239,7 @@ class KUKA(BaseHandArm):
         #####################################################################################
 
         self['surface_grasp']['object']['downward_force'] = 2.5
-        self['surface_grasp']['salad']['downward_force'] = 3
+        self['surface_grasp']['salad']['downward_force'] = 5
 
         #####################################################################################
         # Common wall grasp params
@@ -417,8 +417,8 @@ class ClashHandKUKA(KUKA):
         self['surface_grasp']['cucumber']['diff_pos'] = np.array([60, 60, 30])
 
         self['surface_grasp']['salad']['move_up_time_after_EC_contact'] = 0
-        self['surface_grasp']['salad']['thumb_pos'] = np.array([0, 60, 30])
-        self['surface_grasp']['salad']['diff_pos'] = np.array([50, 50, 30])
+        self['surface_grasp']['salad']['thumb_pos'] = np.array([0, 65, 10])
+        self['surface_grasp']['salad']['diff_pos'] = np.array([60, 60, 30])
 
         
         self['surface_grasp']['object']['thumb_pos_preshape'] = np.array([ 0, 0, 0])
@@ -431,6 +431,8 @@ class ClashHandKUKA(KUKA):
         self['surface_grasp']['cucumber']['diff_pos_preshape'] = np.array([10, 10, 10])
         self['surface_grasp']['netbag']['thumb_pos_preshape'] = np.array([ 0, 10, 10])
         self['surface_grasp']['netbag']['diff_pos_preshape'] = np.array([10, 10, 10])
+        self['surface_grasp']['salad']['thumb_pos_preshape'] = np.array([ 0, 0, -15])
+        self['surface_grasp']['salad']['diff_pos_preshape'] = np.array([0, 0, 0])
         
 
         ####################################################################################
@@ -450,7 +452,7 @@ class ClashHandKUKA(KUKA):
         self['wall_grasp']['cucumber']['wall_force'] = 10
         self['wall_grasp']['netbag']['wall_force'] = 4
         self['wall_grasp']['punnet']['wall_force'] = 12
-        self['wall_grasp']['salad']['wall_force'] = 1.5
+        self['wall_grasp']['salad']['wall_force'] = 5
 
         self['wall_grasp']['object']['thumb_pos_preshape'] = np.array([ 0, -10, 0])
         self['wall_grasp']['salad']['thumb_pos_preshape'] = np.array([ 0, -15, 0])

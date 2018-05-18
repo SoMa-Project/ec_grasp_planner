@@ -424,8 +424,8 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     thumb_grasp_force = np.array([0]) 
     diff_contact_force = np.array([0]) 
     diff_grasp_force = np.array([0]) 
-    thumb_pretension = np.array([15]) #maybe 20 better for limes
-    diff_pretension = np.array([15]) #maybe 20 better for limes
+    thumb_pretension = np.array([20]) #maybe 20 better for limes
+    diff_pretension = np.array([20]) #maybe 20 better for limes
     force_feedback_ratio = np.array([0]) 
     prox_level = np.array([0]) 
     touch_level = np.array([0]) 
@@ -989,7 +989,7 @@ def grasp_heuristics(ifco_pose, object_pose, bounding_box, uncertainty_offset):
     xd = 0.37/2 
     yd = 0.57/2 
     #boundary width from which to go for a wall_grasp
-    e = 0.13
+    e = 0.10
 
     # corner1_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, bounding_box.y/2 + uncertainty_offset, 0]))
     # corner2_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, -bounding_box.y/2 - uncertainty_offset, 0]))
