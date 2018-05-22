@@ -404,7 +404,7 @@ class PISAGripperKUKA(KUKA):
         # IIT specific params for wall grasp
         ####################################################################################        
 
-        self['wall_grasp']['object']['downward_force'] = 3.5
+        self['wall_grasp']['object']['downward_force'] = 2
 
         self['wall_grasp']['object']['wall_force'] = 5.5
 
@@ -440,6 +440,9 @@ class PISAGripperKUKA(KUKA):
         
         self['wall_grasp']['punnet']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0.03, -0.07]),tra.rotation_matrix(
                                                                                         math.radians(scooping_angle_deg), [0, 1, 0]))
+        self['wall_grasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0, -0.05]),tra.rotation_matrix(
+                                                                                        math.radians(scooping_angle_deg), [0, 1, 0]))
+
         # Tranform used to define the distance to move_up after contact with ec before sliding to the wall
         self['wall_grasp']['object']['move_up_after_contact_goal'] = tra.translation_matrix(np.array([0, 0, 0.015]))
 
