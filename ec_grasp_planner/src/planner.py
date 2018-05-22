@@ -133,12 +133,12 @@ class GraspPlanner():
                 self.grasp_type, wall_id = grasp_heuristics(ifco_in_base, object_in_base, bounding_box, obj_bbox_uncertainty_offset)
                 print("GRASP HEURISTICS " + self.grasp_type + " " + wall_id)
 
-                call_xper = rospy.ServiceProxy('pregrasp_pose', xper_srv.ProvidePreGraspPose)
-                res = call_xper(pm.toMsg(pm.fromMatrix(ifco_in_base)), pm.toMsg(pm.fromMatrix(object_in_base)))
-                print("REACHABILITY & EXPERIMENTS node proposes a " + res.grasp_type + " grasp")
-                print("approach_direction: " + str(res.approach_direction))
-                print("hand_orientation: " + str(res.hand_orientation))
-                print("plane_orientation: " + str(res.plane_orientation))
+                # call_xper = rospy.ServiceProxy('pregrasp_pose', xper_srv.ProvidePreGraspPose)
+                # res = call_xper(pm.toMsg(pm.fromMatrix(ifco_in_base)), pm.toMsg(pm.fromMatrix(object_in_base)))
+                # print("REACHABILITY & EXPERIMENTS node proposes a " + res.grasp_type + " grasp")
+                # print("approach_direction: " + str(res.approach_direction))
+                # print("hand_orientation: " + str(res.hand_orientation))
+                # print("plane_orientation: " + str(res.plane_orientation))
             else:                
                 wall_id = "wall1"
                 grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
@@ -352,6 +352,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     wall_force = getParam(obj_type_params, obj_params, 'wall_force')
     slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
     pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
+    move_up_after_contact_goal = getParam(obj_type_params, obj_params, 'move_up_after_contact_goal')
 
     vision_params = {}
     if object_type in handarm_params:
@@ -370,6 +371,8 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     down_IFCO_speed = handarm_params['down_IFCO_speed']
     up_IFCO_speed = handarm_params['up_IFCO_speed']
     down_tote_speed = handarm_params['down_IFCO_speed']
+    up_IFCO_speed_slow = handarm_params['up_IFCO_speed_slow']
+
 
 
     # Set the twists to use TRIK controller with
@@ -382,7 +385,8 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed]);
     # Slide speed is positive because it is defined on the EE frame
     slide_IFCO_twist = tra.translation_matrix([0, 0, slide_IFCO_speed]);
-
+    # Slow Up speed is also positive because it is defined on the world frame
+    up_IFCO_twist_slow = tra.translation_matrix([0, 0, up_IFCO_speed_slow]);
     
     rviz_frames = []
 
@@ -429,12 +433,13 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
 
     # 3. Lift upwards so the hand doesn't slide on table surface
     control_sequence.append(
-        ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
+        ha.InterpolatedHTransformControlMode(up_IFCO_twist_slow, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
                                              reference_frame="world"))
 
     # 3b. We switch after a short time as this allows us to do a small, precise lift motion
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0))
-
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=3))
+    control_sequence.append(ha.FramePoseSwitch('LiftHand', 'SlideToWall', goal_is_relative='1', 
+                                            goal=move_up_after_contact_goal, epsilon='0.004', reference_frame="world"))
     # 4. Go towards the wall to slide object to wall
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(slide_IFCO_twist, controller_name='SlideToWall', goal_is_relative='1',
