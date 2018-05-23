@@ -151,12 +151,9 @@ class multi_object_params:
         # init vector for normalization
         pdf_normalized = np.zeros(len(pdf_array))
 
-        # normalize pdf, if all 0 -> all are equally possible
-        if sum(pdf_array) == 0:
-            pdf_normalized[:] = 1.0 / len(pdf_array)
-        else:
-            # all non zero probability are = possible for random selection
-            pdf_normalized[pdf_array > 0] = 1 / len(pdf_array[pdf_array > 0])
+        # normalize pdf, if all are equally possible
+        pdf_normalized[:] = 1.0 / len(pdf_array)
+
 
         # sample probabilistically
         sampled_item = (np.random.choice(len(pdf_normalized), p=pdf_normalized))
