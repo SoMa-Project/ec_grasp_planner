@@ -214,16 +214,18 @@ grasp_type should be one of {Any,EdgeGrasp,WallGrasp,SurfaceGrasp}. In this vers
 handarm_type should match your specific robot/hand combination, i.e. RBOHand2Kuka for the rbo hand mounted omn the KUKA iiwa.  The value must match one of the class names in handarm_parameters.py.
 
 object_heuristic_function should be one of {Random, Deterministic, Probabilistic}. This parameter selects one of the three heuristic functions for multi-object and multi-EC selection.
-The planner assumes that all EC are exploitable for all EC. The multi-object-EC heuristics are:
-- Random: independent of the heuristic value for object-ec tuple one object and one EC is randomly selected
-- Deterministic: `(object,ec) = argmax q(object_i, ec_j) i in 1..n & j in 1..m`, where `q()` is defined in the `multi_object_params.py`. A parameter file is defined from which we can extract probability values for given objects (use-case relevant) and strategies (Surface-, Wall-, EdgeGrasp). The default parameter file is in `./data/object_param.yaml`:
+The planner assumes that all EC are exploitable for all objects. The multi-object-EC heuristics are:
+- Random: select one object-EC-pair randomly, independent of heuristic values
+- Deterministic: pick the maximum of a heuristic function: `(object,ec) = argmax q(object_i, ec_j) i in 1..n & j in 1..m`. `q()` is taken from a parameter file `multi_object_params.py` which contains probability values for given objects (use-case relevant) and strategies (Surface-, Wall-, EdgeGrasp). The default parameter file is in `./data/object_param.yaml`.
+- Probabilistic: Use the heuristic function as a prior for sampling random strategies: samples from the pdf given by the `Q[n x m]` matrix, where `Q[i,j] = q(object_i, ec_j)`
+ 
  A simple example of object_params:
  ---
  ```
  apple:
     SurfaceGrasp: {'success': 1}    # Success rate for Surface grasping an apple is 100%
-    WallGrasp: {'success': 1}       # Success rate for Surface grasping an apple is 100%
-    EdgeGrasp: {'success': 0}       # Success rate for Surface grasping an apple is 0%
+    WallGrasp: {'success': 1}       # Success rate for Wall grasping an apple is 100%
+    EdgeGrasp: {'success': 0}       # Success rate for Edge grasping an apple is 0%
 ```
 ---
 Advanced object-ec relational parameter definition:
@@ -236,8 +238,8 @@ Advanced object-ec relational parameter definition:
     EdgeGrasp: {'success': 0}
 ```
 ---
-Here `the WallGrasp` strategy success depend on the relative orientation of the cucumber to the wall. For all non zero success rates we define and angle in degrees `[0, 180, 360]` and a success rate `[1, 0.8, 0.7]`. **Important:** the last element in the success rate vector gives the success in other cases. `epsilon` is and upper and lower bound on how exact orinetation should be (0 - as precises as gine in the angle vector, 10 - `10 deg > |current orientation - reference|` )   
-- Probabilistic: sample from the pdf determined by `Q[n x m]` matrix, where `Q[i,j] = q(object_i, ec_j)`
+Here `the WallGrasp` strategy success depend on the relative orientation of the cucumber to the wall. We define a set of possible grasping angles in degrees `[0, 180, 360]` and a success rate `[1, 0.8, 0.7]` for each angle. **Important:** the last element in the success rate vector gives the success in other cases. `epsilon` is an upper and lower bound on how exact orientation should be (0 - as precises as given in the angle vector, 10 - `10 deg > |current orientation - reference|` )   
+
 ## Examples  <a name="examples"></a>
 
 ### Planning Based on PCD Input  <a name="example1"></a>
