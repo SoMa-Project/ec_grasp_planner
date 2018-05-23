@@ -367,14 +367,14 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     move_up_after_contact_goal = getParam(obj_type_params, obj_params, 'move_up_after_contact_goal')
     move_back_after_contact_wall = getParam(obj_type_params, obj_params, 'move_back_after_contact_wall')
 
-    vision_params = {}
-    if object_type in handarm_params:
-        vision_params = handarm_params[object_type]
-    offset = getParam(vision_params, handarm_params['object'], 'obj_bbox_uncertainty_offset')
-    if abs(object_frame[:3,0].dot(wall_frame[:3,0])) > abs(object_frame[:3,1].dot(wall_frame[:3,0])):
-        pre_approach_transform[2,3] = pre_approach_transform[2,3] - bounding_box.y/2 - offset 
-    else:
-        pre_approach_transform[2,3] = pre_approach_transform[2,3] - bounding_box.x/2 - offset
+    # vision_params = {}
+    # if object_type in handarm_params:
+    #     vision_params = handarm_params[object_type]
+    # offset = getParam(vision_params, handarm_params['object'], 'obj_bbox_uncertainty_offset')
+    # if abs(object_frame[:3,0].dot(wall_frame[:3,0])) > abs(object_frame[:3,1].dot(wall_frame[:3,0])):
+    #     pre_approach_transform[2,3] = pre_approach_transform[2,3] - bounding_box.y/2 - offset 
+    # else:
+    #     pre_approach_transform[2,3] = pre_approach_transform[2,3] - bounding_box.x/2 - offset
 
     post_grasp_transform = getParam(obj_type_params, obj_params, 'post_grasp_transform')
 
