@@ -300,6 +300,10 @@ class RBOHandO2KUKA(KUKA):
 
         self['surface_grasp']['object']['downward_force'] = 2
 
+        # Tranform used to define the distance to move_up after contact with ec before closing the hand
+        self['surface_grasp']['object']['move_up_after_contact_goal'] = tra.translation_matrix(np.array([0, 0, 0.015]))
+        
+
         ####################################################################################
         # RBO specific params for wall grasp
         ####################################################################################
@@ -326,7 +330,7 @@ class RBOHandO2KUKA(KUKA):
         self['wall_grasp']['object']['slide_speed'] = 0.02
         # Tranform used to define the distance to move_up after contact with ec before sliding to the wall
         self['wall_grasp']['object']['move_up_after_contact_goal'] = tra.translation_matrix(np.array([0, 0, 0.015]))
-
+        
 class PISAHandKUKA(KUKA):
     def __init__(self, **kwargs):
         super(PISAHandKUKA, self).__init__()

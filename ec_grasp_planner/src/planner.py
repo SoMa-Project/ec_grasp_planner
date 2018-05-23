@@ -211,12 +211,14 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')
     downward_force = getParam(obj_type_params, obj_params, 'downward_force')
     ee_in_goal_frame = getParam(obj_type_params, obj_params, 'ee_in_goal_frame')
+    move_up_after_contact_goal = getParam(obj_type_params, obj_params, 'move_up_after_contact_goal')
 
     lift_time = handarm_params['lift_duration']
     place_time = handarm_params['place_duration']    
     down_IFCO_speed = handarm_params['down_IFCO_speed']
     up_IFCO_speed = handarm_params['up_IFCO_speed']
     down_tote_speed = handarm_params['down_tote_speed']
+    up_IFCO_speed_slow = handarm_params['up_IFCO_speed_slow']
     
 
     zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
@@ -228,8 +230,6 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     goal_ = goal_.dot(hand_transform) #this is the pre-grasp transform of the signature frame expressed in the world
     goal_ = goal_.dot(ee_in_goal_frame)
 
-    
-
     # Set the twists to use TRIK controller with
 
     # Down speed is positive because it is defined on the EE frame
@@ -238,6 +238,8 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     up_IFCO_twist = tra.translation_matrix([0, 0, up_IFCO_speed]);
     # Down speed is negative because it is defined on the world frame
     down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed]);
+    # Slow Up speed is also positive because it is defined on the world frame
+    up_IFCO_twist_slow = tra.translation_matrix([0, 0, up_IFCO_speed_slow]);
 
     # Set the frames to visualize with RViz
     rviz_frames = []
@@ -265,13 +267,23 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     # 2b. Switch when force-torque sensor is triggered
     force  = np.array([0, 0, downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'softhand_close',
+                                                 'LiftHand',
                                                  goal = force,
                                                  norm_weights = np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion = "THRESH_UPPER_BOUND",
                                                  goal_is_relative = '1',
                                                  frame_id = 'world',
                                                  port = '2'))
+
+    # 2.1. Lift upwards so the hand doesn't slide on table surface
+    control_sequence.append(
+        ha.InterpolatedHTransformControlMode(up_IFCO_twist_slow, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
+                                             reference_frame="world"))
+
+    # 2.1b. We switch after a short time as this allows us to do a small, precise lift motion
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'softhand_close', duration=3))
+    control_sequence.append(ha.FramePoseSwitch('LiftHand', 'softhand_close', goal_is_relative='1', 
+                                            goal=move_up_after_contact_goal, epsilon='0.004', reference_frame="world"))
 
     desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
     force_gradient = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
