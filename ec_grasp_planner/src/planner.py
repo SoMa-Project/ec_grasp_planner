@@ -365,6 +365,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
     pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
     move_up_after_contact_goal = getParam(obj_type_params, obj_params, 'move_up_after_contact_goal')
+    move_back_after_contact_wall = getParam(obj_type_params, obj_params, 'move_back_after_contact_wall')
 
     vision_params = {}
     if object_type in handarm_params:
@@ -459,10 +460,19 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
 
     # 4b. Switch when the f/t sensor is triggered with normal force from wall
     force = np.array([0, 0, wall_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'softhand_close', 'ForceSwitch', goal=force,
+    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SlideBackFromWall', 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame, port='2'))
+
+    # 4.1. Lift upwards so the hand doesn't slide on table surface
+    control_sequence.append(
+        ha.InterpolatedHTransformControlMode(-slide_IFCO_twist, controller_name='SlideBackFromWall', goal_is_relative='1',
+                                             name="SlideBackFromWall", reference_frame="EE"))
+    # 4.1b. We switch after a short time as this allows us to do a small, precise lift motion
+    control_sequence.append(ha.TimeSwitch('SlideBackFromWall', 'softhand_close', duration=3))
+    control_sequence.append(ha.FramePoseSwitch('SlideBackFromWall', 'softhand_close', goal_is_relative='1', 
+                                            goal=move_back_after_contact_wall, epsilon='0.004', reference_frame="world"))
 
     # 5. Maintain contact while closing the hand
     if handarm_params['isForceControllerAvailable']:
