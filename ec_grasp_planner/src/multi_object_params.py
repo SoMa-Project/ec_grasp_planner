@@ -6,8 +6,8 @@ import math
 import numpy as np
 import tf
 from tf import transformations as tra
-import operator
-import random
+from geometry_graph_msgs.msg import Node, geometry_msgs
+
 
 import rospkg
 from tornado.concurrent import return_future
@@ -41,7 +41,7 @@ class multi_object_params:
         with open(file, 'r') as stream:
             try:
                 self.data =yaml.load(stream)
-                # print("data loaded")
+                # print("data loaded {}".format(file))
             except yaml.YAMLError as exc:
                 print(exc)
 
@@ -113,7 +113,7 @@ class multi_object_params:
         # find max probablity in list
 
         ideces_of_max = np.argwhere(Q_matrix == Q_matrix.max())
-        print("ideces_of_max  = {}".format(ideces_of_max ))
+        # print("ideces_of_max  = {}".format(ideces_of_max ))
 
         return ideces_of_max[0][0], ideces_of_max[0][1]
 
@@ -166,8 +166,10 @@ class multi_object_params:
     # assumption1: all objects are the same type
     # objects is a dictionary with obilagorty keys: type, frame (in robot base frame)
     # ecs is a list of graph nodes (see geometry_graph)
-    def process_objects_ecs(self, objects, ecs, graph_in_base, h_process_type="argmax"):
+    def process_objects_ecs(self, objects, ecs, graph_in_base, h_process_type="Deterministic"):
 
+        # print("object: {}, \n ecs: {} \n graphTF: {}, h_process: {}".format(objects, ecs, graph_in_base, h_process_type))
+        # print("ec type: {}".format(type(ecs[0])))
         # load parameter file
         self.load_object_params()
 
@@ -177,6 +179,8 @@ class multi_object_params:
         for i,o in enumerate(objects):
 
             # check if the given hand type for this object is set in the yaml
+            # print ("object type: {}".format(o["type"]))
+
             if not self.data[o["type"]]:
                 print("The given object {} has no parameters set in the yaml {}".format(o["type"], self.file_name))
                 return -1
@@ -186,7 +190,7 @@ class multi_object_params:
                 ec_frame_in_base = graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))
                 Q_matrix[i,j] = self.heuristic(o, ec_frame_in_base, ec.label)
 
-        print (" ** h_mx = {}".format(Q_matrix))
+        # print (" ** h_mx = {}".format(Q_matrix))
 
         # select heuristic function for choosing object and EC
         #argmax samples from the [max (H(obj, ec)] list
@@ -205,45 +209,60 @@ class multi_object_params:
         # worst case jsut return the first object and ec
         return (objects[0],ecs[0])
 
-## --------------------------------------------------------- ##
-## ---------------------- Main ----------------------------- ##
-## --------------------------------------------------------- ##
-if __name__ == "__main__":
-    # testing the code inline
-    obj_tf = tra.concatenate_matrices(
-            tra.translation_matrix([-0.05, 0, 0.0]), tra.rotation_matrix(math.radians(170.0), [0, 0, 1]))
-    ec = tra.concatenate_matrices(
-            tra.translation_matrix([-0.05, 0, 0.0]), tra.rotation_matrix(math.radians(10.0), [0, 0, 1]))
-    obj={}
 
-    obj['frame'] = obj_tf
-    obj['type'] = 'cucumber'
-    strategy = 'WallGrasp'
-    hand = 'RBOHandP24'
+def test(ece_list = []):
+    # this is only a test code to show usability of the library
+    if len(ece_list) == 0:
+        return "init ece list with nodes form the ECE graph"
 
-    # print obj_tf
-    # print ec
+    # object has a frame, type (see use-case types and input PDF function), and bounding box properties
+    object =  {'frame': np.array([[-0.99997823, -0.00579027, -0.00319919,  0.54917589],
+       [ 0.0057939 , -0.99998269, -0.0011255 , -0.00102592],
+       [-0.00319261, -0.00114401,  0.99999436,  0.35815563],
+       [ 0.        ,  0.        ,  0.        ,  1.        ]]),
+                'type': "punnet",
+                'bounding_box': {'x': 0.118688985705, 'y': 0.0980169996619, 'z': 0.0797315835953}}
 
+    # list of objects
+    objects = [object]
+
+    # an EC is an  the ECE_Graph node: transformation and a label
+
+    # ec1 = Node
+    # ec1.label = "WallGrasp"
+    # ec1.transform = geometry_msgs.msg.TransformStamped
+    # ec1.transform = tra.concatenate_matrices(tra.translation_matrix([-0.532513504798, 0.222529488642, 1.39476392907]),
+    #                                          tra.rotation_matrix(math.radians(-70.0), [0, 0, 1]))
+    #
+    # # tra.concatenate_matrices(tra.translation_matrix([-0.532513504798, 0.222529488642, 1.39476392907]), tra.rotation_matrix(math.radians(170.0), [0, 0, 1]))
+    #
+    # ec2 = Node
+    # ec2.label = "WallGrasp"
+    # ec2.transform = tra.concatenate_matrices(tra.translation_matrix([-0.532513504798, 0.222529488642, 1.39476392907]),
+    #                                          tra.rotation_matrix(math.radians(-70.0), [0, 0, 1]))
+
+
+
+    # list of all available ECs
+    list_of_eces = ece_list
+
+    # this is a transformation that brings the ec frames in the same refernece frame as for the objects
+    graphTransform = np.array([[4.79425539e-01, - 6.02725216e-01,   6.37866340e-01, 0.00000000e+00],
+              [-8.77582562e-01, - 3.29270286e-01,   3.48467970e-01, - 7.00000000e-01],
+    [3.50502960e-12, - 7.26844821e-01, - 6.86801723e-01, 1.40000000e+00],
+    [0.00000000e+00,   0.00000000e+00,   0.00000000e+00,   1.00000000e+00]])
+
+    # heuristic function can be Random, Deterministic, or Probabilistic
+    heuristic_function = "Deterministic"
+
+    # init object to process multi objects
     foo = multi_object_params()
+    # load object and ec related probability distribution function
     foo.load_object_params()
-    h_val = h_val = foo.heuristic(obj,ec,strategy,hand)
-    g_l = {"g1": h_val}
-    print("h(g1)={}".format(h_val))
+    # find object-ec tuple based on the selected heuristic function
+    obj_chosen, ec_chosen = foo.process_objects_ecs(objects, list_of_eces, graphTransform, heuristic_function)
 
-    #second EC
-    ec = tra.concatenate_matrices(
-        tra.translation_matrix([-0.05, 0, 0.0]),
-        tra.rotation_matrix(math.radians(15.0), [0, 0, 1]),
-        tra.rotation_matrix(math.radians(10.0), [0, 1, 0]))
-
-    h_val = foo.heuristic(obj, ec, strategy, hand)
-    print("h(g2)={}".format(h_val))
-    g_l['g2'] = h_val
-
-    print (g_l)
-    argmax_h = foo.argmax_h(g_l)
-
-    print("argmax(h) = {}".format(argmax_h))
+    print("Chosen object = {} \n\n Exploting ec = {}".format(obj_chosen, ec_chosen))
 
     # h_val = foo.heuristic(obj, ec, strategy, hand)
     #

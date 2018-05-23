@@ -79,7 +79,7 @@ class GraspPlanner():
         print('Handling grasp planner service call')
         self.object_type = req.object_type
         self.grasp_type = req.grasp_type
-        grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
+        grasp_choices = ["Any", "WallGrasp", "SurfaceGrasp", "EdgeGrasp"]
         if self.grasp_type not in grasp_choices:
             raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp]")
             return
@@ -125,9 +125,13 @@ class GraspPlanner():
             object_list.append(obj_tmp)
 
         # selecting list of goal nodes based on requested strategy type
-        goal_node_labels = [self.grasp_type]
-        if self.grasp_type == "Auto":
+        if self.grasp_type == "Any":
             goal_node_labels = ['SurfaceGrasp', 'WallGrasp', 'EdgeGrasp']
+        else:
+            goal_node_labels = [self.grasp_type]
+
+        # print(" *** goal node lables: {} ".format(goal_node_labels))
+
         node_list = [n for i, n in enumerate(graph.nodes) if n.label in goal_node_labels]
 
         # Get the geometry graph frame in robot base frame
@@ -141,7 +145,7 @@ class GraspPlanner():
                                                                                      graph_in_base_transform,
                                                                                      req.object_heuristic_function
                                                                                      )
-        print(" * object type: {}, ec type: {}, heuristc funciton type: {}".format(chosen_object['type'], chosen_node.label, req.object_heuristic_function))
+        # print(" * object type: {}, ec type: {}, heuristc funciton type: {}".format(chosen_object['type'], chosen_node.label, req.object_heuristic_function))
 
 
         # --------------------------------------------------------
