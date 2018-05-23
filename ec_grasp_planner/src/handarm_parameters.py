@@ -362,7 +362,7 @@ class PISAGripperKUKA(KUKA):
         super(PISAGripperKUKA, self).__init__()
 
         ####################################################################################
-        # IIT specific params irrespective of grasp type 
+        # Gripper specific params irrespective of grasp type 
         ####################################################################################
 
         #self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.55431, 0.49756, 0.26512]), tra.quaternion_matrix([-0.663, 0.12789, 0.73342, 0.078571]))
@@ -379,7 +379,7 @@ class PISAGripperKUKA(KUKA):
 
 
         ####################################################################################
-        # IIT specific params for surface grasp
+        # Gripper specific params for surface grasp
         ####################################################################################
 
         self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0, 0.0]),
@@ -401,7 +401,7 @@ class PISAGripperKUKA(KUKA):
         self['surface_grasp']['punnet']['kp'] = 6
 
         ####################################################################################
-        # IIT specific params for wall grasp
+        # Gripper specific params for wall grasp
         ####################################################################################        
 
         self['wall_grasp']['object']['downward_force'] = 2
@@ -435,12 +435,15 @@ class PISAGripperKUKA(KUKA):
         self['wall_grasp']['netbag']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0, -0.03]),tra.rotation_matrix(
                                                                                         math.radians(scooping_angle_deg), [0, 1, 0]))
         
-        self['wall_grasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.15, 0, 0.01]),tra.rotation_matrix(
+        self['wall_grasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.15, 0, 0]),tra.rotation_matrix(
                                                                                         math.radians(scooping_angle_deg), [0, 1, 0]))
         
         self['wall_grasp']['punnet']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0.03, -0.07]),tra.rotation_matrix(
                                                                                         math.radians(scooping_angle_deg), [0, 1, 0]))
-        self['wall_grasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0, -0.05]),tra.rotation_matrix(
+        self['wall_grasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0, -0.04]),tra.rotation_matrix(
+                                                                                        math.radians(scooping_angle_deg), [0, 1, 0]))
+        
+        self['wall_grasp']['salad']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0, -0.04]),tra.rotation_matrix(
                                                                                         math.radians(scooping_angle_deg), [0, 1, 0]))
 
         # Tranform used to define the distance to move_up after contact with ec before sliding to the wall
