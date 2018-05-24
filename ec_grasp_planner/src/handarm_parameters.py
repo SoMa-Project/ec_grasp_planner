@@ -435,7 +435,7 @@ class PISAGripperKUKA(KUKA):
         self['wall_grasp']['netbag']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0, -0.03]),tra.rotation_matrix(
                                                                                         math.radians(scooping_angle_deg), [0, 1, 0]))
         
-        self['wall_grasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.15, 0, 0]),tra.rotation_matrix(
+        self['wall_grasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.15, 0, -0.01]),tra.rotation_matrix(
                                                                                         math.radians(scooping_angle_deg), [0, 1, 0]))
         
         self['wall_grasp']['punnet']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0.03, -0.07]),tra.rotation_matrix(
