@@ -398,6 +398,8 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
     down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed]);
     # Slide speed is positive because it is defined on the EE frame
     slide_IFCO_twist = tra.translation_matrix([0, 0, slide_IFCO_speed]);
+    # Slide speed is negative because it is defined on the EE frame
+    slide_IFCO_back_twist = tra.translation_matrix([0, 0, -slide_IFCO_speed]);
     # Slow Up speed is also positive because it is defined on the world frame
     up_IFCO_twist_slow = tra.translation_matrix([0, 0, up_IFCO_speed_slow]);
     
@@ -467,7 +469,7 @@ def create_wall_grasp(object_frame, bounding_box, support_surface_frame, wall_fr
 
     # 4.1. Lift upwards so the hand doesn't slide on table surface
     control_sequence.append(
-        ha.InterpolatedHTransformControlMode(-slide_IFCO_twist, controller_name='SlideBackFromWall', goal_is_relative='1',
+        ha.InterpolatedHTransformControlMode(slide_IFCO_back_twist, controller_name='SlideBackFromWall', goal_is_relative='1',
                                              name="SlideBackFromWall", reference_frame="EE"))
     # 4.1b. We switch after a short time as this allows us to do a small, precise lift motion
     control_sequence.append(ha.TimeSwitch('SlideBackFromWall', 'softhand_close', duration=3))
