@@ -278,7 +278,7 @@ class RBOHandO2KUKA(KUKA):
         
         self['hand_closing_duration'] = 6
 
-        self['hand_opening_duration'] = 6
+        self['hand_opening_duration'] = 2
 
         self['isInPositionControl'] = True
 
@@ -311,10 +311,7 @@ class RBOHandO2KUKA(KUKA):
         ####################################################################################
         # RBO specific params for wall grasp
         ####################################################################################
-
-        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, 0, -0.1])
-        self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, 0, -0.12])
-        
+               
         self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
                                                                  tra.rotation_matrix(math.radians(-5), [0, 1, 0]))
 
@@ -326,16 +323,27 @@ class RBOHandO2KUKA(KUKA):
                                                             tra.rotation_matrix(
                                                                 math.radians(90.0), [0, 0, 1]))
 
+        self['wall_grasp']['object']['slide_speed'] = 0.02
+        
+        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, 0, -0.1])
+        self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.01, -0.12])
+        
+
+
         self['wall_grasp']['object']['downward_force'] = 2.
+        #self['wall_grasp']['mango']['downward_force'] = 3.5
 
         self['wall_grasp']['object']['wall_force'] = 3.5        
+        self['wall_grasp']['mango']['wall_force'] = 2.5        
         self['wall_grasp']['netbag']['wall_force'] = 2.5
 
-        self['wall_grasp']['object']['slide_speed'] = 0.02
+        
         # Tranform used to define the distance to move_up after contact with ec before sliding to the wall
-        self['wall_grasp']['object']['move_up_after_contact_goal'] = tra.translation_matrix(np.array([0, 0, 0.015]))        
+        self['wall_grasp']['object']['move_up_after_contact_goal'] = tra.translation_matrix(np.array([0, 0, 0.015]))
+        self['wall_grasp']['mango']['move_up_after_contact_goal'] = tra.translation_matrix(np.array([0, 0, 0.017]))
         # Tranform used to define the distance to move back after contact with ec before closing the hand
         self['wall_grasp']['object']['move_back_after_contact_wall'] = tra.translation_matrix(np.array([0, -0.015, 0]))
+        self['wall_grasp']['mango']['move_back_after_contact_wall'] = tra.translation_matrix(np.array([0, 0.0, 0]))
         
 
 
