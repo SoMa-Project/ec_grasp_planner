@@ -331,6 +331,7 @@ class RBOHandO2KUKA(KUKA):
         self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.01, -0.12])
         self['wall_grasp']['salad']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.01, -0.15])
         self['wall_grasp']['cucumber']['pre_approach_transform'] = tra.translation_matrix([-0.20, 0, -0.12])
+        self['wall_grasp']['punnet']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.0, -0.14])
         
 
 
@@ -340,7 +341,8 @@ class RBOHandO2KUKA(KUKA):
         self['wall_grasp']['object']['wall_force'] = 3.5        
         self['wall_grasp']['mango']['wall_force'] = 2.5        
         self['wall_grasp']['netbag']['wall_force'] = 2.5
-        self['wall_grasp']['cucumber']['wall_force'] = 3.5        
+        self['wall_grasp']['cucumber']['wall_force'] = 3.5      
+        self['wall_grasp']['punnet']['wall_force'] = 2.5      
 
         
         # Tranform used to define the distance to move_up after contact with ec before sliding to the wall
@@ -355,6 +357,7 @@ class RBOHandO2KUKA(KUKA):
         self['wall_grasp']['netbag']['move_back_after_contact_wall'] = tra.translation_matrix(np.array([0, 0.0, 0]))
         self['wall_grasp']['salad']['move_back_after_contact_wall'] = tra.translation_matrix(np.array([0, 0.0, 0]))
         self['wall_grasp']['cucumber']['move_back_after_contact_wall'] = tra.translation_matrix(np.array([0, -0.015, 0]))
+        self['wall_grasp']['punnet']['move_back_after_contact_wall'] = tra.translation_matrix(np.array([0, 0.0, 0]))
         
 
 
