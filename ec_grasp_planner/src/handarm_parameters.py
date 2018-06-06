@@ -212,7 +212,7 @@ class KUKA(BaseHandArm):
         self['down_tote_speed'] = 0.05
 
         self['rotate_duration'] = 3
-        self['lift_duration'] = 13
+        self['lift_duration'] = 9
         self['place_duration'] = 5
 
         self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
@@ -315,15 +315,15 @@ class PISAHandKUKA(KUKA):
 
         self['hand_closing_duration'] = 2
 
-        self['IMU_closing_duration'] = 10
+        self['IMU_closing_duration'] = 13
 
         self['hand_opening_duration'] = 2
 
         self['hand_max_aperture'] = 0.25
 
-        self['isInPositionControl'] = True
+        self['isInPositionControl'] = False
 
-        self['IMUGrasp'] = False
+        self['IMUGrasp'] = True
 
         ####################################################################################
         # IIT specific params for surface grasp
@@ -331,7 +331,8 @@ class PISAHandKUKA(KUKA):
 
         self['surface_grasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.15])
 
-        self['surface_grasp']['object']['object_approach_transform'] = tra.translation_matrix([0.0, 0.0, 0.1])
+        self['surface_grasp']['object']['object_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.08]),
+                                                                 tra.rotation_matrix(math.radians(0.), [1, 0, 0]))
 
         self['surface_grasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
 
