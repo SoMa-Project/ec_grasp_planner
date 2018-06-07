@@ -29,6 +29,7 @@ class BaseHandArm(dict):
         self['surface_grasp']['cucumber'] = {}
         self['surface_grasp']['punnet'] = {}
         self['surface_grasp']['netbag'] = {}
+        self['surface_grasp']['mango'] = {}
 
         # wall grasp parameters for different objects
         self['wall_grasp']['object'] = {}
@@ -331,7 +332,18 @@ class PISAHandKUKA(KUKA):
 
         self['surface_grasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.15])
 
-        self['surface_grasp']['object']['object_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.08]),
+        # self['surface_grasp']['mango']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.02, 0, 0.2]), tra.concatenate_matrices(
+        #                                                                             tra.rotation_matrix(
+        #                                                                                 math.radians(90.), [0, 0, 1]),
+        #                                                                             tra.rotation_matrix(
+        #                                                                                 math.radians(180.), [1, 0, 0])))
+        # self['surface_grasp']['mango']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.02, 0, 0.2]), tra.concatenate_matrices(
+        #                                                                             tra.rotation_matrix(
+        #                                                                                 math.radians(0.), [0, 0, 1]),
+        #                                                                             tra.rotation_matrix(
+        #                                                                                 math.radians(0.), [1, 0, 0])))
+
+        self['surface_grasp']['object']['object_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0, -0.05, 0.08]),
                                                                  tra.rotation_matrix(math.radians(0.), [1, 0, 0]))
 
         self['surface_grasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
@@ -342,6 +354,8 @@ class PISAHandKUKA(KUKA):
 
         self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
 
+        # self['surface_grasp']['mango']['ee_in_goal_frame'] = tra.translation_matrix([0,0,0])
+        
         self['surface_grasp']['object']['kp'] = 6
 
         ####################################################################################

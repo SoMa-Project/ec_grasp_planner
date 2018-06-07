@@ -216,7 +216,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
     
 
-    object_frame = tra.concatenate_matrices(tra.translation_matrix([0.7, 0, 0.17]),  tra.rotation_matrix(math.radians(90.), [0, 0, 1]))
+    # object_frame = tra.concatenate_matrices(tra.translation_matrix([0.7, 0, 0.17]),  tra.rotation_matrix(math.radians(90.), [0, 0, 1]))
     if object_frame[0][1]<0:
         object_frame = object_frame.dot(zflip_transform)
     # Set the initial pose above the object
@@ -239,11 +239,14 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     # Set the twists to use TRIK controller with
 
     # Down speed is positive because it is defined on the EE frame
-    down_IFCO_twist = tra.translation_matrix([0, 0, down_IFCO_speed]);
+    down_IFCO_twist = tra.translation_matrix([0, 0, 0.015]);
     # Up speed is also positive because it is defined on the world frame
     up_IFCO_twist = tra.translation_matrix([0, 0, up_IFCO_speed]);
     # Down speed is negative because it is defined on the world frame
     down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed]);
+    # Twist for post touching rotation and translation
+    post_touch_twist = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0]),
+                                                                 tra.rotation_matrix(math.radians(-7.5), [1, 0, 0]))
 
     # Set the frames to visualize with RViz
     rviz_frames = []
@@ -271,7 +274,7 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
                                                  v_max=down_IFCO_speed))
         
     # 2b. Switch when force-torque sensor is triggered
-    force  = np.array([0, 0, 2, 0, 0, 0])
+    force  = np.array([0, 0, 1, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                      'GoUpABit',
                                                      goal = force,
@@ -282,23 +285,21 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
                                                      port = '2'))
 
     control_sequence.append(
-        ha.InterpolatedHTransformControlMode(up_IFCO_twist,
+        ha.InterpolatedHTransformControlMode(post_touch_twist,
                                                  controller_name='GoUpABit',
                                                  goal_is_relative='1',
                                                  name="GoUpABit",
-                                                 reference_frame="world",
-                                                 v_max=down_IFCO_speed))
+                                                 reference_frame="EE"))
         
     # 2b. Switch when force-torque sensor is triggered
-    control_sequence.append(ha.TimeSwitch('GoUpABit', 'wait', duration = 2))
+    control_sequence.append(ha.TimeSwitch('GoUpABit', 'wait', duration = 3))
 
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(tra.translation_matrix([0,0,0]),
                                                  controller_name='wait',
                                                  goal_is_relative='1',
                                                  name="wait",
-                                                 reference_frame="world",
-                                                 v_max=down_IFCO_speed))
+                                                 reference_frame="world"))
 
     control_sequence.append(ha.TimeSwitch('wait', 'softhand_close', duration = 5))
  
@@ -344,23 +345,6 @@ def create_surface_grasp(object_frame, bounding_box, support_surface_frame, hand
     elif handarm_params['IMUGrasp']:
         control_sequence.append(ha.IMUGraspControlMode(object_frame, name = 'softhand_close'))
         control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration = handarm_params['IMU_closing_duration']))
-
-
-        # 2b. Switch when force-torque sensor is triggered
-        force  = np.array([0, 0, -2, 0, 0, 0])
-        control_sequence.append(ha.ForceTorqueSwitch('softhand_close',
-                                                         'softhand_close_full',
-                                                         goal = force,
-                                                         norm_weights = np.array([0, 0, 1, 0, 0, 0]),
-                                                         jump_criterion = "THRESH_LOWER_BOUND",
-                                                         goal_is_relative = '1',
-                                                         frame_id = 'EE',
-                                                         port = '2'))
-        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close_full', synergy = '1'))
-        control_sequence.append(ha.TimeSwitch('softhand_close_full', 'GoUp', duration = handarm_params['hand_closing_duration']))
-        
-
-
     else:
         kp = getParam(obj_type_params, obj_params, 'kp')
         # if hand is controlled in current mode, then call IIT's controller
