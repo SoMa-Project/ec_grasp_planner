@@ -35,7 +35,7 @@ if __name__ == "__main__":
         object_type = str(sys.argv[2])
         nr_experiments = int(sys.argv[3])
         baseframe = str(sys.argv[4])
-        ifco_gt_frame_name = sys.arvg[5]
+        ifco_gt_frame_name = sys.argv[5]
         vision_method = sys.argv[6]
     else:
         print usage()
@@ -63,11 +63,11 @@ if __name__ == "__main__":
     file_name = "visionExperiment.csv"
     file_object = open(file_name, 'a')
 
-    df_filename = 'vision_experiment_df.pickle'
-    if not os.path.exists(df_filename):
-        df = pd.DataFrame(columns=['object_type', 'ifco_ground_truth', 'ifco_observed', 'observed_object_count'])
-    else
-        df = pd.DataFrame.from_pickle(df_filename)
+    # df_filename = 'vision_experiment_df.pickle'
+    # if not os.path.exists(df_filename):
+    #     df = pd.DataFrame(columns=['object_type', 'ifco_ground_truth', 'ifco_observed', 'true_object_count', 'observed_object_count'])
+    # else:
+    #     df = pd.DataFrame.from_pickle(df_filename)
 
     ifco_gt_array = np.squeeze(np.asarray(ifco_in_base_grounde_truth))
     ifco_gt_str = np.array2string(ifco_gt_array, precision=2, separator=',', suppress_small=True)
@@ -102,17 +102,18 @@ if __name__ == "__main__":
 
         ifco_o_str = ifco_o_array.tolist()
 
-        df.append({
-            'object_type': object_type,
-            'observed_object_count': nr_objects,
-            'ifco_ground_truth': ifco_gt_array,
-            'ifco_observed': ifco_observed
-        })
-        # data = object_type+ ", " + str(nr_objects) + ", " + str(ifco_gt_str) + ", " + str(nr_objects_observed) + ", " + str(ifco_o_str)
-        # file_object.write(data)
+        # df.append({
+        #     'object_type': object_type,
+        #     'true_object_count': nr_objects,
+        #     'observed_object_count': nr_objects_observed,
+        #     'ifco_ground_truth': ifco_gt_array,
+        #     'ifco_observed': ifco_observed
+        # }, ignore_index=True)
+        data = vision_method + ', ' + object_type+ ", " + str(nr_objects) + ", " + str(ifco_gt_str) + ", " + str(nr_objects_observed) + ", " + str(ifco_o_str) + '\n'
+        file_object.write(data)
 
         rate.sleep()
 
-    df.to_pickle(df_filename)
+    # df.to_pickle(df_filename)
     print ("result: {} ".format(data))
     file_object.close()
