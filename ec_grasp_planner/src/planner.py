@@ -99,6 +99,10 @@ class GraspPlanner():
             raise rospy.ServiceException("Vision service call failed: %s" % e)
             return plan_srv.RunGraspPlannerResponse("")
 
+        if not objects:
+            print("No object was detected")
+            return plan_srv.RunGraspPlannerResponse("")
+
         robot_base_frame = self.args.robot_base_frame
         object_frame = objects[0].transform
 
@@ -428,7 +432,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     # 2b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'LiftHand',
+                                                 'LiftHand',#'LiftHand',
                                                  goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND",
@@ -436,6 +440,8 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                                  frame_id='world',
                                                  port='2'))
 
+    # TODO: remove 3 and 3b if hand should slide on surface
+    # OR duration=0.0
     # 3. Lift upwards so the hand doesn't slide on table surface
     dirLift = tra.translation_matrix([0, 0, lift_dist])
     control_sequence.append(
