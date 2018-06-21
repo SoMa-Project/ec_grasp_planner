@@ -22,7 +22,7 @@ class BaseHandArm(dict):
         # 'object' is the default parameter set
         self['surface_grasp']['object'] = {}
         self['surface_grasp']['cucumber'] = {}
-        #self['surface_grasp']['punnet'] = {}
+        self['surface_grasp']['punnet'] = {}
 
         # wall grasp parameters for differnt objects
         self['wall_grasp']['object'] = {}
@@ -257,3 +257,11 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         self['surface_grasp']['cucumber']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, -0.14]),
             tra.rotation_matrix(math.radians(-70.), [0, 1, 0]))
+
+        # object specific parameters for punnet
+        self['surface_grasp']['punnet'] = self['surface_grasp']['object'].copy()
+
+        self['surface_grasp']['punnet']['pregrasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.075, 0, -0.11]), tra.rotation_matrix(math.radians(46.0), [0, 1, 0]))
+
+        self['surface_grasp']['punnet']['downward_force'] = 5
