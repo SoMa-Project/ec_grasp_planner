@@ -107,6 +107,7 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['up_speed'] = 0.35
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.06])  # first value: rotational, second translational
+        self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125,0.08]) # more helpful would be joint velocities, not EE
 
 
         #####################################################################################
@@ -250,10 +251,6 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         self['surface_grasp']['cucumber']['pregrasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.09, 0, 0.0]), tra.rotation_matrix(math.radians(40.0), [0, 1, 0]))
 
-        #self['surface_grasp']['cucumber']['post_grasp_transform'] = tra.concatenate_matrices(
-        #    tra.translation_matrix([0.0, 0.0, -0.12]),
-        #    tra.rotation_matrix(math.radians(-70.), [0, 1, 0]))
-
         self['surface_grasp']['cucumber']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, -0.14]),
             tra.rotation_matrix(math.radians(-70.), [0, 1, 0]))
@@ -261,7 +258,17 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         # object specific parameters for punnet
         self['surface_grasp']['punnet'] = self['surface_grasp']['object'].copy()
 
-        self['surface_grasp']['punnet']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.075, 0, -0.11]), tra.rotation_matrix(math.radians(46.0), [0, 1, 0]))
+        self['surface_grasp']['punnet']['pre_grasp_velocity'] = np.array([0.12, 0.06])
 
-        self['surface_grasp']['punnet']['downward_force'] = 5
+        self['surface_grasp']['punnet']['pregrasp_transform'] = tra.concatenate_matrices(
+            #tra.translation_matrix([-0.09, 0, -0.0]), tra.rotation_matrix(math.radians(40.0), [0, 1, 0])) #okayish ... one success
+            #tra.translation_matrix([-0.1, -0.04, -0.0]), tra.rotation_matrix(math.radians(45.0), [0, 1, 0]))
+            tra.translation_matrix([-0.1, -0.02, -0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
+            #tra.translation_matrix([-0.09, -0.02, -0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0]))
+
+        self['surface_grasp']['punnet']['downward_force'] = 10  # important!
+
+        self['surface_grasp']['punnet']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, -0.0]),
+            tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
+            #tra.rotation_matrix(math.radians(10.), [1, 0, 0]))
