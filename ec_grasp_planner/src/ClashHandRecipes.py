@@ -1,5 +1,17 @@
 import tf_conversions.posemath as pm
 from xper_data import srv as xper_srv
+from tf import transformations as tra
+import numpy as np
+import math
+import rospy
+import hatools.components as ha
+
+def getParam(obj_type_params, obj_params, paramKey):
+    param = obj_type_params.get(paramKey)
+    if param is None:
+        param = obj_params.get(paramKey)
+    return param
+
 
 def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type, ifco_in_base):
 

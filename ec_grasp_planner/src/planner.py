@@ -56,7 +56,10 @@ import tf_conversions.posemath as pm
 
 import handarm_parameters
 
-from PISAHandRecipes import *
+import PISAHandRecipes
+import RBOHandRecipes
+import PISAGripperRecipes
+import ClashHandRecipes
 
 markers_rviz = MarkerArray()
 frames_rviz = []
@@ -207,35 +210,35 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_object_in_ba
     print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == 'WallGrasp':
         wall_frame = get_wall_tf(ifco_in_base, wall_id)
-        if handarm_type == "PISAHand":
+        if handarm_type == "PISAHandKUKA":
             grasping_recipe, rviz_frames = PISAHandRecipes.create_wall_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base)
-        elif handarm_type == "PISAGripper":
+        elif handarm_type == "PISAGripperKUKA":
             grasping_recipe, rviz_frames = PISAGripperRecipes.create_wall_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base)
-        elif handarm_type == "RBOHandO2":
+        elif handarm_type == "RBOHandO2KUKA":
             grasping_recipe, rviz_frames = RBOHandRecipes.create_wall_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base)
-        elif handarm_type == "ClashHand":
+        elif handarm_type == "ClashHandKUKA":
             grasping_recipe, rviz_frames = ClashHandRecipes.create_wall_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base)
         else:
-            raise "Unknown handarm_type: ", handarm_type
+            raise Exception("Unknown handarm_type: " + handarm_type)
 
         
     elif grasp_type == 'SurfaceGrasp':
-        if handarm_type == "PISAHand":
-            grasping_recipe, rviz_frames = PISAHandRecipes.create_surface_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base)
-        elif handarm_type == "PISAGripper":
-            grasping_recipe, rviz_frames = PISAGripperRecipes.create_surface_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base)
-        elif handarm_type == "RBOHandO2":
-            grasping_recipe, rviz_frames = RBOHandRecipes.create_surface_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base)
-        elif handarm_type == "ClashHand":
-            grasping_recipe, rviz_frames = ClashHandRecipes.create_surface_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base)
+        if handarm_type == "PISAHandKUKA":
+            grasping_recipe, rviz_frames = PISAHandRecipes.create_surface_grasp(T_object_in_base, bounding_box, handarm_params, object_type, ifco_in_base)
+        elif handarm_type == "PISAGripperKUKA":
+            grasping_recipe, rviz_frames = PISAGripperRecipes.create_surface_grasp(T_object_in_base, bounding_box, handarm_params, object_type, ifco_in_base)
+        elif handarm_type == "RBOHandO2KUKA":
+            grasping_recipe, rviz_frames = RBOHandRecipes.create_surface_grasp(T_object_in_base, bounding_box, handarm_params, object_type, ifco_in_base)
+        elif handarm_type == "ClashHandKUKA":
+            grasping_recipe, rviz_frames = ClashHandRecipes.create_surface_grasp(T_object_in_base, bounding_box, handarm_params, object_type, ifco_in_base)
         else:
-            raise "Unknown handarm_type: ", handarm_type
+            raise Exception("Unknown handarm_type: " + handarm_type)
     else:
-        raise "Unknown grasp type: ", grasp_type
+        raise Exception("Unknown grasp type: " + grasp_type)
     
     return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + get_transport_recipe(handarm_params, handarm_type)), rviz_frames
 
-def get_transport_recipe(self, handarm_params, handarm_type):
+def get_transport_recipe(handarm_params, handarm_type):
 
     lift_time = handarm_params['lift_duration']
     up_IFCO_speed = handarm_params['up_IFCO_speed']
@@ -270,7 +273,7 @@ def get_transport_recipe(self, handarm_params, handarm_type):
     control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = place_time))
 
     # 4. Release SKU
-    if handarm_type == "ClashHand":
+    if handarm_type == "ClashHandKUKA":
         speed = np.array([30]) 
         thumb_pos = np.array([0, -20, 0])
         diff_pos = np.array([-10, -10, 0])
