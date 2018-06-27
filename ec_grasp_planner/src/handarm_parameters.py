@@ -174,6 +174,9 @@ class CLASHHandWAM(RBOHandP24WAM):
     def __init__(self, **kwargs):
         super(CLASHHandWAM, self).__init__()
 
+        # above the object, in hand palm frame
+        self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, 0.0]), tra.rotation_matrix(math.radians(0.0), [0, 0, 0]))
 
         # does the robot support impedance control
         self['isForceControllerAvailable'] = False
