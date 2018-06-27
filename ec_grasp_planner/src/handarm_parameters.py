@@ -51,7 +51,7 @@ class pisaHandWAM(RBOHand2):
         super(pisaHandWAM, self).__init__()
 
         # does the robot support impedance control
-        self['isForceControllerAvailable'] = False
+        self['isForceControllerAvailable'] = False # True for simple pisa
         self['IITcontrol'] = True
 
 
@@ -71,12 +71,17 @@ class pisaHandWAM(RBOHand2):
 
         self['surface_grasp']['object']['kp'] = 0.1
         self['surface_grasp']['mango']['kp'] = 0.15
+        self['surface_grasp']['cucumber']['kp'] = 0.17
         
         
         self['surface_grasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.35])
         self['surface_grasp']['mango']['hand_transform'] = tra.translation_matrix([0.05, -0.09, 0.35])
+        self['surface_grasp']['cucumber']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.35])
+
         self['surface_grasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
         self['surface_grasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+       
+        #self['surface_grasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.0, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
         self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.025, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
         self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
         
@@ -116,7 +121,7 @@ class pisaHandWAM(RBOHand2):
         self['surface_grasp']['object']['hand_closing_duration'] = 5
 
         # time of soft hand closing
-        self['surface_grasp']['object']['down_speed'] = 0.35
+        self['surface_grasp']['object']['down_speed'] = 0.40
         self['surface_grasp']['object']['up_speed'] = 0.35
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.03])  # first value: rotational, second translational
