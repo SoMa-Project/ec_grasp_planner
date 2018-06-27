@@ -220,21 +220,26 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     down_speed = params['down_speed']
     up_speed = params['up_speed']
     go_down_velocity = params['go_down_velocity']
+    ee_in_goal_frame = params['ee_in_goal_frame']
+    
+    
+    #the grasp frame is symmetrical - check which side is nicer to reach
+    #this is a hacky first version for our WAM
+    zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
+    if object_frame[0][1]<0:
+        object_frame = object_frame.dot(zflip_transform)
+
 
     # Set the initial pose above the object
     goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
     goal_[:3,3] = tra.translation_from_matrix(object_frame)
     goal_ =  goal_.dot(hand_transform)
-
-    #the grasp frame is symmetrical - check which side is nicer to reach
-    #this is a hacky first version for our WAM
-    zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
-    if goal_[0][0]<0:
-        goal_ = goal_.dot(zflip_transform)
+    goal_ = goal_.dot(ee_in_goal_frame)
 
 
     # hand pose above object
     pre_grasp_pose = goal_.dot(pregrasp_transform)
+    
 
     # Set the directions to use TRIK controller with
     dirDown = tra.translation_matrix([0, 0, -down_speed]);
