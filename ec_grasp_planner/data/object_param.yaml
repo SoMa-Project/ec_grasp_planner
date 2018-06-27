@@ -42,3 +42,7 @@
     SurfaceGrasp: {'success': 1}
     WallGrasp: {'success': 1}
     EdgeGrasp: {'success': 1}
+  mango:
+    SurfaceGrasp: {'success': 1}
+    WallGrasp: {'success': 1}
+    EdgeGrasp: {'success': 1}
