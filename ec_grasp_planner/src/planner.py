@@ -292,8 +292,16 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.FramePoseSwitch('Pre_preGrasp', 'softhand_preshape_1', controller='GoAboveIFCO', epsilon='0.01'))
 
 
-    # # 1. Presahpe hand for surface grasping
-    control_sequence.append(ha.RBOHandControlMode(name="softhand_preshape_1"))
+    # # 1. Presahpe hand for surface grasping - hold joint config controlelr
+    # and the contorl mode name is used to activate hand controller in guy.py
+    # control_sequence.append(ha.RBOHandControlMode(name="softhand_preshape_1")) # use this if no hold position is needed
+    preshapeMode = ha.ControlMode(name='softhand_preshape_1')
+    preshapeSet = ha.ControlSet()
+    preshapeSet.add(ha.Controller(name='softhand_preshape_1', type='JointController', goal=np.zeros(7),
+                                  goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
+    preshapeMode.set(preshapeSet)
+    control_sequence.append(preshapeMode)
+
 
     preshape_duration = handarm_params['hand_closing_duration']
     # 1b. Switch when hand preshaping time ends
