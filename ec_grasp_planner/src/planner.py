@@ -267,7 +267,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
 
     # hand pose above object
-    pre_grasp_pose = goal_ #goal_.dot(pregrasp_transform)
+    # TODO test if the transform is applied and it is still aligned with the `goal_`, if not just use goal_
+    pre_grasp_pose = goal_.dot(pregrasp_transform) # goal_ #
 
     # Set the directions to use TRIK controller with
     dirDown = tra.translation_matrix([0, 0, -down_speed]);
