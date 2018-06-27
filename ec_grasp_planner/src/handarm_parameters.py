@@ -51,7 +51,11 @@ class pisaHandWAM(RBOHand2):
         super(pisaHandWAM, self).__init__()
 
         # does the robot support impedance control
-        self['isForceControllerAvailable'] = True
+        self['isForceControllerAvailable'] = False
+        self['IITcontrol'] = True
+
+        self['surface_grasp']['object']['kp'] = 0.1
+        self['surface_grasp']['mango']['kp'] = 0.15
 
         # you can define a default strategy for all objects by setting the second field to  'object'
         # for object-specific strategies set it to the object label

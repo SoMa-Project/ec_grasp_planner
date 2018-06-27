@@ -107,6 +107,8 @@ class GraspPlanner():
         object_frame.header.stamp = time # TODO why do we need to change the time in the header?
         bounding_box = objects[0].boundingbox
 
+
+
         # build list of objects
         object_list = []
         for o in objects:
@@ -147,6 +149,7 @@ class GraspPlanner():
                                                                                      )
         # print(" * object type: {}, ec type: {}, heuristc funciton type: {}".format(chosen_object['type'], chosen_node.label, req.object_heuristic_function))
 
+        rospy.set_param('/bbox_width', chosen_object['bounding_box'].y)
 
         # --------------------------------------------------------
         # Get grasp from graph representation
@@ -296,6 +299,15 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])    
 
     if handarm_params['isForceControllerAvailable']:
+        rospy.set_param('/controller_name', 'PISA_simple')
+        control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_close', synergy = hand_synergy,
+                                                        desired_displacement = desired_displacement, 
+                                                        force_gradient = force_gradient, 
+                                                        desired_force_dimension = desired_force_dimension))
+
+    elif handarm_params['IITcontrol']:
+        rospy.set_param('/controller_name', 'IIT')
+        rospy.set_param('/stiffness', params['kp'])
         control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_close', synergy = hand_synergy,
                                                         desired_displacement = desired_displacement, 
                                                         force_gradient = force_gradient, 
@@ -306,7 +318,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
 
     # 4b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration = hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'finished', duration = hand_closing_time))
 
     # 5. Rotate hand after closing and before lifting it up
     # relative to current hand pose
