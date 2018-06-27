@@ -54,8 +54,7 @@ class pisaHandWAM(RBOHand2):
         self['isForceControllerAvailable'] = False
         self['IITcontrol'] = True
 
-        self['surface_grasp']['object']['kp'] = 0.1
-        self['surface_grasp']['mango']['kp'] = 0.15
+
 
         # you can define a default strategy for all objects by setting the second field to  'object'
         # for object-specific strategies set it to the object label
@@ -69,6 +68,9 @@ class pisaHandWAM(RBOHand2):
         self['surface_grasp']['lettuce'] = self['surface_grasp']['object']
         self['surface_grasp']['cucumber'] = self['surface_grasp']['object']
         self['surface_grasp']['netbag'] = self['surface_grasp']['object']
+
+        self['surface_grasp']['object']['kp'] = 0.1
+        self['surface_grasp']['mango']['kp'] = 0.15
         
         
         self['surface_grasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.35])

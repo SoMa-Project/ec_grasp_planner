@@ -318,7 +318,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
 
     # 4b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'finished', duration = hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration = hand_closing_time))
 
     # 5. Rotate hand after closing and before lifting it up
     # relative to current hand pose
