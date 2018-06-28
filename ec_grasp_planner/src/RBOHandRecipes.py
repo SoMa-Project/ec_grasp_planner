@@ -10,6 +10,8 @@ def getParam(obj_type_params, obj_params, paramKey):
     param = obj_type_params.get(paramKey)
     if param is None:
         param = obj_params.get(paramKey)
+    if param is None:
+         raise Exception("Param: " + paramKey + " does not exist for this object and there is no generic value defined")
     return param
 
 def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type, ifco_in_base):
