@@ -311,7 +311,8 @@ class PISAGripperKUKA(KUKA):
         self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.concatenate_matrices(tra.translation_matrix([0.01, -0.04, -0.12]), tra.rotation_matrix(
                                                                                         math.radians(-15.), [1, 0, 0]) )
 
-        self['surface_grasp']['punnet']['downward_force'] = 7
+        self['surface_grasp']['object']['downward_force'] = 4
+
         
         self['surface_grasp']['object']['kp'] = 6
 
@@ -348,6 +349,8 @@ class PISAGripperKUKA(KUKA):
         self['wall_grasp']['object']['wall_force'] = 5.5
 
         self['wall_grasp']['cucumber']['wall_force'] = 9
+
+        self['wall_grasp']['mango']['wall_force'] = 12
         
         self['wall_grasp']['punnet']['wall_force'] = 9
 
