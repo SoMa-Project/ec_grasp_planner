@@ -18,10 +18,15 @@ class BaseHandArm(dict):
         self['edge_grasp'] = {}
         self['surface_grasp'] = {}
 
-        # surface grasp parameters for differnt objects
+        # surface grasp parameters for different objects
         # 'object' is the default parameter set
         self['surface_grasp']['object'] = {}
-        self['surface_grasp']['punet'] = {}
+        self['surface_grasp']['cucumber'] = {}
+        self['surface_grasp']['punnet'] = {}
+        self['surface_grasp']['mango'] = {}
+        self['surface_grasp']['salad'] = {}
+        self['surface_grasp']['netbag'] = {}
+
 
         # wall grasp parameters for differnt objects
         self['wall_grasp']['object'] = {}
@@ -69,10 +74,10 @@ class RBOHandP24WAM(RBOHand2):
 
         # above the object, in hand palm frame
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.05, 0, 0.0]), tra.rotation_matrix(math.radians(10.0), [0, 1, 0]))
+            tra.translation_matrix([-0.05, 0.0, 0.0]), tra.rotation_matrix(math.radians(10.0), [0, 1, 0]))
 
-        # at grasp position, in hand palm frame
-        self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0.0, 0.05]),
+        # at grasp position, in hand palm frame TODO is that used somewhere?
+        self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, -0.04, 0.05]),
                                                                                  tra.rotation_matrix(math.radians(30.0),
                                                                                                      [0, 1, 0]))
 
@@ -92,7 +97,8 @@ class RBOHandP24WAM(RBOHand2):
 
         #drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
-            [0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
+            [0.400302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
+            #[0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
 
         #synergy type for soft hand closing
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
@@ -105,6 +111,7 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['up_speed'] = 0.35
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.06])  # first value: rotational, second translational
+        self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125,0.08]) # more helpful would be joint velocities, not EE
 
 
         #####################################################################################
@@ -161,6 +168,117 @@ class RBOHandP24WAM(RBOHand2):
         self['wall_grasp']['object']['go_down_velocity'] = np.array([0.125, 0.06]) #first value: rotational, second translational
         self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.06])
         self['wall_grasp']['object']['wall_force'] = 3.0
+
+
+class CLASHHandWAM(RBOHandP24WAM):
+    def __init__(self, **kwargs):
+        super(CLASHHandWAM, self).__init__()
+
+
+        # does the robot support impedance control
+        self['isForceControllerAvailable'] = False
+
+        # Clas hand motion duration (maybe 4[s] is enough)
+        self['hand_closing_duration'] = 6
+
+        # finger joint speed
+        self['surface_grasp']['object']['open'] = {}
+        self['surface_grasp']['object']['close'] = {}
+        self['surface_grasp']['object']['preshape'] = {}
+        self['surface_grasp']['mango']['open'] = {}
+        self['surface_grasp']['mango']['close'] = {}
+        self['surface_grasp']['mango']['preshape'] = {}
+        self['surface_grasp']['netbag']['open'] = {}
+        self['surface_grasp']['netbag']['close'] = {}
+        self['surface_grasp']['netbag']['preshape'] = {}
+        self['surface_grasp']['salad']['open'] = {}
+        self['surface_grasp']['salad']['close'] = {}
+        self['surface_grasp']['salad']['preshape'] = {}
+        self['surface_grasp']['cucumber']['open'] = {}
+        self['surface_grasp']['cucumber']['close'] = {}
+        self['surface_grasp']['cucumber']['preshape'] = {}
+        self['surface_grasp']['punnet']['open'] = {}
+        self['surface_grasp']['punnet']['close'] = {}
+        self['surface_grasp']['punnet']['preshape'] = {}
+
+        self['surface_grasp']['object']['open']['hand_speed'] = 30.0
+        # thumb position
+        self['surface_grasp']['object']['open']['thumb_pos'] = np.array([0.0, 0.0, 0.0])
+        # differential fingers position
+        self['surface_grasp']['object']['open']['diff_pos'] = np.array([0.0, 0.0, 0.0])
+        # thumb tention
+        self['surface_grasp']['object']['open']['thumb_pretension'] = 0.0
+        # diff fingers tention.
+        self['surface_grasp']['object']['open']['diff_pretension '] = 0.0
+
+        # lift hand after touching the EC (surface)
+        # self['surface_grasp']['object']['move_up_time_after_EC_contact'] = 2.5
+        self['surface_grasp']['object']['close']['thumb_pos'] = np.array([0.0, 30.0, 30.0])
+        self['surface_grasp']['object']['close']['diff_pos'] = np.array([30.0, 30.0, 30.0])
+        # self['surface_grasp']['object']['preshape']['thumb_pos_preopen'] = np.array([0, -20, 0])
+        # self['surface_grasp']['object']['preshape']['diff_pos_preopen'] = np.array([-10, -10, 0])
+        # self['surface_grasp']['punnet']['preshape']['thumb_pos_preopen'] = np.array([0, -30, 0])
+        # self['surface_grasp']['punnet']['preshape']['diff_pos_preopen'] = np.array([-20, -20, 0])
+        # self['surface_grasp']['netbag']['preshape']['thumb_pos_preopen'] = np.array([0, -10, 0])
+        # self['surface_grasp']['netbag']['preshape']['diff_pos_preopen'] = np.array([0, 0, 0])
+
+        # self['surface_grasp']['mango']['move_up_time_after_EC_contact'] = 1.8
+        self['surface_grasp']['mango']['close']['thumb_pos'] = np.array([0, 30, 50])
+        self['surface_grasp']['mango']['close']['diff_pos'] = np.array([30, 30, 50])
+
+        # self['surface_grasp']['netbag']['move_up_time_after_EC_contact'] = 1.4
+        self['surface_grasp']['netbag']['close']['thumb_pos'] = np.array([0, 50, 50])
+        self['surface_grasp']['netbag']['close']['diff_pos'] = np.array([50, 50, 60])
+
+        # self['surface_grasp']['punnet']['move_up_time_after_EC_contact'] = 2.5
+        self['surface_grasp']['punnet']['close']['thumb_pos'] = np.array([0, 10, 50])
+        self['surface_grasp']['punnet']['close']['diff_pos'] = np.array([10, 10, 60])
+
+        # self['surface_grasp']['cucumber']['move_up_time_after_EC_contact'] = 1.4
+        self['surface_grasp']['cucumber']['close']['thumb_pos'] = np.array([0, 60, 30])
+        self['surface_grasp']['cucumber']['close']['diff_pos'] = np.array([60, 60, 30])
+
+        # self['surface_grasp']['salad']['move_up_time_after_EC_contact'] = 0
+        self['surface_grasp']['salad']['close']['thumb_pos'] = np.array([0, 65, 10])
+        self['surface_grasp']['salad']['close']['diff_pos'] = np.array([60, 60, 30])
+
+        self['surface_grasp']['object']['preshape']['thumb_pos'] = np.array([0, 0, 0])
+        self['surface_grasp']['object']['preshape']['diff_pos'] = np.array([0, 0, 0])
+        self['surface_grasp']['punnet']['preshape']['thumb_pos'] = np.array([0, -30, 0])
+        self['surface_grasp']['punnet']['preshape']['diff_pos'] = np.array([-20, -20, 0])
+        self['surface_grasp']['mango']['preshape']['thumb_pos'] = np.array([0, 10, 0])
+        self['surface_grasp']['mango']['preshape']['diff_pos'] = np.array([5, 5, 5])
+        self['surface_grasp']['cucumber']['preshape']['thumb_pos'] = np.array([0, 10, 10])
+        self['surface_grasp']['cucumber']['preshape']['diff_pos'] = np.array([10, 10, 10])
+        self['surface_grasp']['netbag']['preshape']['thumb_pos'] = np.array([0, 10, 10])
+        self['surface_grasp']['netbag']['preshape']['diff_pos'] = np.array([10, 10, 10])
+        self['surface_grasp']['salad']['preshape']['thumb_pos'] = np.array([0, 0, -15])
+
+
+        self['surface_grasp']['salad']['diff_pos'] = np.array([0, 0, 0])
+
+        ####################################################################################
+        # Wall grasp
+        ####################################################################################
+
+        # self['wall_grasp']['object']['scooping_angle_deg'] = 10
+        # self['wall_grasp']['mango']['scooping_angle_deg'] = 20
+        # self['wall_grasp']['salad']['scooping_angle_deg'] = 30
+        #
+        # self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
+        #     tra.translation_matrix([-0.005, 0, -0.01]),
+        #     tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
+        #
+        # self['wall_grasp']['object']['wall_force'] = 5
+        # self['wall_grasp']['cucumber']['wall_force'] = 10
+        # self['wall_grasp']['netbag']['wall_force'] = 4
+        # self['wall_grasp']['punnet']['wall_force'] = 12
+        # self['wall_grasp']['salad']['wall_force'] = 5
+        #
+        # self['wall_grasp']['object']['preshape']['thumb_pos'] = np.array([0, -10, 0])
+        # self['wall_grasp']['salad']['preshape']['thumb_pos'] = np.array([0, -15, 0])
+        #
+        # self['wall_grasp']['punnet']['preshape']['thumb_pos'] = np.array([0, -25, 0])
 
 
 class RBOHandP11WAM(RBOHandP24WAM):
@@ -220,3 +338,52 @@ class RBOHand2Kuka(RBOHand2):
         self['edge_grasp']['downward_force'] = 4.0
         self['edge_grasp']['sliding_speed'] = 0.04
         self['edge_grasp']['valve_pattern'] = (np.array([[0,0],[0,0],[1,0],[1,0],[1,0],[1,0]]), np.array([[0, 3.0]]*6))
+
+class RBOHandP24_pulpyWAM(RBOHandP24WAM):
+    def __init__(self, **kwargs):
+        RBOHandP24WAM.__init__(self, **kwargs)
+
+        # TODO start is go_up_transform used at all?
+        self['surface_grasp']['object']['go_up_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.03, 0, -0.2]),
+            tra.rotation_matrix(math.radians(-20.), [0, 1, 0]))
+        # TODO end
+
+        self['surface_grasp']['object']['up_speed'] = 0.30
+
+        self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.09, 0, 0.0]), tra.rotation_matrix(math.radians(20.0), [0, 1, 0]))
+
+        self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, -0.05]),
+            tra.rotation_matrix(math.radians(-15.), [0, 1, 0]))
+
+        self['wall_grasp']['object']['lift_dist'] = 0.13  # short lift after initial contact (before slide)
+
+        # object specific parameters for cucumber
+        self['surface_grasp']['cucumber'] = self['surface_grasp']['object'].copy()
+
+        self['surface_grasp']['cucumber']['pregrasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.09, 0, 0.0]), tra.rotation_matrix(math.radians(40.0), [0, 1, 0]))
+
+        self['surface_grasp']['cucumber']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, -0.14]),
+            tra.rotation_matrix(math.radians(-70.), [0, 1, 0]))
+
+        # object specific parameters for punnet
+        self['surface_grasp']['punnet'] = self['surface_grasp']['object'].copy()
+
+        self['surface_grasp']['punnet']['pre_grasp_velocity'] = np.array([0.12, 0.06])
+
+        self['surface_grasp']['punnet']['pregrasp_transform'] = tra.concatenate_matrices(
+            #tra.translation_matrix([-0.09, 0, -0.0]), tra.rotation_matrix(math.radians(40.0), [0, 1, 0])) #okayish ... one success
+            #tra.translation_matrix([-0.1, -0.04, -0.0]), tra.rotation_matrix(math.radians(45.0), [0, 1, 0]))
+            tra.translation_matrix([-0.1, -0.02, -0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
+            #tra.translation_matrix([-0.09, -0.02, -0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0]))
+
+        self['surface_grasp']['punnet']['downward_force'] = 10  # important!
+
+        self['surface_grasp']['punnet']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, -0.0]),
+            tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
+            #tra.rotation_matrix(math.radians(10.), [1, 0, 0]))
