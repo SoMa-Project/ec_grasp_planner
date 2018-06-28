@@ -124,10 +124,18 @@ class GraspPlanner():
             #get grasp type
             self.grasp_type = req.grasp_type
             if self.grasp_type == 'UseHeuristics':
-                if self.object_type in self.handarm_params:
-                    obj_bbox_uncertainty_offset = self.handarm_params[self.object_type]['obj_bbox_uncertainty_offset']
-                else:
-                    obj_bbox_uncertainty_offset = self.handarm_params['object']['obj_bbox_uncertainty_offset']
+                obj_type_params = {}
+                obj_params = {}
+                if (self.object_type in self.handarm_params):            
+                    obj_type_params = handarm_params[self.object_type]
+                if 'object' in self.handarm_params:
+                    obj_params = handarm_params['object']
+                
+                obj_bbox_uncertainty_offset = getParam(obj_type_params, obj_params, 'obj_bbox_uncertainty_offset')
+                # if self.object_type in self.handarm_params:
+                #     obj_bbox_uncertainty_offset = self.handarm_params[self.object_type]['obj_bbox_uncertainty_offset']
+                # else:
+                #     obj_bbox_uncertainty_offset = self.handarm_params['object']['obj_bbox_uncertainty_offset']
                 self.grasp_type, wall_id = grasp_heuristics(ifco_in_base, object_in_base, bounding_box, obj_bbox_uncertainty_offset)
                 print("GRASP HEURISTICS " + self.grasp_type + " " + wall_id)
             else:                

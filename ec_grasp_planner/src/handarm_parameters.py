@@ -58,8 +58,6 @@ class KUKA(BaseHandArm):
         ####################################################################################
 
         self['object']['obj_bbox_uncertainty_offset'] = 0.05
-        self['mango']['obj_bbox_uncertainty_offset'] = 0.05
-        self['cucumber']['obj_bbox_uncertainty_offset'] = 0.05
         self['netbag']['obj_bbox_uncertainty_offset'] = 0.06
         self['punnet']['obj_bbox_uncertainty_offset'] = 0.08
         self['salad']['obj_bbox_uncertainty_offset'] = 0.1
