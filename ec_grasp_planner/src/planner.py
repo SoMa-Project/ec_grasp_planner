@@ -127,9 +127,9 @@ class GraspPlanner():
                 obj_type_params = {}
                 obj_params = {}
                 if (self.object_type in self.handarm_params):            
-                    obj_type_params = handarm_params[self.object_type]
+                    obj_type_params = self.handarm_params[self.object_type]
                 if 'object' in self.handarm_params:
-                    obj_params = handarm_params['object']
+                    obj_params = self.handarm_params['object']
                 
                 obj_bbox_uncertainty_offset = getParam(obj_type_params, obj_params, 'obj_bbox_uncertainty_offset')
                 # if self.object_type in self.handarm_params:
