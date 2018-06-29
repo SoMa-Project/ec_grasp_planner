@@ -268,21 +268,27 @@ def get_transport_recipe(handarm_params, handarm_type):
     control_sequence.append(ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
  
     # 1b. Switch after a certain amount of time
-    control_sequence.append(ha.TimeSwitch('GoUp', 'Preplacement', duration = lift_time))
+    control_sequence.append(ha.TimeSwitch('GoUp', 'Preplacement1', duration = lift_time))
 
-    # 2. Go to Preplacement
-    control_sequence.append(ha.SlerpControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement'))
+    # 2. Go to Preplacement position and keeping the orientation
+    control_sequence.append(ha.SlerpControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement1', orientation_or_and_position = 'POSITION'))
     
-    # 2b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Preplacement', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
+    # 2b. Switch after a certain amount of time, the duration is short because the actual transition is done by the controller by exiting the infinite loop
+    control_sequence.append(ha.TimeSwitch('Preplacement1', 'Preplacement2', duration = 0.5)) 
 
-    # 3. Go Down
+    # 3. Change the orientation to have the hand facing the Delivery tote
+    control_sequence.append(ha.SlerpControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement2', orientation_or_and_position = 'BOTH'))
+
+    # 3b. Switch after a certain amount of time, the duration is short because the actual transition is done by the controller by exiting the infinite loop
+    control_sequence.append(ha.TimeSwitch('Preplacement2', 'GoDown2', duration = 0.5))
+
+    # 4. Go Down
     control_sequence.append(ha.InterpolatedHTransformControlMode(down_tote_twist, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
  
-    # 3b. Switch after a certain amount of time
+    # 4b. Switch after a certain amount of time
     control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = place_time))
 
-    # 4. Release SKU
+    # 5. Release SKU
     if handarm_type == "ClashHandKUKA":
         speed = np.array([30]) 
         thumb_pos = np.array([0, -20, 0])
@@ -309,10 +315,10 @@ def get_transport_recipe(handarm_params, handarm_type):
     else:
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = 1))
 
-    # 4b. Switch when hand opening time ends
+    # 5b. Switch when hand opening time ends
     control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration = handarm_params['hand_opening_duration']))
 
-    # 5. Block joints to finish motion and hold object in air
+    # 6. Block joints to finish motion and hold object in air
     finishedMode = ha.ControlMode(name  = 'finished')
     finishedSet = ha.ControlSet()
     finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'InterpolatedJointController', goal  = np.zeros(7),
