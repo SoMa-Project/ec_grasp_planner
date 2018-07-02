@@ -42,8 +42,10 @@
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>geometry_graph_msgs</build_depend>
   <build_depend>hybrid_automaton_msgs</build_depend>
+  <build_depend>kinematics_check</build_depend>
   <run_depend>geometry_graph_msgs</run_depend>
   <run_depend>hybrid_automaton_msgs</run_depend>
+  <run_depend>kinematics_check</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

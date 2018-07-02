@@ -10,6 +10,7 @@ project(ec_grasp_planner)
 find_package(catkin REQUIRED COMPONENTS
   geometry_graph_msgs
   hybrid_automaton_msgs
+  kinematics_check
   message_generation
   std_msgs
 )

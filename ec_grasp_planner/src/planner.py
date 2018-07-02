@@ -33,12 +33,10 @@ from hybrid_automaton_msgs.msg import HAMState
 
 from std_msgs.msg import Header
 
-from pregrasp_msgs.msg import GraspStrategyArray
-from pregrasp_msgs.msg import GraspStrategy
-
 from geometry_graph_msgs.msg import Graph
 
 from ec_grasp_planner import srv as plan_srv
+from rlSomaDemo import srv as kin_srv
 
 from visualization_msgs.msg import MarkerArray
 from visualization_msgs.msg import Marker
@@ -126,7 +124,17 @@ class GraspPlanner():
 
             grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
 
-            rospy.sleep(0.3)
+            #check kinematics
+            try:
+                call_kin = rospy.ServiceProxy('compute_ec_graph', kin_srv.CheckKinematics)
+                res = call_kin(self.object_type)
+                #graph = res.graph
+                #objects = res.objects.objects
+            except rospy.ServiceException, e:
+                raise rospy.ServiceException("Vision service call failed: %s" % e)
+                return kin_srv.CheckKinematicsResponse("")
+
+           # rospy.sleep(0.3)
 
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
@@ -168,7 +176,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     hand_transform = params['hand_transform']
     pregrasp_transform = params['pregrasp_transform']
-    post_grasp_transform= params['post_grasp_transform'] # TODO: USE THIS!!!
+    post_grasp_transform= params['post_grasp_transform']
 
     drop_off_config = params['drop_off_config']
     downward_force = params['downward_force']
