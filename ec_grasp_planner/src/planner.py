@@ -237,7 +237,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     # drop_off_config = params['drop_off_config']
     # downward_force = params['downward_force']
-    hand_closing_time = handarm_params['hand_closing_duration']
+    hand_closing_time = getParam(obj_type_params, obj_params, 'hand_closing_duration') #handarm_params['hand_closing_duration']
     # hand_synergy = params['hand_closing_synergy']
     # down_speed = params['down_speed']
     # up_speed = params['up_speed']
