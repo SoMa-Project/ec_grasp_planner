@@ -343,6 +343,12 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
     def __init__(self, **kwargs):
         RBOHandP24WAM.__init__(self, **kwargs)
 
+        self['surface_grasp']['netbag'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['apple'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['mango'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['cucumber'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['punnet'] = self['surface_grasp']['object'].copy()
+
         # TODO start is go_up_transform used at all?
         self['surface_grasp']['object']['go_up_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.03, 0, -0.2]),
@@ -354,6 +360,9 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.09, 0, 0.0]), tra.rotation_matrix(math.radians(20.0), [0, 1, 0]))
 
+        self['surface_grasp']['apple']['pregrasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0, 0.0]), tra.rotation_matrix(math.radians(20.0), [0, 1, 0]))
+
         self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, -0.05]),
             tra.rotation_matrix(math.radians(-15.), [0, 1, 0]))
@@ -361,8 +370,6 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         self['wall_grasp']['object']['lift_dist'] = 0.13  # short lift after initial contact (before slide)
 
         # object specific parameters for cucumber
-        self['surface_grasp']['cucumber'] = self['surface_grasp']['object'].copy()
-
         self['surface_grasp']['cucumber']['pregrasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.09, 0, 0.0]), tra.rotation_matrix(math.radians(40.0), [0, 1, 0]))
 
@@ -371,8 +378,6 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
             tra.rotation_matrix(math.radians(-70.), [0, 1, 0]))
 
         # object specific parameters for punnet
-        self['surface_grasp']['punnet'] = self['surface_grasp']['object'].copy()
-
         self['surface_grasp']['punnet']['pre_grasp_velocity'] = np.array([0.12, 0.06])
 
         self['surface_grasp']['punnet']['pregrasp_transform'] = tra.concatenate_matrices(
