@@ -439,7 +439,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     # 2b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'LiftHand',#'LiftHand',
+                                                 'LiftHand',
                                                  goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND",
