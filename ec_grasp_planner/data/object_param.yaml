@@ -2,6 +2,10 @@
     SurfaceGrasp: {'success': 1}
     WallGrasp: {'success': 1}
     EdgeGrasp: {'success': 0}
+  mango:
+    SurfaceGrasp: {'success': 1}
+    WallGrasp: {'success': 1}
+    EdgeGrasp: {'success': 0}
   cucumber:
     SurfaceGrasp: {'success': 1}
     WallGrasp: {'success': [1, 0.8, 0.7, 0] , 'angle': [0, 180, 360], 'epsilon': 20}
