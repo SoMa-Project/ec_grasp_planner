@@ -104,7 +104,6 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.06])  # first value: rotational, second translational
         self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08]) # more helpful would be joint velocities, not EE
-        self['surface_grasp']['object']['post_grasp_velocity'] = np.array([0.125, 0.08])  # more helpful would be joint velocities, not EE
 
 
 

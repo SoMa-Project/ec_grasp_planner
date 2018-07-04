@@ -226,7 +226,6 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     up_speed = params['up_speed']
     go_down_velocity = params['go_down_velocity']
     pre_grasp_velocity = params['pre_grasp_velocity']
-    post_grasp_velocity = params['post_grasp_velocity']
 
     # Set the initial pose above the object
     goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
@@ -317,7 +316,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 5. Rotate hand after closing and before lifting it up
     # relative to current hand pose
     control_sequence.append(
-        ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', goal_is_relative='1', v_max=post_grasp_velocity))
+        ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', goal_is_relative='1'))
 
     # 5b. Switch when hand rotated
     control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp', controller='PostGraspRotate', epsilon='0.01', goal_is_relative='1', reference_frame = 'EE'))
