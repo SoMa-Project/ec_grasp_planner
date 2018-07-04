@@ -18,17 +18,14 @@ class BaseHandArm(dict):
         self['edge_grasp'] = {}
         self['surface_grasp'] = {}
 
-        # surface grasp parameters for differnt objects
+        # surface grasp parameters for different objects
         # 'object' is the default parameter set
         self['surface_grasp']['object'] = {}
-        self['surface_grasp']['punet'] = {}
 
         # wall grasp parameters for differnt objects
         self['wall_grasp']['object'] = {}
-        self['wall_grasp']['object'] = {}
 
         # wall grasp parameters for differnt objects
-        self['edge_grasp']['object'] = {}
         self['edge_grasp']['object'] = {}
 
 
@@ -69,10 +66,10 @@ class RBOHandP24WAM(RBOHand2):
 
         # above the object, in hand palm frame
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.05, 0, 0.0]), tra.rotation_matrix(math.radians(10.0), [0, 1, 0]))
+            tra.translation_matrix([-0.05, 0.0, 0.0]), tra.rotation_matrix(math.radians(10.0), [0, 1, 0]))
 
-        # at grasp position, in hand palm frame
-        self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0.0, 0.05]),
+        # at grasp position, in hand palm frame TODO is that used somewhere?
+        self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, -0.04, 0.05]),
                                                                                  tra.rotation_matrix(math.radians(30.0),
                                                                                                      [0, 1, 0]))
 
@@ -92,7 +89,8 @@ class RBOHandP24WAM(RBOHand2):
 
         #drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
-            [0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
+            [0.400302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
+            #[0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
 
         #synergy type for soft hand closing
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
@@ -105,6 +103,8 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['up_speed'] = 0.35
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.06])  # first value: rotational, second translational
+        self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08]) # more helpful would be joint velocities, not EE
+
 
 
         #####################################################################################
@@ -220,3 +220,53 @@ class RBOHand2Kuka(RBOHand2):
         self['edge_grasp']['downward_force'] = 4.0
         self['edge_grasp']['sliding_speed'] = 0.04
         self['edge_grasp']['valve_pattern'] = (np.array([[0,0],[0,0],[1,0],[1,0],[1,0],[1,0]]), np.array([[0, 3.0]]*6))
+
+class RBOHandP24_pulpyWAM(RBOHandP24WAM):
+    def __init__(self, **kwargs):
+        RBOHandP24WAM.__init__(self, **kwargs)
+
+        # Define generic object parameters for surface grasp
+        self['surface_grasp']['object']['up_speed'] = 0.30
+
+        self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.09, 0, 0.0]), tra.rotation_matrix(math.radians(20.0), [0, 1, 0]))
+
+        self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, -0.05]),
+            tra.rotation_matrix(math.radians(-15.), [0, 1, 0]))
+
+        # Define generic object parameters for surface grasp
+        self['wall_grasp']['object']['lift_dist'] = 0.13  # short lift after initial contact (before slide)
+
+        # object specific parameters for apple
+        self['surface_grasp']['apple'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['apple']['pregrasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0, 0.0]), tra.rotation_matrix(math.radians(20.0), [0, 1, 0]))
+
+        # object specific parameters for cucumber
+        self['surface_grasp']['cucumber'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['cucumber']['pregrasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.09, 0, 0.0]), tra.rotation_matrix(math.radians(40.0), [0, 1, 0]))
+
+        self['surface_grasp']['cucumber']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, -0.14]),
+            tra.rotation_matrix(math.radians(-70.), [0, 1, 0]))
+
+        # object specific parameters for punnet
+        self['surface_grasp']['punnet'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['punnet']['pre_grasp_velocity'] = np.array([0.12, 0.06])
+
+        self['surface_grasp']['punnet']['pregrasp_transform'] = tra.concatenate_matrices(
+            #tra.translation_matrix([-0.09, 0, -0.0]), tra.rotation_matrix(math.radians(40.0), [0, 1, 0])) #okayish ... one success
+            #tra.translation_matrix([-0.1, -0.04, -0.0]), tra.rotation_matrix(math.radians(45.0), [0, 1, 0]))
+            tra.translation_matrix([-0.1, -0.02, -0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
+            #tra.translation_matrix([-0.09, -0.02, -0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0]))
+
+        self['surface_grasp']['punnet']['downward_force'] = 10  # important, as it helps to fix the object and allows
+        # the hand to wrap around the punnet such that it is stable. With lower values the grasps were almost always all
+        # failing because the hand wasn't spreading out enough.
+
+        self['surface_grasp']['punnet']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, -0.0]),
+            tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
+            #tra.rotation_matrix(math.radians(10.), [1, 0, 0]))
