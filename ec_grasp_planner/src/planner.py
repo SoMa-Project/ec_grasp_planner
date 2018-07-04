@@ -205,56 +205,28 @@ class GraspPlanner():
         return plan_srv.RunGraspPlannerResponse(ha.xml())
 
 
-def getParam(obj_type_params, obj_params, paramKey):
-    param = obj_type_params.get(paramKey)
-    if param is None:
-        param = obj_params.get(paramKey)
-    return param
-
-
 # ================================================================================================
 def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type):
 
-    # # Get the relevant parameters for hand object combination
-    # if (object_type in handarm_params['surface_grasp']):
-    #     params = handarm_params['surface_grasp'][object_type]
-    # else:
-    #     params = handarm_params['surface_grasp']['object']
+    # Get the relevant parameters for hand object combination
+    if object_type in handarm_params['surface_grasp']:
+        params = handarm_params['surface_grasp'][object_type]
+    else:
+        params = handarm_params['surface_grasp']['object']
 
-    obj_type_params = {}
-    obj_params = {}
-    if (object_type in handarm_params['surface_grasp']):
-        obj_type_params = handarm_params['surface_grasp'][object_type]
-    if 'object' in handarm_params['surface_grasp']:
-        obj_params = handarm_params['surface_grasp']['object']
+    hand_transform = params['hand_transform']
+    pregrasp_transform = params['pregrasp_transform']
+    post_grasp_transform = params['post_grasp_transform']
 
-    # hand_transform = params['hand_transform']
-    # pregrasp_transform = params['pregrasp_transform']
-    # post_grasp_transform = params['post_grasp_transform']
-
-    hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')
-    pregrasp_transform = getParam(obj_type_params, obj_params, 'pregrasp_transform')
-    post_grasp_transform= getParam(obj_type_params, obj_params, 'post_grasp_transform')
-
-    # drop_off_config = params['drop_off_config']
-    # downward_force = params['downward_force']
-    #hand_closing_time = handarm_params['hand_closing_duration']
-    hand_closing_time = getParam(obj_type_params, obj_params, 'hand_closing_duration')
-    # hand_synergy = params['hand_closing_synergy']
-    # down_speed = params['down_speed']
-    # up_speed = params['up_speed']
-    # go_down_velocity = params['go_down_velocity']
-    # pre_grasp_velocity = params['pre_grasp_velocity']
-
-    drop_off_config = getParam(obj_type_params, obj_params, 'drop_off_config')
-    downward_force = getParam(obj_type_params, obj_params, 'downward_force')
-    hand_synergy = getParam(obj_type_params, obj_params, 'hand_closing_synergy')
-    down_speed = getParam(obj_type_params, obj_params, 'down_speed')
-    up_speed = getParam(obj_type_params, obj_params, 'up_speed')
-    go_down_velocity = getParam(obj_type_params, obj_params, 'go_down_velocity')
-    pre_grasp_velocity = getParam(obj_type_params, obj_params, 'pre_grasp_velocity')
-
-
+    drop_off_config = params['drop_off_config']
+    downward_force = params['downward_force']
+    hand_closing_time = handarm_params['hand_closing_duration']
+    hand_synergy = params['hand_closing_synergy']
+    down_speed = params['down_speed']
+    up_speed = params['up_speed']
+    go_down_velocity = params['go_down_velocity']
+    pre_grasp_velocity = params['pre_grasp_velocity']
+    post_grasp_velocity = params['post_grasp_velocity']
 
     # Set the initial pose above the object
     goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
@@ -303,7 +275,6 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 2b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
 
-
     # 3. Go down onto the object (relative in world frame) - Godown
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(dirDown,
@@ -314,9 +285,10 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                              v_max=go_down_velocity))
 
     force  = np.array([0, 0, downward_force, 0, 0, 0])
+    mode_name_hand_closing = 'softhand_close_1' # the 1 represents a surface grasp. This way the strategy is encoded in the HA.
     # 3b. Switch when goal is reached
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'softhand_close_1',
+                                                 mode_name_hand_closing,
                                                  goal = force,
                                                  norm_weights = np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion = "THRESH_UPPER_BOUND",
@@ -330,22 +302,22 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
 
     if handarm_params['isForceControllerAvailable']:
-        control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_close_1', synergy = hand_synergy,
+        control_sequence.append(ha.HandControlMode_ForceHT(name  = mode_name_hand_closing, synergy = hand_synergy,
                                                         desired_displacement = desired_displacement,
                                                         force_gradient = force_gradient,
                                                         desired_force_dimension = desired_force_dimension))
     else:
         # if hand is not RBO then create general hand closing mode?
-        control_sequence.append(ha.SimpleRBOHandControlMode(goal = np.array([1.0]), name  = 'softhand_close_1'))
+        control_sequence.append(ha.SimpleRBOHandControlMode(goal = np.array([1.0]), name  = mode_name_hand_closing))
 
 
     # 4b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('softhand_close_1', 'PostGraspRotate', duration = hand_closing_time))
+    control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration = hand_closing_time))
 
     # 5. Rotate hand after closing and before lifting it up
     # relative to current hand pose
     control_sequence.append(
-        ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', goal_is_relative='1', ))
+        ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', goal_is_relative='1', v_max=post_grasp_velocity))
 
     # 5b. Switch when hand rotated
     control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp', controller='PostGraspRotate', epsilon='0.01', goal_is_relative='1', reference_frame = 'EE'))
@@ -501,7 +473,8 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     # 4b. Switch when the f/t sensor is triggered with normal force from wall
     # TODO arne: needs tuning
     force = np.array([0, 0, wall_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'softhand_close_2', 'ForceSwitch', goal=force,
+    mode_name_hand_closing = 'softhand_close_2'  # the 2 represents a wall grasp. This way the strategy is encoded in the HA.
+    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame, port='2'))
@@ -515,7 +488,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
         force_gradient = np.array(
             [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
         desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
-        control_sequence.append(ha.HandControlMode_ForceHT(name='softhand_close_2', synergy=hand_synergy,
+        control_sequence.append(ha.HandControlMode_ForceHT(name=mode_name_hand_closing, synergy=hand_synergy,
                                                            desired_displacement=desired_displacement,
                                                            force_gradient=force_gradient,
                                                            desired_force_dimension=desired_force_dimension))
@@ -524,7 +497,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
         control_sequence.append(ha.close_rbohand())
 
     # 5b. Switch when hand closing duration ends
-    control_sequence.append(ha.TimeSwitch('softhand_close_2', 'PostGraspRotate', duration=hand_closing_duration))
+    control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration=hand_closing_duration))
 
     # 6. Move hand after closing and before lifting it up
     # relative to current hand pose

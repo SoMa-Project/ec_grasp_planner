@@ -103,7 +103,9 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['up_speed'] = 0.35
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.06])  # first value: rotational, second translational
-        self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125,0.08]) # more helpful would be joint velocities, not EE
+        self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08]) # more helpful would be joint velocities, not EE
+        self['surface_grasp']['object']['post_grasp_velocity'] = np.array([0.125, 0.08])  # more helpful would be joint velocities, not EE
+
 
 
         #####################################################################################
@@ -261,7 +263,9 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
             tra.translation_matrix([-0.1, -0.02, -0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
             #tra.translation_matrix([-0.09, -0.02, -0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0]))
 
-        self['surface_grasp']['punnet']['downward_force'] = 10  # important!
+        self['surface_grasp']['punnet']['downward_force'] = 10  # important, as it helps to fix the object and allows
+        # the hand to wrap around the punnet such that it is stable. With lower values the grasps were almost always all
+        # failing because the hand wasn't spreading out enough.
 
         self['surface_grasp']['punnet']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, -0.0]),
