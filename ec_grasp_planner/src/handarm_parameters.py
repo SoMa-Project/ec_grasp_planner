@@ -62,17 +62,18 @@ class pisaHandWAM(RBOHand2):
         # transformation (only rotation) between object frame and hand palm frame
         # the convention at our lab is: x along the fingers and z normal on the palm.
         # please follow the same convention
-        
+
+        self['surface_grasp']['object']['kp'] = 0.1
+        self['surface_grasp']['object']['rigidity'] = 1.0
+
+
         self['surface_grasp']['mango'] = self['surface_grasp']['object']
         self['surface_grasp']['punnet'] = self['surface_grasp']['object']
         self['surface_grasp']['lettuce'] = self['surface_grasp']['object']
         self['surface_grasp']['cucumber'] = self['surface_grasp']['object']
         self['surface_grasp']['netbag'] = self['surface_grasp']['object']
 
-        self['surface_grasp']['object']['kp'] = 0.1
-        self['surface_grasp']['mango']['kp'] = 0.15
-        self['surface_grasp']['cucumber']['kp'] = 0.17
-        
+        self['surface_grasp']['lettuce']['rigidity'] = 0.5
         
         self['surface_grasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.35])
         self['surface_grasp']['mango']['hand_transform'] = tra.translation_matrix([0.05, -0.09, 0.35])
@@ -84,8 +85,11 @@ class pisaHandWAM(RBOHand2):
         #self['surface_grasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.0, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
         self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.025, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
         self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
-        
-        
+
+
+        # location above ifco, safe motion from vision position to here
+        self['surface_grasp']['object']['init_joint_conf'] = np.array([0.148723, 0.454601, 0.218573, 1.61008, -0.240614, 0.609243, 0.574549])
+
 
         # above the object, in hand palm frame
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
