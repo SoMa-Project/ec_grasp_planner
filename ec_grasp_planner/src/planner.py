@@ -88,6 +88,7 @@ class GraspPlanner():
 
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
+
         rospy.wait_for_service('compute_ec_graph')
 
         try:
@@ -149,8 +150,6 @@ class GraspPlanner():
                                                                                      )
         # print(" * object type: {}, ec type: {}, heuristc funciton type: {}".format(chosen_object['type'], chosen_node.label, req.object_heuristic_function))
 
-        rospy.set_param('/bbox_width', chosen_object['bounding_box'].y)
-
         # --------------------------------------------------------
         # Get grasp from graph representation
         grasp_path = None
@@ -178,6 +177,10 @@ class GraspPlanner():
         # Turn grasp into hybrid automaton
         ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
                                                                 self.handarm_params, self.object_type)
+
+        mapStrategyToHandArmParam = {"SurfaceGrasp":"surface_grasp", "WallGrasp":"wall_grasp"}
+        bounding_box_scaling = self.handarm_params[mapStrategyToHandArmParam[chosen_node.label]][self.object_type]["rigidity"]
+        rospy.set_param('/bbox_width', chosen_object['bounding_box'].y * bounding_box_scaling)
 
         # --------------------------------------------------------
         # Output the hybrid automaton
@@ -224,7 +227,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     up_speed = params['up_speed']
     go_down_velocity = params['go_down_velocity']
     ee_in_goal_frame = params['ee_in_goal_frame']
-    
+    initial_joint_config = params['init_joint_conf']
     
     #the grasp frame is symmetrical - check which side is nicer to reach
     #this is a hacky first version for our WAM
@@ -259,13 +262,12 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence = []
 
     # # 1. Go above the object - Pregrasp
-    # control_sequence.append(
-    #     ha.InterpolatedHTransformControlMode(pre_grasp_pose, controller_name='GoAboveIFCO', goal_is_relative='0',
-    #                                          name='Pre_preGrasp'))
+    control_sequence.append(
+        ha.JointControlMode(initial_joint_config, name='InitialJointConfig', controller_name='initialJointCtrl'))
     #
     # # 1b. Switch when hand reaches the goal pose
-    # control_sequence.append(ha.FramePoseSwitch('Pre_preGrasp', 'Pregrasp', controller='GoAboveIFCO', epsilon='0.01'))
-
+    control_sequence.append(ha.JointConfigurationSwitch('InitialJointConfig', 'Pregrasp', controller='initialJointCtrl',
+                                                        epsilon=str(math.radians(7.))))
     # 2. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
  
@@ -308,6 +310,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     elif handarm_params['IITcontrol']:
         rospy.set_param('/controller_name', 'IIT')
         rospy.set_param('/stiffness', params['kp'])
+        # rigidity is used to reduce the size of the bounding box for lettuce
+
         control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_close', synergy = hand_synergy,
                                                         desired_displacement = desired_displacement, 
                                                         force_gradient = force_gradient, 
