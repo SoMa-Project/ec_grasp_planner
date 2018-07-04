@@ -130,7 +130,7 @@ class multi_object_params:
         q_val = q_val * \
                 self.pdf_object_strategy(object_params) * \
                 self.pdf_object_ec(object_params, ec_frame, strategy) * \
-                self.black_list_walls(current_ec_index, all_ec_frames) if (strategy=="WallGrasp") else 1
+                self.black_list_walls(current_ec_index, all_ec_frames) if (strategy in ["WallGrasp", "EdgeGrasp"]) else 1
 
 
         # print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
