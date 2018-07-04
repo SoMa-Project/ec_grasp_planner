@@ -96,15 +96,44 @@ class multi_object_params:
 
         return q_val
 
+    def black_list_walls(self, current_ec_index, all_ec_frames):
+
+        # this function will blacklist all walls except
+        # the one on th right side of the robot
+        # y coord is the smallest
+
+        if (all_ec_frames[current_ec_index][1,3] > 0):
+                return 0
+
+        min_x = 1
+        min_x_index = 0;
+
+        for i, ec in enumerate(all_ec_frames):
+            if min_x > ec[1,3]:
+                min_x = ec[1,3]
+                min_x_index = i
+
+        if (min_x_index == current_ec_index):
+            return 1
+        else:
+            return 0
+
 ## --------------------------------------------------------- ##
     # object-environment-hand based heuristic, q_value for grasping
-    def heuristic(self, object, ec_frame, strategy):
+    def heuristic(self, object, current_ec_index, strategy, all_ec_frames):
 
+        ec_frame = all_ec_frames[current_ec_index]
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
         q_val = 1
-        q_val = q_val * self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame, strategy)
-        # print(" ** q_val = {}".format(q_val))
+
+        q_val = q_val * \
+                self.pdf_object_strategy(object_params) * \
+                self.pdf_object_ec(object_params, ec_frame, strategy) * \
+                self.black_list_walls(current_ec_index, all_ec_frames) if (strategy=="WallGrasp") else 1
+
+
+        # print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
         return q_val
 
 ## --------------------------------------------------------- ##
@@ -185,10 +214,15 @@ class multi_object_params:
                 print("The given object {} has no parameters set in the yaml {}".format(o["type"], self.file_name))
                 return -1
 
+            all_ec_frames = []
+            for j, ec in enumerate(ecs):
+                all_ec_frames.append(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform)))
+                # print("ecs:{}".format(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))))
+
             for j,ec in enumerate(ecs):
                 # the ec frame must be in the same reference frame as the object
                 ec_frame_in_base = graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))
-                Q_matrix[i,j] = self.heuristic(o, ec_frame_in_base, ec.label)
+                Q_matrix[i,j] = self.heuristic(o, j, ec.label, all_ec_frames)
 
         # print (" ** h_mx = {}".format(Q_matrix))
 
