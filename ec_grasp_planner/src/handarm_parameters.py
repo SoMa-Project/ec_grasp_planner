@@ -124,31 +124,32 @@ class RBOHandO2KUKA(KUKA):
                                                                                         math.radians(90.), [0, 0, 1]),
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(180.), [1, 0, 0])))
-        self['surface_grasp']['punnet']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, -0.055, 0.15]),
+        self['surface_grasp']['punnet']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, -0.04, 0.15]),
                                                                                 tra.concatenate_matrices(
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(90.), [0, 0, 1]),
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(180.), [1, 0, 0])))
-
         self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([-0.02, 0.02, 0.0])
 
         self['surface_grasp']['object']['downward_force'] = 2
 
         self['surface_grasp']['netbag']['downward_force'] = 1.5
 
-        self['surface_grasp']['object']['short_lift_duration'] = 2
+        self['surface_grasp']['object']['short_lift_duration'] = 1.5
+
+        self['surface_grasp']['mango']['short_lift_duration'] = 0
+
+        self['surface_grasp']['cucumber']['short_lift_duration'] = 2
 
 
         ####################################################################################
         # RBO specific params for wall grasp
         ####################################################################################
-        
-        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, 0, -0.12])
 
         self['wall_grasp']['netbag']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.01, -0.12])
 
-        self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.01, -0.12])
+        self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.015, -0.12])
 
         self['wall_grasp']['salad']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.01, -0.15])
 
@@ -158,15 +159,24 @@ class RBOHandO2KUKA(KUKA):
 
         self['wall_grasp']['object']['downward_force'] = 2.
 
-        self['wall_grasp']['object']['short_lift_duration'] = 2
+        self['wall_grasp']['object']['short_lift_duration'] = 1.8
 
         self['wall_grasp']['object']['slide_speed'] = 0.02
 
         self['wall_grasp']['object']['wall_force'] = 2.5        
-        
+
         self['wall_grasp']['cucumber']['wall_force'] = 3.5
 
-        self['wall_grasp']['object']['short_slide_duration'] = 2     
+        self['wall_grasp']['object']['short_slide_duration'] = 0
+
+        self['wall_grasp']['cucumber']['short_slide_duration'] = 2 
+
+        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, -0.01]),
+                                                                 tra.rotation_matrix(math.radians(-5), [0, 1, 0]))    
+
+        self['wall_grasp']['salad']['post_grasp_transform'] = tra.translation_matrix([0, 0, 0]) 
+
+        self['wall_grasp']['object']['rotate_duration'] = 3    
              
         
 class PISAHandKUKA(KUKA):
@@ -328,7 +338,7 @@ class PISAGripperKUKA(KUKA):
         self['wall_grasp']['netbag']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0, -0.03]),tra.rotation_matrix(
                                                                                         math.radians(scooping_angle_deg), [0, 1, 0]))
         
-        self['wall_grasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.15, 0, -0.01]),tra.rotation_matrix(
+        self['wall_grasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.15, 0, -0.04]),tra.rotation_matrix(
                                                                                         math.radians(scooping_angle_deg), [0, 1, 0]))
         
         self['wall_grasp']['punnet']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0.03, -0.07]),tra.rotation_matrix(
@@ -346,7 +356,7 @@ class PISAGripperKUKA(KUKA):
 
         self['wall_grasp']['object']['wall_force'] = 5.5
 
-        self['wall_grasp']['cucumber']['wall_force'] = 9
+        self['wall_grasp']['cucumber']['wall_force'] = 12
 
         self['wall_grasp']['mango']['wall_force'] = 12
         
