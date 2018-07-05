@@ -7,6 +7,7 @@ import numpy as np
 import tf
 from tf import transformations as tra
 from geometry_graph_msgs.msg import Node, geometry_msgs
+import rospy
 
 
 import rospkg
@@ -96,8 +97,10 @@ class multi_object_params:
 
         return q_val
 
-    def black_list_walls(self, current_ec_index, all_ec_frames):
+    def black_list_walls(self, current_ec_index, all_ec_frames, strategy):
 
+        if strategy not in ["WallGrasp", "EdgeGrasp"]:
+            return 1
         # this function will blacklist all walls except
         # the one on th right side of the robot
         # y coord is the smallest
@@ -105,22 +108,43 @@ class multi_object_params:
         if (all_ec_frames[current_ec_index][1,3] > 0):
                 return 0
 
-        min_x = 1
-        min_x_index = 0;
+        min_y = 10000
+        min_y_index = 0;
+
 
         for i, ec in enumerate(all_ec_frames):
-            if min_x > ec[1,3]:
-                min_x = ec[1,3]
-                min_x_index = i
+            if min_y > ec[1,3]:
+                min_y = ec[1,3]
+                min_y_index = i
 
-        if (min_x_index == current_ec_index):
+        if (min_y_index == current_ec_index):
+            return 1
+        else:
+            return 0
+
+    def black_list_unreachable_zones(self, object, object_params, ifco_in_base_transform, strategy):
+
+        # this function will blacklist out of reach zones for wall and surface grasp
+        if strategy not in ["WallGrasp", "SurfaceGrasp"]:
+            return 1
+
+        object_min = object_params['min']
+        object_max = object_params['max']
+        object_frame = object['frame']
+
+        object_in_ifco_frame  = ifco_in_base_transform.dot(object_frame)
+
+        if object_in_ifco_frame[0,3] > object_min[0]  \
+            and object_in_ifco_frame[0,3] < object_max[0] \
+            and object_in_ifco_frame[1,3] > object_min[1] \
+            and object_in_ifco_frame[1,3] < object_max[1]:
             return 1
         else:
             return 0
 
 ## --------------------------------------------------------- ##
     # object-environment-hand based heuristic, q_value for grasping
-    def heuristic(self, object, current_ec_index, strategy, all_ec_frames):
+    def heuristic(self, object, current_ec_index, strategy, all_ec_frames, ifco_in_base_transform):
 
         ec_frame = all_ec_frames[current_ec_index]
         object_params = self.data[object['type']][strategy]
@@ -129,10 +153,11 @@ class multi_object_params:
         q_val = q_val * \
                 self.pdf_object_strategy(object_params) * \
                 self.pdf_object_ec(object_params, ec_frame, strategy) * \
-                self.black_list_walls(current_ec_index, all_ec_frames) if (strategy in ["WallGrasp", "EdgeGrasp"]) else 1
+                self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)* \
+                self.black_list_walls(current_ec_index, all_ec_frames, strategy)
 
 
-        # print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
+        #print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
         return q_val
 
 ## --------------------------------------------------------- ##
@@ -140,10 +165,14 @@ class multi_object_params:
     def argmax_h(self, Q_matrix):
         # find max probablity in list
 
-        ideces_of_max = np.argwhere(Q_matrix == Q_matrix.max())
-        print("ideces_of_max  = {}".format(ideces_of_max ))
+        indeces_of_max = np.argwhere(Q_matrix == Q_matrix.max())
+        print("indeces_of_max  = {}".format(indeces_of_max ))
 
-        return ideces_of_max[0][0], ideces_of_max[0][1]
+        print Q_matrix
+        if Q_matrix.max() == 0.0:
+            rospy.logwarn("No Suitable Grasp Found - PLEASE REPLAN!!!")
+
+        return indeces_of_max[0][0], indeces_of_max[0][1]
 
 ## --------------------------------------------------------- ##
     # samples from a pdf dictionary where the values are normalized
@@ -194,7 +223,7 @@ class multi_object_params:
     # assumption1: all objects are the same type
     # objects is a dictionary with obilagorty keys: type, frame (in robot base frame)
     # ecs is a list of graph nodes (see geometry_graph)
-    def process_objects_ecs(self, objects, ecs, graph_in_base, h_process_type="Deterministic"):
+    def process_objects_ecs(self, objects, ecs, graph_in_base, ifco_in_base_transform, h_process_type="Deterministic"):
 
         # print("object: {}, \n ecs: {} \n graphTF: {}, h_process: {}".format(objects, ecs, graph_in_base, h_process_type))
         # print("ec type: {}".format(type(ecs[0])))
@@ -216,12 +245,12 @@ class multi_object_params:
             all_ec_frames = []
             for j, ec in enumerate(ecs):
                 all_ec_frames.append(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform)))
-                # print("ecs:{}".format(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))))
+                print("ecs:{}".format(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))))
 
             for j,ec in enumerate(ecs):
                 # the ec frame must be in the same reference frame as the object
                 ec_frame_in_base = graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))
-                Q_matrix[i,j] = self.heuristic(o, j, ec.label, all_ec_frames)
+                Q_matrix[i,j] = self.heuristic(o, j, ec.label, all_ec_frames, ifco_in_base_transform)
 
         # print (" ** h_mx = {}".format(Q_matrix))
 
@@ -296,7 +325,7 @@ def test(ece_list = []):
     # find object-ec tuple based on the selected heuristic function
     obj_chosen, ec_chosen = foo.process_objects_ecs(objects, list_of_eces, graphTransform, heuristic_function)
 
-    print("Chosen object = {} \n\n Exploting ec = {}".format(obj_chosen, ec_chosen))
+    print("Chosen object = {} \n\n Exploiting ec = {}".format(obj_chosen, ec_chosen))
 
     # h_val = foo.heuristic(obj, ec, strategy, hand)
     #

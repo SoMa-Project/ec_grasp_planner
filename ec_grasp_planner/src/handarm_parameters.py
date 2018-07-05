@@ -54,7 +54,8 @@ class RBOHandP24WAM(RBOHand2):
         # you can define a default strategy for all objects by setting the second field to  'object'
         # for object-specific strategies set it to the object label
 
-        # transformation (only rotation) between object frame and hand palm frame
+        # transformation between object frame and hand palm frame above the object- should not be changed per object
+        # please don't set x and y position, this should be done in pre_grasp_transform
         # the convention at our lab is: x along the fingers and z normal on the palm.
         # please follow the same convention
         self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
@@ -64,16 +65,12 @@ class RBOHandP24WAM(RBOHand2):
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(180.), [1, 0, 0])))
 
-        # above the object, in hand palm frame
+        # position of hand relative to the object before and at grasping
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.05, 0.0, 0.0]), tra.rotation_matrix(math.radians(10.0), [0, 1, 0]))
+            tra.translation_matrix([0.0, 0.0, 0.0]), tra.rotation_matrix(math.radians(10.0), [0, 1, 0]))
 
-        # at grasp position, in hand palm frame TODO is that used somewhere?
-        self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, -0.04, 0.05]),
-                                                                                 tra.rotation_matrix(math.radians(30.0),
-                                                                                                     [0, 1, 0]))
 
-        # first motion after grasp, in hand palm frame only rotation
+        # first motion after grasp, in hand palm frame
         self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, 0.0]),
             tra.rotation_matrix(math.radians(-15.),
@@ -85,12 +82,11 @@ class RBOHandP24WAM(RBOHand2):
                                                                                                 [0, 1, 0]))
 
         # the maximum allowed force for pushing down
-        self['surface_grasp']['object']['downward_force'] = 4 # might be +10/-7 ??
+        self['surface_grasp']['object']['downward_force'] = 4
 
         #drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
             [0.400302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
-            #[0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
 
         #synergy type for soft hand closing
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
@@ -103,8 +99,7 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['up_speed'] = 0.35
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.09])  # first value: rotational, second translational
-        self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08]) # more helpful would be joint velocities, not EE
-
+        self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
 
 
         #####################################################################################
@@ -241,7 +236,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         # object specific parameters for apple
         self['surface_grasp']['apple'] = self['surface_grasp']['object'].copy()
         self['surface_grasp']['apple']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0.0, 0, 0.0]), tra.rotation_matrix(math.radians(20.0), [0, 1, 0]))
+            tra.translation_matrix([0.0, 0.0, 0.0]), tra.rotation_matrix(math.radians(25.0), [0, 1, 0])) # tested for DEMO
 
         # object specific parameters for cucumber
         self['surface_grasp']['cucumber'] = self['surface_grasp']['object'].copy()
@@ -257,10 +252,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         self['surface_grasp']['punnet']['pre_grasp_velocity'] = np.array([0.12, 0.06])
 
         self['surface_grasp']['punnet']['pregrasp_transform'] = tra.concatenate_matrices(
-            #tra.translation_matrix([-0.09, 0, -0.0]), tra.rotation_matrix(math.radians(40.0), [0, 1, 0])) #okayish ... one success
-            #tra.translation_matrix([-0.1, -0.04, -0.0]), tra.rotation_matrix(math.radians(45.0), [0, 1, 0]))
             tra.translation_matrix([-0.1, -0.02, -0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
-            #tra.translation_matrix([-0.09, -0.02, -0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0]))
 
         self['surface_grasp']['punnet']['downward_force'] = 10  # important, as it helps to fix the object and allows
         # the hand to wrap around the punnet such that it is stable. With lower values the grasps were almost always all
@@ -270,3 +262,9 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
             tra.translation_matrix([0.0, 0.0, -0.0]),
             tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
             #tra.rotation_matrix(math.radians(10.), [1, 0, 0]))
+
+        # object specific parameters for punnet
+        self['surface_grasp']['mango'] = self['surface_grasp']['object'].copy()
+
+        self['surface_grasp']['mango']['pregrasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.03, 0.0, 0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
