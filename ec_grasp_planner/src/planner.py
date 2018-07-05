@@ -73,31 +73,47 @@ class GraspPlanner():
         # initialize the object-EC selection handler class
         self.multi_object_handler = mop.multi_object_params(args.object_params_file)
 
+        # clean initialization of planner service arguments in __init__
+        self.object_type = ""
+        self.grasp_type = ""
+        self.handarm_params = None
+
+
     # ------------------------------------------------------------------------------------------------
     def handle_run_grasp_planner(self, req):
 
         print('Handling grasp planner service call')
         self.object_type = req.object_type
         self.grasp_type = req.grasp_type
+
+        # Check for bad service parameters (we don't have to check for object since we always have a default 'object')
         grasp_choices = ["Any", "WallGrasp", "SurfaceGrasp", "EdgeGrasp"]
         if self.grasp_type not in grasp_choices:
-            raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp]")
-            return
+            raise rospy.ServiceException("grasp_type not supported. Choose from {0}".format(grasp_choices))
 
-        #todo: more failure handling here for bad service parameters
+        heuristic_choices = ["Deterministic", "Probabilistic", "Random"]
+        if req.object_heuristic_function not in heuristic_choices:
+            raise rospy.ServiceException("heuristic not supported. Choose from {0}".format(heuristic_choices))
+
+        if req.handarm_type not in handarm_parameters.__dict__:
+            raise rospy.ServiceException("handarm type not supported. Did you add {0} to handarm_parameters.py".format(
+                req.handarm_type))
+
 
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
-        rospy.wait_for_service('compute_ec_graph')
+        try:
+            rospy.wait_for_service('compute_ec_graph', timeout=30)
+        except rospy.ROSException as e:
+            raise rospy.ServiceException("Vision service call unavailable: %s" % e)
 
         try:
             call_vision = rospy.ServiceProxy('compute_ec_graph', vision_srv.ComputeECGraph)
             res = call_vision(self.object_type)
             graph = res.graph
             objects = res.objects.objects
-        except rospy.ServiceException, e:
+        except rospy.ServiceException as e:
             raise rospy.ServiceException("Vision service call failed: %s" % e)
-            return plan_srv.RunGraspPlannerResponse("")
 
         if not objects:
             print("No object was detected")
