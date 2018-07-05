@@ -126,7 +126,10 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
     pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
     lift_time = getParam(obj_type_params, obj_params, 'short_lift_duration') 
-    slide_back_time = getParam(obj_type_params, obj_params, 'short_slide_duration') 
+    slide_back_time = getParam(obj_type_params, obj_params, 'short_slide_duration')
+    post_grasp_transform = getParam(obj_type_params, obj_params, 'post_grasp_transform')
+    rotate_time = getParam(obj_type_params, obj_params, 'rotate_duration') 
+
 
     vision_params = {}
     # if object_type in handarm_params:
@@ -220,7 +223,7 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
 
     # 4b. Switch when the f/t sensor is triggered with normal force from wall
     force = np.array([0, 0, wall_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'softhand_close', 'ForceSwitch', goal=force,
+    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SlideBackFromWall', 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame, port='2'))
@@ -236,7 +239,14 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
     
     # 6b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration = handarm_params['hand_closing_duration']))
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration = handarm_params['hand_closing_duration']))
+
+    # 7. Rotate a bit to roll the object in the hand
+    control_sequence.append(
+        ha.InterpolatedHTransformControlMode(post_grasp_transform, controller_name='RotateHand', goal_is_relative='1',
+                                             name="PostGraspRotate", reference_frame="EE"))
+    # 7b. We switch after a short time
+    control_sequence.append(ha.TimeSwitch('PostGraspRotate', 'GoUp', duration=rotate_time))
     
 
     return control_sequence, rviz_frames
