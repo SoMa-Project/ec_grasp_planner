@@ -102,7 +102,7 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['down_speed'] = 0.35
         self['surface_grasp']['object']['up_speed'] = 0.35
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
-            [0.125, 0.06])  # first value: rotational, second translational
+            [0.125, 0.09])  # first value: rotational, second translational
         self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08]) # more helpful would be joint velocities, not EE
 
 
@@ -158,7 +158,7 @@ class RBOHandP24WAM(RBOHand2):
         self['wall_grasp']['object']['sliding_dist'] = 0.4 #sliding distance, should be min. half Ifco size
         self['wall_grasp']['object']['up_dist'] = 0.2
         self['wall_grasp']['object']['down_dist'] = 0.25
-        self['wall_grasp']['object']['go_down_velocity'] = np.array([0.125, 0.06]) #first value: rotational, second translational
+        self['wall_grasp']['object']['go_down_velocity'] = np.array([0.125, 0.09]) #first value: rotational, second translational
         self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.12])
         self['wall_grasp']['object']['wall_force'] = 12.0
 

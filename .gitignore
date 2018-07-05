@@ -1,2 +1,5 @@
+hybrid_automaton.xml
+output_ha.sh
 *~
 *pyc
+.idea/
