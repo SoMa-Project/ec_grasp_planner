@@ -103,8 +103,10 @@ class multi_object_params:
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
         q_val = 1
-        q_val = q_val * self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame, strategy)
-        # print(" ** q_val = {}".format(q_val))
+        pdf_o_e = self.pdf_object_ec(object_params, ec_frame, strategy)
+        pdf_o_s = self.pdf_object_strategy(object_params)
+        q_val = q_val * pdf_o_s * pdf_o_e
+        print(" ** strategy={}, q_val = {}, object, ec={}, obj_strategy={}".format(strategy, q_val, pdf_o_e, pdf_o_s))
         return q_val
 
 ## --------------------------------------------------------- ##
@@ -113,7 +115,7 @@ class multi_object_params:
         # find max probablity in list
 
         ideces_of_max = np.argwhere(Q_matrix == Q_matrix.max())
-        # print("ideces_of_max  = {}".format(ideces_of_max ))
+        print("ideces_of_max  = {}".format(ideces_of_max ))
 
         return ideces_of_max[0][0], ideces_of_max[0][1]
 
@@ -196,7 +198,8 @@ class multi_object_params:
         #argmax samples from the [max (H(obj, ec)] list
         if h_process_type == "Deterministic":
             object_index,  ec_index = self.argmax_h(Q_matrix)
-            # print(" ** h_mx[{}, {}]".format(object_index, ec_index))
+            print(" ** h_mx[{}, {}]".format(object_index, ec_index))
+            print(" ** h_mx[{}, {}]".format(object_index, ecs[ec_index]))
             return objects[object_index], ecs[ec_index]
         # samples from [H(obj, ec)] list
         elif h_process_type == "Probabilistic":
