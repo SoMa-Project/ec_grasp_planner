@@ -107,7 +107,7 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['hand_closing_duration'] = 5
 
         # time of soft hand closing
-        self['surface_grasp']['object']['down_speed'] = 0.35
+        self['surface_grasp']['object']['down_speed'] = 0.5
         self['surface_grasp']['object']['up_speed'] = 0.35
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.06])  # first value: rotational, second translational
@@ -116,7 +116,11 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['hand_over_force'] = 2.5
 
 
-
+        self['surface_grasp']['plushtoy'] =  self['surface_grasp']['object']
+        self['surface_grasp']['plushtoy']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, 0.0]),
+            tra.rotation_matrix(math.radians(0.),
+                                [0, 1, 0]))
         #####################################################################################
         # below are parameters for wall grasp with P24 fingers (standard RBO hand)
         #####################################################################################
@@ -167,7 +171,7 @@ class RBOHandP24WAM(RBOHand2):
         self['wall_grasp']['object']['lift_dist'] = 0.1 #short lift after initial contact (before slide)
         self['wall_grasp']['object']['sliding_dist'] = 0.4 #sliding distance, should be min. half Ifco size
         self['wall_grasp']['object']['up_dist'] = 0.2
-        self['wall_grasp']['object']['down_dist'] = 0.25
+        self['wall_grasp']['object']['down_dist'] = 0.35
         self['wall_grasp']['object']['go_down_velocity'] = np.array([0.125, 0.06]) #first value: rotational, second translational
         self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.06])
         self['wall_grasp']['object']['wall_force'] = 3.0
@@ -293,6 +297,10 @@ class RBOHandP24WAM(RBOHand2):
             ))
 
         self['edge_grasp']['headband']['palm_edge_offset'] = 0.02
+
+class RBOHandP24_pulpyWAM(RBOHandP24WAM):
+    def __init__(self, **kwargs):
+        RBOHandP24WAM.__init__(self, **kwargs)
 
 class RBOHandP11WAM(RBOHandP24WAM):
     def __init__(self, **kwargs):
