@@ -230,10 +230,20 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     # 2. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
- 
+
+
+
     # 2b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
  
+    param_name = rospy.search_param('/planner/downward_speed')
+    if param_name == "":
+        print("no speed set, use default: {}".format(go_down_velocity))
+    else:
+        new_speed= rospy.get_param('/planner/downward_speed')
+        go_down_velocity = np.array(
+            [0.125, new_speed])
+        print("force param set: {}".format(go_down_velocity))
 
     # 3. Go down onto the object (relative in world frame) - Godown
     control_sequence.append(
@@ -244,7 +254,15 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                              reference_frame="world",
                                              v_max=go_down_velocity))
 
-    force  = np.array([0, 0, downward_force, 0, 0, 0])
+    param_name = rospy.search_param('/planner/downward_force')
+    if param_name == "":
+        force  = np.array([0, 0, downward_force, 0, 0, 0])
+        print("no force set, use default: {}".format(force))
+    else:
+        new_force= rospy.get_param('/planner/downward_force')
+        force = np.array([0, 0, new_force, 0, 0, 0])
+        print("force param set: {}".format(force))
+
     # 3b. Switch when goal is reached
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                  'softhand_close',
