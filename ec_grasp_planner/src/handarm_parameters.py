@@ -21,7 +21,7 @@ class BaseHandArm(dict):
         # surface grasp parameters for differnt objects
         # 'object' is the default parameter set
         self['surface_grasp']['object'] = {}
-        self['surface_grasp']['punet'] = {}
+
 
         # wall grasp parameters for differnt objects
         self['wall_grasp']['object'] = {}
@@ -69,17 +69,12 @@ class RBOHandP24WAM(RBOHand2):
 
         # above the object, in hand palm frame
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.05, 0, 0.0]), tra.rotation_matrix(math.radians(10.0), [0, 1, 0]))
-
-        # at grasp position, in hand palm frame
-        self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0.0, 0.05]),
-                                                                                 tra.rotation_matrix(math.radians(30.0),
-                                                                                                     [0, 1, 0]))
+            tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(25.0), [0, 1, 0]))
 
         # first motion after grasp, in hand palm frame only rotation
         self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, 0.0]),
-            tra.rotation_matrix(math.radians(-15.),
+            tra.rotation_matrix(math.radians(-10.),
                                 [0, 1, 0]))
 
         # second motion after grasp, in hand palm frame
@@ -108,7 +103,7 @@ class RBOHandP24WAM(RBOHand2):
 
         # time of soft hand closing
         self['surface_grasp']['object']['down_speed'] = 0.5
-        self['surface_grasp']['object']['up_speed'] = 0.35
+        self['surface_grasp']['object']['up_speed'] = 0.25
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.06])  # first value: rotational, second translational
 
@@ -116,13 +111,45 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['hand_over_force'] = 2.5
 
 
-        self['surface_grasp']['plushtoy'] =  self['surface_grasp']['object']
+        self['surface_grasp']['plushtoy'] =  self['surface_grasp']['object'].copy()
         self['surface_grasp']['plushtoy']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, 0.0]),
             tra.rotation_matrix(math.radians(0.),
                                 [0, 1, 0]))
+
+        #drop configuration - this is system specific!
+        self['surface_grasp']['apple'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['egg'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['headband'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['bottle'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['banana'] = self['surface_grasp']['object'].copy()
+
+        self['surface_grasp']['ticket'] = self['surface_grasp']['object'].copy()
+
+        self['surface_grasp']['apple']['hand_over_config'] = np.array(
+            [0.643723, 1.08375, -0.731847, 1.80354, -1.96563, 0.890579, 0.295289])
+        self['surface_grasp']['egg']['hand_over_config'] = np.array(
+            [0.19277, 0.938904, -0.206532, 1.52452, -2.57598, -0.0341588, 2.65164])
+        self['surface_grasp']['headband']['hand_over_config'] = np.array(
+            [-0.122134, 1.04449, 0.384282, 1.48404, 0.256033, -1.32681, 2.31987])
+        self['surface_grasp']['bottle']['hand_over_config'] = np.array(
+            [0.643723, 1.08375, -0.731847, 1.80354, -1.96563, 0.890579, 0.295289])
+
+        self['surface_grasp']['banana']['hand_over_config'] = np.array(
+            [-0.109826, 1.05006, 0.353494, 1.88186, 0.252395, -1.23794, 1.80944])
+
+        self['surface_grasp']['banana']['hand_over_force'] = 5.0
+
+        self['surface_grasp']['ticket']['hand_over_config'] = np.array(
+            [-0.122134, 1.04449, 0.384282, 1.48404, 0.256033, -1.32681, 2.31987])
+
+        self['surface_grasp']['ticket']['hand_over_force'] = 0.01 #open automatically
+
+
+
+
         #####################################################################################
-        # below are parameters for wall grasp with P24 fingers (standard RBO hand)
+        #WALL GRASP
         #####################################################################################
         self['wall_grasp']['object']['hand_closing_duration'] = 5
         self['wall_grasp']['object']['initial_goal'] = np.array(
@@ -251,7 +278,7 @@ class RBOHandP24WAM(RBOHand2):
         # plush toy
         self['edge_grasp']['plushtoy'] = {}
 
-        self['edge_grasp']['plushtoy'] = self['edge_grasp']['object']
+        self['edge_grasp']['plushtoy'] = self['edge_grasp']['object'].copy()
 
         self['edge_grasp']['plushtoy']['table_force'] = 10.0
 
@@ -268,7 +295,7 @@ class RBOHandP24WAM(RBOHand2):
 
         # head band
         self['edge_grasp']['headband'] = {}
-        self['edge_grasp']['headband'] = self['edge_grasp']['object']
+        self['edge_grasp']['headband'] = self['edge_grasp']['object'].copy()
         self['edge_grasp']['headband']['table_force'] = 2.0
         self['edge_grasp']['headband']['pre_approach_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0, -0.23]),  # 23 cm above object
@@ -284,7 +311,7 @@ class RBOHandP24WAM(RBOHand2):
 
         # ticket
         self['edge_grasp']['ticket'] = {}
-        self['edge_grasp']['ticket'] = self['edge_grasp']['object']
+        self['edge_grasp']['ticket'] = self['edge_grasp']['object'].copy()
         self['edge_grasp']['headband']['pre_approach_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.03, 0, -0.23]),  # 23 cm above object
             tra.concatenate_matrices(

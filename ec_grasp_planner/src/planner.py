@@ -210,8 +210,10 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # Get the relevant parameters for hand object combination
     if (object_type in handarm_params['surface_grasp']):            
         params = handarm_params['surface_grasp'][object_type]
+        print("object found: {}".format(object_type))
     else:
         params = handarm_params['surface_grasp']['object']
+        print("object NOT found: {}".format(object_type))
 
     hand_transform = params['hand_transform']
     pregrasp_transform = params['pregrasp_transform']
@@ -351,6 +353,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
 
     if handover:
+
+        print("hand over conf:{}".format(hand_over_config))
         # 7. Go to handover cfg
         control_sequence.append(
             ha.JointControlMode(hand_over_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
@@ -370,7 +374,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
         # wait until force is exerted by human on EE while taking the object to release object
         control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open', name='human_interaction_handover', goal=np.zeros(6),
-                                                       norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='0',
+                                                       norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='0', goal_is_relative = '1',
                                                        epsilon=hand_over_force, negate='1'))
 
         # 10. open hand
