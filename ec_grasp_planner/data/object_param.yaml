@@ -12,7 +12,7 @@
     EdgeGrasp: {'success': 0}
   netbag:
     SurfaceGrasp: {'success': 0, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
-    WallGrasp: {'success': 1, 'min': [0, 0], 'max': [0, 0]}
+    WallGrasp: {'success': 1, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.042]}
     EdgeGrasp: {'success': 0}
   punnet:
     SurfaceGrasp: {'success': 0.5, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}

@@ -86,7 +86,7 @@ class RBOHandP24WAM(RBOHand2):
 
         #drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
-            [0.400302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
+            [-0.57148, 0.816213, -0.365673, 1.53765, 0.30308, 0.128965, 1.02467])
 
         #synergy type for soft hand closing
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
@@ -96,7 +96,7 @@ class RBOHandP24WAM(RBOHand2):
 
         # time of soft hand closing
         self['surface_grasp']['object']['down_speed'] = 0.35
-        self['surface_grasp']['object']['up_speed'] = 0.35
+        self['surface_grasp']['object']['up_speed'] = 0.409
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.09])  # first value: rotational, second translational
         self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
@@ -128,7 +128,7 @@ class RBOHandP24WAM(RBOHand2):
         # - fingers pointing downwards
         # - palm facing the object and wall
         self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-                tra.translation_matrix([-0.23, 0, -0.15]), #23 cm above object, 15 cm behind
+                tra.translation_matrix([-0.23, 0, -0.18]), #23 cm above object, 15 cm behind
                 tra.concatenate_matrices(
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
@@ -146,12 +146,12 @@ class RBOHandP24WAM(RBOHand2):
 
         # drop configuration - this is system specific!
         self['wall_grasp']['object']['drop_off_config'] = np.array(
-            [0.25118, 0.649543, -0.140991, 1.79668, 0.0720235, 0.453135, -1.03957])
+            [-0.318009, 0.980688, -0.538178, 1.67298, -2.07823, 0.515781, -0.515471])
 
         self['wall_grasp']['object']['table_force'] = 1.8
         self['wall_grasp']['object']['lift_dist'] = 0.1 #short lift after initial contact (before slide)
         self['wall_grasp']['object']['sliding_dist'] = 0.4 #sliding distance, should be min. half Ifco size
-        self['wall_grasp']['object']['up_dist'] = 0.2
+        self['wall_grasp']['object']['up_dist'] = 0.25
         self['wall_grasp']['object']['down_dist'] = 0.25
         self['wall_grasp']['object']['go_down_velocity'] = np.array([0.125, 0.09]) #first value: rotational, second translational
         self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.12])
@@ -268,3 +268,19 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
 
         self['surface_grasp']['mango']['pregrasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.03, 0.0, 0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
+
+
+        self['wall_grasp']['mango'] = self['wall_grasp']['object'].copy()
+        self['wall_grasp']['mango']['wall_force'] = 17.0
+        self['wall_grasp']['cucumber'] = self['wall_grasp']['object'].copy()
+        self['wall_grasp']['cucumber']['wall_force'] = 17.0
+        self['wall_grasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.23, 0, -0.18]), #23 cm above object, 15 cm behind
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(10.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(                #this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
