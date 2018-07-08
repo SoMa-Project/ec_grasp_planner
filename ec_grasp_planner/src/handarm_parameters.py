@@ -54,6 +54,11 @@ class RBOHandP24WAM(RBOHand2):
         # does the robot support impedance control
         self['isForceControllerAvailable'] = True
 
+        # SURFACE GRASP
+        # ---------------------------
+        # Generic Object
+        # ---------------------------
+
         # you can define a default strategy for all objects by setting the second field to  'object'
         # for object-specific strategies set it to the object label
 
@@ -110,6 +115,10 @@ class RBOHandP24WAM(RBOHand2):
         # the force with which the person pulls the object out of the hand
         self['surface_grasp']['object']['hand_over_force'] = 2.5
 
+        # SURFACE GRASP
+        # ----------------------------------------------------------------------------
+        # Specific Objects: plushtoy, apple, egg, headband, bottle, banana, ticket
+        # ----------------------------------------------------------------------------
 
         self['surface_grasp']['plushtoy'] =  self['surface_grasp']['object'].copy()
         self['surface_grasp']['plushtoy']['post_grasp_transform'] = tra.concatenate_matrices(
@@ -123,7 +132,6 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['headband'] = self['surface_grasp']['object'].copy()
         self['surface_grasp']['bottle'] = self['surface_grasp']['object'].copy()
         self['surface_grasp']['banana'] = self['surface_grasp']['object'].copy()
-
         self['surface_grasp']['ticket'] = self['surface_grasp']['object'].copy()
 
         self['surface_grasp']['apple']['hand_over_config'] = np.array(
@@ -140,16 +148,142 @@ class RBOHandP24WAM(RBOHand2):
 
         self['surface_grasp']['banana']['hand_over_force'] = 5.0
 
-        self['surface_grasp']['ticket']['hand_over_config'] = np.array(
+        #####################################################################################
+        # below are parameters for edge grasp with P24 fingers (standard RBO hand)
+        #####################################################################################
+
+
+        # EDGE GRASP
+        # ----------------------------------------------------------------------------
+        # Specific Objects: headband, ticket
+        # ----------------------------------------------------------------------------
+
+        self['edge_grasp']['object']['hand_closing_duration'] = 5
+        self['edge_grasp']['object']['initial_goal'] = np.array(
+            [0.163113, 0.600424, -0.072204, 1.92395, 0.0919598, 0.520367, -0.129253])
+        # transformation between hand and EC frame
+        #self['edge_grasp']['object']['hand_transform'] = tra.concatenate_matrices(
+        #    tra.translation_matrix([0.0, 0.0, 0.0]),
+        #    tra.concatenate_matrices(
+        #        tra.rotation_matrix(math.radians(90.), [0, 0, 1]),
+        #        tra.rotation_matrix(math.radians(180.), [1, 0, 0])
+        #    )
+        #)
+        # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
+        # the convention at our lab is: x along the fingers and z normal on the palm.
+        # please follow the same convention
+        self['edge_grasp']['object']['hand_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, 0.0]),
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(90.0), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 1, 0]),
+                tra.rotation_matrix(
+                    math.radians(-90.0), [0, 0, 1]),
+            ))
+        # the pre-approach pose should be:
+        # - floating above the object,
+        # - fingers pointing downwards
+        # - palm facing the object and wall
+        self['edge_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.08, 0, -0.23]),  # 23 cm above object
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(35.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+
+        # first motion after grasp, in hand palm frame
+        self['edge_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, 0.0]),  # nothing right now
+            tra.rotation_matrix(math.radians(0.0),
+                                [0, 1, 0]))
+
+        # drop configuration - this is system specific!
+        self['edge_grasp']['object']['drop_off_config'] = np.array(
+            [0.25118, 0.649543, -0.140991, 1.79668, 0.0720235, 0.453135, -1.03957])
+
+        # object hand over configuration - this is system specific!
+        self['edge_grasp']['object']['hand_over_config'] = np.array(
+            [0.650919, 1.04026, -0.940386, 1.30763, 0.447859, 0.517442, 0.0633935])
+
+        # the force with which the person pulls the object out of the hand
+        self['edge_grasp']['object']['hand_over_force'] = 2.5
+        self['edge_grasp']['object']['table_force'] = 3.0
+        self['edge_grasp']['object']['up_dist'] = 0.2
+        self['edge_grasp']['object']['down_dist'] = 0.25
+        self['edge_grasp']['object']['go_down_velocity'] = np.array(
+            [0.125, 0.03])  # first value: rotational, second translational
+        self['edge_grasp']['object']['slide_velocity'] = np.array([0.125, 0.03])
+        self['edge_grasp']['object']['palm_edge_offset'] = 0
+
+
+        # EDGE GRASP
+        # ----------------------------------------------------------------------------
+        # Specific Objects: headband, ticket
+        # ----------------------------------------------------------------------------
+
+        #drop configuration - this is system specific!
+        self['edge_grasp']['headband'] = self['edge_grasp']['object'].copy()
+        self['edge_grasp']['ticket'] = self['edge_grasp']['object'].copy()
+        self['edge_grasp']['plushtoy'] = self['edge_grasp']['object'].copy()
+
+        # plush toy
+        self['edge_grasp']['plushtoy']['table_force'] = 10.0
+        self['edge_grasp']['plushtoy']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.03, 0, -0.23]),  # 23 cm above object
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.0), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(18.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+
+
+        # head band
+        self['edge_grasp']['headband']['table_force'] = 2.0
+        self['edge_grasp']['headband']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.08, 0.0, -0.23]),  # 23 cm above object
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.0), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(35.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+        self['edge_grasp']['headband']['palm_edge_offset'] = 0.2
+
+
+        # ticket
+        self['edge_grasp']['ticket']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.03, 0, -0.23]),  # 23 cm above object
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(35.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+
+        self['edge_grasp']['ticket']['palm_edge_offset'] = 0.02
+
+        self['edge_grasp']['ticket']['hand_over_config'] = np.array(
             [-0.122134, 1.04449, 0.384282, 1.48404, 0.256033, -1.32681, 2.31987])
 
-        self['surface_grasp']['ticket']['hand_over_force'] = 0.01 #open automatically
-
+        self['edge_grasp']['ticket']['hand_over_force'] = 0.01 #open automatically
 
 
 
         #####################################################################################
-        #WALL GRASP
+        # WALL GRASP - not used in disney
         #####################################################################################
         self['wall_grasp']['object']['hand_closing_duration'] = 5
         self['wall_grasp']['object']['initial_goal'] = np.array(
@@ -203,127 +337,6 @@ class RBOHandP24WAM(RBOHand2):
         self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.06])
         self['wall_grasp']['object']['wall_force'] = 3.0
 
-        #####################################################################################
-        # below are parameters for edge grasp with P24 fingers (standard RBO hand)
-        #####################################################################################
-        self['edge_grasp']['object']['hand_closing_duration'] = 5
-        self['edge_grasp']['object']['initial_goal'] = np.array(
-            [0.163113, 0.600424, -0.072204, 1.92395, 0.0919598, 0.520367, -0.129253])
-
-        # transformation between hand and EC frame
-        #self['edge_grasp']['object']['hand_transform'] = tra.concatenate_matrices(
-        #    tra.translation_matrix([0.0, 0.0, 0.0]),
-        #    tra.concatenate_matrices(
-        #        tra.rotation_matrix(math.radians(90.), [0, 0, 1]),
-        #        tra.rotation_matrix(math.radians(180.), [1, 0, 0])
-        #    )
-        #)
-
-
-        # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
-        # the convention at our lab is: x along the fingers and z normal on the palm.
-        # please follow the same convention
-        self['edge_grasp']['object']['hand_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0.0, 0.0, 0.0]),
-            tra.concatenate_matrices(
-                tra.rotation_matrix(
-                    math.radians(90.0), [1, 0, 0]),
-                tra.rotation_matrix(
-                    math.radians(0.0), [0, 1, 0]),
-                tra.rotation_matrix(
-                    math.radians(-90.0), [0, 0, 1]),
-            ))
-
-        # the pre-approach pose should be:
-        # - floating above the object,
-        # - fingers pointing downwards
-        # - palm facing the object and wall
-        self['edge_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0, 0, -0.23]),  # 23 cm above object
-            tra.concatenate_matrices(
-                tra.rotation_matrix(
-                    math.radians(0.), [1, 0, 0]),
-                tra.rotation_matrix(
-                    math.radians(18.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
-                tra.rotation_matrix(  # this makes the fingers point downwards
-                    math.radians(0.0), [0, 0, 1]),
-            ))
-
-        # first motion after grasp, in hand palm frame
-        self['edge_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0.0, 0.0, 0.0]),  # nothing right now
-            tra.rotation_matrix(math.radians(0.0),
-                                [0, 1, 0]))
-
-        # drop configuration - this is system specific!
-        self['edge_grasp']['object']['drop_off_config'] = np.array(
-            [0.25118, 0.649543, -0.140991, 1.79668, 0.0720235, 0.453135, -1.03957])
-
-        # object hand over configuration - this is system specific!
-        self['edge_grasp']['object']['hand_over_config'] = np.array(
-            [0.650919, 1.04026, -0.940386, 1.30763, 0.447859, 0.517442, 0.0633935])
-
-
-        # the force with which the person pulls the object out of the hand
-        self['edge_grasp']['object']['hand_over_force'] = 2.5
-
-        self['edge_grasp']['object']['table_force'] = 3.0
-        self['edge_grasp']['object']['up_dist'] = 0.2
-        self['edge_grasp']['object']['down_dist'] = 0.25
-        self['edge_grasp']['object']['go_down_velocity'] = np.array(
-            [0.125, 0.03])  # first value: rotational, second translational
-        self['edge_grasp']['object']['slide_velocity'] = np.array([0.125, 0.03])
-        self['edge_grasp']['object']['palm_edge_offset'] = 0
-
-        # plush toy
-        self['edge_grasp']['plushtoy'] = {}
-
-        self['edge_grasp']['plushtoy'] = self['edge_grasp']['object'].copy()
-
-        self['edge_grasp']['plushtoy']['table_force'] = 10.0
-
-        self['edge_grasp']['plushtoy']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.03, 0, -0.23]),  # 23 cm above object
-            tra.concatenate_matrices(
-                tra.rotation_matrix(
-                    math.radians(0.), [1, 0, 0]),
-                tra.rotation_matrix(
-                    math.radians(18.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
-                tra.rotation_matrix(  # this makes the fingers point downwards
-                    math.radians(0.0), [0, 0, 1]),
-            ))
-
-        # head band
-        self['edge_grasp']['headband'] = {}
-        self['edge_grasp']['headband'] = self['edge_grasp']['object'].copy()
-        self['edge_grasp']['headband']['table_force'] = 2.0
-        self['edge_grasp']['headband']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0.0, 0, -0.23]),  # 23 cm above object
-            tra.concatenate_matrices(
-                tra.rotation_matrix(
-                    math.radians(0.), [1, 0, 0]),
-                tra.rotation_matrix(
-                    math.radians(25.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
-                tra.rotation_matrix(  # this makes the fingers point downwards
-                    math.radians(0.0), [0, 0, 1]),
-            ))
-        self['edge_grasp']['headband']['palm_edge_offset'] = 0.01
-
-        # ticket
-        self['edge_grasp']['ticket'] = {}
-        self['edge_grasp']['ticket'] = self['edge_grasp']['object'].copy()
-        self['edge_grasp']['headband']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.03, 0, -0.23]),  # 23 cm above object
-            tra.concatenate_matrices(
-                tra.rotation_matrix(
-                    math.radians(0.), [1, 0, 0]),
-                tra.rotation_matrix(
-                    math.radians(25.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
-                tra.rotation_matrix(  # this makes the fingers point downwards
-                    math.radians(0.0), [0, 0, 1]),
-            ))
-
-        self['edge_grasp']['headband']['palm_edge_offset'] = 0.02
 
 class RBOHandP24_pulpyWAM(RBOHandP24WAM):
     def __init__(self, **kwargs):

@@ -606,7 +606,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_params, object_type, handover):
 
     # Get the parameters from the handarm_parameters.py file
-    if (object_type in handarm_params['wall_grasp']):
+    if (object_type in handarm_params['edge_grasp']):
         params = handarm_params['edge_grasp'][object_type]
     else:
         params = handarm_params['edge_grasp']['object']
