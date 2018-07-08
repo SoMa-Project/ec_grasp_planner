@@ -97,7 +97,8 @@ class RBOHandP24WAM(RBOHand2):
 
         #drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
-            [0.400302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
+            [-0.555374, 0.829652, -0.295749, 1.54958, -0.935491, -0.115523, 0.972788])
+        #   [0.400302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
             #[0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344, 0.626538])
 
         #synergy type for soft hand closing
@@ -184,17 +185,40 @@ class CLASHHandWAM(RBOHandP24WAM):
             [0.632072, 0.491335, 0.328544, 1.75522, 0.191273, 0.691636, 0.472523])
         self['surface_grasp']['object']['up_speed'] = 0.35
 
+        # finger joint speed
+        self['surface_grasp']['object']['open'] = {}
+        self['surface_grasp']['object']['close'] = {}
+        self['surface_grasp']['object']['preshape'] = {}
+
         # does the robot support impedance control
         self['isForceControllerAvailable'] = False
 
         # Clas hand motion duration (maybe 4[s] is enough)
         self['hand_closing_duration'] = 6
+        self['surface_grasp']['object']['open']['hand_speed'] = 30.0
+        # thumb position
+        self['surface_grasp']['object']['open']['thumb_pos'] = np.array([0.0, 0.0, 0.0])
+        # differential fingers position
+        self['surface_grasp']['object']['open']['diff_pos'] = np.array([0.0, 0.0, 0.0])
+        # thumb tention
+        self['surface_grasp']['object']['open']['thumb_pretension'] = 0.0
+        # diff fingers tention.
+        self['surface_grasp']['object']['open']['diff_pretension '] = 0.0
+        self['surface_grasp']['mango'] = self['surface_grasp']['object'].copy()
+        # lift hand after touching the EC (surface)
+        # self['surface_grasp']['object']['move_up_time_after_EC_contact'] = 2.5
+        self['surface_grasp']['object']['close']['thumb_pos'] = np.array([0.0, 30.0, 30.0])
+        self['surface_grasp']['object']['close']['diff_pos'] = np.array([30.0, 30.0, 30.0])
+        # self['surface_grasp']['object']['preshape']['thumb_pos_preopen'] = np.array([0, -20, 0])
+        # self['surface_grasp']['object']['preshape']['diff_pos_preopen'] = np.array([-10, -10, 0])
+        # self['surface_grasp']['punnet']['preshape']['thumb_pos_preopen'] = np.array([0, -30, 0])
+        # self['surface_grasp']['punnet']['preshape']['diff_pos_preopen'] = np.array([-20, -20, 0])
+        # self['surface_grasp']['netbag']['preshape']['thumb_pos_preopen'] = np.array([0, -10, 0])
+        # self['surface_grasp']['netbag']['preshape']['diff_pos_preopen'] = np.array([0, 0, 0])
 
-        self['surface_grasp']['mango'] = self['surface_grasp']['object']
-        # finger joint speed
-        self['surface_grasp']['object']['open'] = {}
-        self['surface_grasp']['object']['close'] = {}
-        self['surface_grasp']['object']['preshape'] = {}
+        self['surface_grasp']['object']['preshape']['thumb_pos'] = np.array([0, 0, 0])
+        self['surface_grasp']['object']['preshape']['diff_pos'] = np.array([0, 0, 0])
+
         self['surface_grasp']['mango']['open'] = {}
         self['surface_grasp']['mango']['close'] = {}
         self['surface_grasp']['mango']['preshape'] = {}
@@ -209,30 +233,7 @@ class CLASHHandWAM(RBOHandP24WAM):
         self['surface_grasp']['cucumber']['preshape'] = {}
         self['surface_grasp']['punnet']['open'] = {}
         self['surface_grasp']['punnet']['close'] = {}
-        self['surface_grasp']['punnet']['preshape'] = {}
-
-        self['surface_grasp']['object']['open']['hand_speed'] = 30.0
-        # thumb position
-        self['surface_grasp']['object']['open']['thumb_pos'] = np.array([0.0, 0.0, 0.0])
-        # differential fingers position
-        self['surface_grasp']['object']['open']['diff_pos'] = np.array([0.0, 0.0, 0.0])
-        # thumb tention
-        self['surface_grasp']['object']['open']['thumb_pretension'] = 0.0
-        # diff fingers tention.
-        self['surface_grasp']['object']['open']['diff_pretension '] = 0.0
-
-        # lift hand after touching the EC (surface)
-        # self['surface_grasp']['object']['move_up_time_after_EC_contact'] = 2.5
-        self['surface_grasp']['object']['close']['thumb_pos'] = np.array([0.0, 30.0, 30.0])
-        self['surface_grasp']['object']['close']['diff_pos'] = np.array([30.0, 30.0, 30.0])
-        # self['surface_grasp']['object']['preshape']['thumb_pos_preopen'] = np.array([0, -20, 0])
-        # self['surface_grasp']['object']['preshape']['diff_pos_preopen'] = np.array([-10, -10, 0])
-        # self['surface_grasp']['punnet']['preshape']['thumb_pos_preopen'] = np.array([0, -30, 0])
-        # self['surface_grasp']['punnet']['preshape']['diff_pos_preopen'] = np.array([-20, -20, 0])
-        # self['surface_grasp']['netbag']['preshape']['thumb_pos_preopen'] = np.array([0, -10, 0])
-        # self['surface_grasp']['netbag']['preshape']['diff_pos_preopen'] = np.array([0, 0, 0])
-
-        # self['surface_grasp']['mango']['move_up_time_after_EC_contact'] = 1.8
+        self['surface_grasp']['punnet']['preshape'] = {}        # self['surface_grasp']['mango']['move_up_time_after_EC_contact'] = 1.8
         self['surface_grasp']['mango']['close']['thumb_pos'] = np.array([0, 30, 50])
         self['surface_grasp']['mango']['close']['diff_pos'] = np.array([30, 30, 50])
 
@@ -252,8 +253,6 @@ class CLASHHandWAM(RBOHandP24WAM):
         self['surface_grasp']['salad']['close']['thumb_pos'] = np.array([0, 65, 10])
         self['surface_grasp']['salad']['close']['diff_pos'] = np.array([60, 60, 30])
 
-        self['surface_grasp']['object']['preshape']['thumb_pos'] = np.array([0, 0, 0])
-        self['surface_grasp']['object']['preshape']['diff_pos'] = np.array([0, 0, 0])
         self['surface_grasp']['punnet']['preshape']['thumb_pos'] = np.array([0, -30, 0])
         self['surface_grasp']['punnet']['preshape']['diff_pos'] = np.array([-20, -20, 0])
         self['surface_grasp']['mango']['preshape']['thumb_pos'] = np.array([0, -15, 0])
