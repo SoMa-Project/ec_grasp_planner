@@ -21,7 +21,7 @@ class BaseHandArm(dict):
         # surface grasp parameters for differnt objects
         # 'object' is the default parameter set
         self['surface_grasp']['object'] = {}
-        self['surface_grasp']['punet'] = {}
+        self['surface_grasp']['punnet'] = {}
 
         # wall grasp parameters for differnt objects
         self['wall_grasp']['object'] = {}
@@ -66,26 +66,9 @@ class pisaHandWAM(RBOHand2):
         self['surface_grasp']['object']['kp'] = 0.1
         self['surface_grasp']['object']['rigidity'] = 1.0
 
-
-        self['surface_grasp']['mango'] = self['surface_grasp']['object']
-        self['surface_grasp']['punnet'] = self['surface_grasp']['object']
-        self['surface_grasp']['lettuce'] = self['surface_grasp']['object']
-        self['surface_grasp']['cucumber'] = self['surface_grasp']['object']
-        self['surface_grasp']['netbag'] = self['surface_grasp']['object']
-
-        self['surface_grasp']['lettuce']['rigidity'] = 0.5
-        
         self['surface_grasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.35])
-        self['surface_grasp']['mango']['hand_transform'] = tra.translation_matrix([0.05, -0.09, 0.35])
-        self['surface_grasp']['cucumber']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.35])
 
         self['surface_grasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
-        self['surface_grasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
-       
-        #self['surface_grasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.0, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
-        self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.025, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
-        self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
-
 
         # location above ifco, safe motion from vision position to here
         self['surface_grasp']['object']['init_joint_conf'] = np.array([0.148723, 0.454601, 0.218573, 1.61008, -0.240614, 0.609243, 0.574549])
@@ -95,10 +78,6 @@ class pisaHandWAM(RBOHand2):
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0, 0, 0.0]), tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
 
-        # at grasp position, in hand palm frame
-        self['surface_grasp']['object']['grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, 0.0, 0.05]),
-                                                                                 tra.rotation_matrix(math.radians(30.0),
-                                                                                                     [0, 1, 0]))
 
         # first motion after grasp, in hand palm frame only rotation
         self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
@@ -116,7 +95,8 @@ class pisaHandWAM(RBOHand2):
 
         #drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
-            [0.589267, 0.336824, 0.210454, 2.15456, -2.12306, -0.308536, 1.57333])
+            [-0.555374, 0.829652, -0.295749, 1.54958, -0.935491, -0.115523, 0.972788])
+            #[0.589267, 0.336824, 0.210454, 2.15456, -2.12306, -0.308536, 1.57333])
 
         #synergy type for soft hand closing
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
@@ -130,7 +110,22 @@ class pisaHandWAM(RBOHand2):
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.03])  # first value: rotational, second translational
 
-        
+        self['surface_grasp']['mango'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['punnet'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['lettuce'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['cucumber'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['netbag'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['mango']['hand_transform'] = tra.translation_matrix([0.05, -0.09, 0.35])
+        self['surface_grasp']['cucumber']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.35])
+        self['surface_grasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(
+            tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+
+        # self['surface_grasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.0, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+        self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.inverse_matrix(
+            tra.translation_matrix([0.025, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+        self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.inverse_matrix(
+            tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+        self['surface_grasp']['lettuce']['rigidity'] = 0.5
         
         #####################################################################################
         # below are parameters for wall grasp with P24 fingers (standard RBO hand)
