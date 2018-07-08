@@ -39,7 +39,7 @@
     WallGrasp: {'success': 0}
     EdgeGrasp: {'success': 1}
   headband:
-    SurfaceGrasp: {'success':0.1}
+    SurfaceGrasp: {'success': 0.1}
     WallGrasp: {'success': 0}
     EdgeGrasp: {'success': 1}
   plushtoy:
