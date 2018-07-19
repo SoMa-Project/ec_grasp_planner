@@ -21,6 +21,7 @@ import smach_ros
 import tf
 from tf import transformations as tra
 import numpy as np
+from numpy.linalg import inv
 
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Pose
@@ -43,6 +44,8 @@ from visualization_msgs.msg import MarkerArray
 from visualization_msgs.msg import Marker
 
 from pregrasp_msgs import srv as vision_srv
+
+from target_selection_in_ifco import srv as target_selection_srv
 
 import pyddl
 
@@ -91,6 +94,7 @@ class GraspPlanner():
             res = call_vision(self.object_type)
             graph = res.graph
             objects = res.objects.objects
+            objectList = res.objects
             print("Objects found: " + str(len(objects)))
         except rospy.ServiceException, e:
             raise rospy.ServiceException("Vision service call failed: %s" % e)
@@ -109,7 +113,7 @@ class GraspPlanner():
 
         self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
         ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
-
+        
         # --------------------------------------------------------
         # Get grasp from graph representation
         grasp_path = None
@@ -120,6 +124,12 @@ class GraspPlanner():
             camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)
             object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
             object_in_base = camera_in_base.dot(object_in_camera)
+            camera_in_ifco = inv(ifco_in_base).dot(camera_in_base)
+
+            camera_in_ifco_msg = pm.toMsg(pm.fromMatrix(camera_in_ifco))
+
+            call_heuristic = rospy.ServiceProxy('target_selection', target_selection_srv.TargetSelection)
+            res = call_heuristic(objectList, camera_in_ifco_msg)
             
             #get grasp type
             self.grasp_type = req.grasp_type
