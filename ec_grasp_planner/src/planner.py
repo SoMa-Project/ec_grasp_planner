@@ -124,12 +124,19 @@ class GraspPlanner():
             camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)
             object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
             object_in_base = camera_in_base.dot(object_in_camera)
+            
+            #get camera in ifco frame to be able to get object in ifco frame
             camera_in_ifco = inv(ifco_in_base).dot(camera_in_base)
-
             camera_in_ifco_msg = pm.toMsg(pm.fromMatrix(camera_in_ifco))
 
+            #get pre grasp transforms in object frame for both grasp type 
+            SG_pre_grasp_transform, WG_pre_grasp_transform = getPreGraspTransforms(self.handarm_params, self.object_type)
+
+            SG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(SG_pre_grasp_transform))
+            WG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(WG_pre_grasp_transform))
+
             call_heuristic = rospy.ServiceProxy('target_selection', target_selection_srv.TargetSelection)
-            res = call_heuristic(objectList, camera_in_ifco_msg)
+            res = call_heuristic(objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg)
             
             #get grasp type
             self.grasp_type = req.grasp_type
@@ -206,6 +213,38 @@ def getParam(obj_type_params, obj_params, paramKey):
     if param is None:
          raise Exception("Param: " + paramKey + " does not exist for this object and there is no generic value defined")
     return param
+
+# ================================================================================================
+def getPreGraspTransforms(handarm_params, object_type):
+    #returns the initial pre_grasp transforms for wall grasp and surface grasp depending on the object type and the hand
+    
+    #surface grasp pre_grasp transform SG_pre_grasp_transform
+    obj_type_params = {}
+    obj_params = {}
+    if (object_type in handarm_params['surface_grasp']):            
+        obj_type_params = handarm_params['surface_grasp'][object_type]
+    if 'object' in handarm_params['surface_grasp']:
+        obj_params = handarm_params['surface_grasp']['object']
+
+    hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')    
+    ee_in_goal_frame = getParam(obj_type_params, obj_params, 'ee_in_goal_frame')
+
+    SG_pre_grasp_transform = hand_transform.dot(ee_in_goal_frame)
+
+    #wall grasp pre_grasp transform WG_pre_grasp_transform
+    obj_type_params = {}
+    obj_params = {}
+    if (object_type in handarm_params['wall_grasp']):            
+        obj_type_params = handarm_params['wall_grasp'][object_type]
+    if 'object' in handarm_params['wall_grasp']:
+        obj_params = handarm_params['wall_grasp']['object']
+
+    hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')    
+    pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
+
+    WG_pre_grasp_transform = hand_transform.dot(pre_approach_transform)
+
+    return SG_pre_grasp_transform, WG_pre_grasp_transform
 
 # ================================================================================================
 def transform_msg_to_homogenous_tf(msg):
