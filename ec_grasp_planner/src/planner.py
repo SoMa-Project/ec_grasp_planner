@@ -109,7 +109,8 @@ class GraspPlanner():
 
         self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
         ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
-
+        print 'IFCO'
+        print ifco_in_base
         # --------------------------------------------------------
         # Get grasp from graph representation
         grasp_path = None
@@ -425,7 +426,7 @@ def grasp_heuristics(ifco_pose, object_pose, bounding_box, uncertainty_offset):
     xd = 0.37/2 
     yd = 0.57/2 
     #boundary width from which to go for a wall_grasp
-    e = 0.13
+    e = 0.08
 
     # corner1_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, bounding_box.y/2 + uncertainty_offset, 0]))
     # corner2_in_base = object_pose.dot(tra.translation_matrix([bounding_box.x/2 + uncertainty_offset, -bounding_box.y/2 - uncertainty_offset, 0]))
