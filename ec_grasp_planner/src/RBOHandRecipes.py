@@ -41,14 +41,14 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     goal_ = goal_.dot(hand_transform) #this is the pre-grasp transform of the signature frame expressed in the world
     goal_ = goal_.dot(ee_in_goal_frame)
 
-    # call_xper = rospy.ServiceProxy('pregrasp_pose', xper_srv.ProvidePreGraspPose)
-    # res = call_xper(pm.toMsg(pm.fromMatrix(ifco_in_base)), pm.toMsg(pm.fromMatrix(object_frame)), pm.toMsg(pm.fromMatrix(goal_)), "surface")
+    call_xper = rospy.ServiceProxy('pregrasp_pose', xper_srv.ProvidePreGraspPose)
+    res = call_xper(pm.toMsg(pm.fromMatrix(ifco_in_base)), pm.toMsg(pm.fromMatrix(object_frame)), pm.toMsg(pm.fromMatrix(goal_)), "surface")
     # print("REACHABILITY & EXPERIMENTS node proposes: ")
     # print("approach_direction: " + str(res.approach_direction))
     # print("hand_orientation: " + str(res.hand_orientation))
     # print("plane_orientation: " + str(res.plane_orientation))
     # print(pm.toMatrix(pm.fromMsg(res.reachable_hand_pose)))
-
+    reachable_hand_pose = pm.toMatrix(pm.fromMsg(res.reachable_hand_pose))
     # Set the twists to use TRIK controller with
 
     # Down speed is positive because it is defined on the EE frame
@@ -61,13 +61,14 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     rviz_frames = []
     rviz_frames.append(object_frame)
     rviz_frames.append(goal_)
+    rviz_frames.append(reachable_hand_pose)
     # rviz_frames.append(pm.toMatrix(pm.fromMsg(res.reachable_hand_pose)))
 
     # assemble controller sequence
     control_sequence = []
 
     # 1. Go above the object - Pregrasp
-    control_sequence.append(ha.InterpolatedHTransformControlMode(goal_, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(reachable_hand_pose, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
  
     # 1b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
@@ -166,17 +167,19 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
 
     pre_approach_pose = ec_frame.dot(pre_approach_transform)
 
-    # call_xper = rospy.ServiceProxy('pregrasp_pose', xper_srv.ProvidePreGraspPose)
-    # res = call_xper(pm.toMsg(pm.fromMatrix(ifco_in_base)), pm.toMsg(pm.fromMatrix(object_frame)), pm.toMsg(pm.fromMatrix(pre_approach_pose)), "wall")
+    call_xper = rospy.ServiceProxy('pregrasp_pose', xper_srv.ProvidePreGraspPose)
+    res = call_xper(pm.toMsg(pm.fromMatrix(ifco_in_base)), pm.toMsg(pm.fromMatrix(object_frame)), pm.toMsg(pm.fromMatrix(pre_approach_pose)), "wall")
     # print("REACHABILITY & EXPERIMENTS node proposes: ")
     # print("approach_direction: " + str(res.approach_direction))
     # print("hand_orientation: " + str(res.hand_orientation))
     # print("plane_orientation: " + str(res.plane_orientation))
     # print(pm.toMatrix(pm.fromMsg(res.reachable_hand_pose)))
 
+    reachable_hand_pose = pm.toMatrix(pm.fromMsg(res.reachable_hand_pose))
     # Rviz debug frames
     rviz_frames.append(object_frame)
     rviz_frames.append(pre_approach_pose)
+    rviz_frames.append(reachable_hand_pose)
     # rviz_frames.append(pm.toMatrix(pm.fromMsg(res.reachable_hand_pose)))
 
 
