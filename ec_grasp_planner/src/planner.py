@@ -103,11 +103,13 @@ class GraspPlanner():
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
         try:
+            print('Wait for vision service')
             rospy.wait_for_service('compute_ec_graph', timeout=30)
         except rospy.ROSException as e:
             raise rospy.ServiceException("Vision service call unavailable: %s" % e)
 
         try:
+            print('Call vision service now...!')
             call_vision = rospy.ServiceProxy('compute_ec_graph', vision_srv.ComputeECGraph)
             res = call_vision(self.object_type)
             graph = res.graph

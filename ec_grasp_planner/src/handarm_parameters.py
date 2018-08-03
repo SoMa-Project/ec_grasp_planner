@@ -241,7 +241,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         # object specific parameters for cucumber
         self['surface_grasp']['cucumber'] = self['surface_grasp']['object'].copy()
         self['surface_grasp']['cucumber']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.09, 0, 0.0]), tra.rotation_matrix(math.radians(40.0), [0, 1, 0]))
+            tra.translation_matrix([-0.045, 0, 0.0]), tra.rotation_matrix(math.radians(40.0), [0, 1, 0]))
 
         self['surface_grasp']['cucumber']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, -0.14]),
@@ -268,19 +268,3 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
 
         self['surface_grasp']['mango']['pregrasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.03, 0.0, 0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
-
-
-        self['wall_grasp']['mango'] = self['wall_grasp']['object'].copy()
-        self['wall_grasp']['mango']['wall_force'] = 17.0
-        self['wall_grasp']['cucumber'] = self['wall_grasp']['object'].copy()
-        self['wall_grasp']['cucumber']['wall_force'] = 17.0
-        self['wall_grasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.23, 0, -0.18]), #23 cm above object, 15 cm behind
-            tra.concatenate_matrices(
-                tra.rotation_matrix(
-                    math.radians(0.), [1, 0, 0]),
-                tra.rotation_matrix(
-                    math.radians(10.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
-                tra.rotation_matrix(                #this makes the fingers point downwards
-                    math.radians(0.0), [0, 0, 1]),
-            ))
