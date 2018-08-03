@@ -272,3 +272,18 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
             tra.translation_matrix([0.0, 0.0, -0.0]),
             tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
             #tra.rotation_matrix(math.radians(10.), [1, 0, 0]))
+
+
+        self['wall_grasp']['object']['table_force'] = 4.0
+        self['wall_grasp']['object']['wall_force'] = 15.0
+
+        self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.23, 0, -0.15]),  # 23 cm above object, 15 cm behind
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(17.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
