@@ -14,7 +14,7 @@ def getParam(obj_type_params, obj_params, paramKey):
          raise Exception("Param: " + paramKey + " does not exist for this object and there is no generic value defined")
     return param
 
-def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type, ifco_in_base):
+def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type, ifco_in_base, pre_grasp_pose = None):
 
     # Get the parameters from the handarm_parameters.py file
     obj_type_params = {}
@@ -34,10 +34,13 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     if object_frame[0][1]<0:
         object_frame = object_frame.dot(zflip_transform)
 
-    # Set the initial pose above the object
-    goal_ = np.copy(object_frame)
-    goal_ = goal_.dot(hand_transform) #this is the pre-grasp transform of the signature frame expressed in the world
-    goal_ = goal_.dot(ee_in_goal_frame)
+    if pre_grasp_pose is None:
+        # Set the initial pose above the object
+        goal_ = np.copy(object_frame)
+        goal_ = goal_.dot(hand_transform) #this is the pre-grasp transform of the signature frame expressed in the world
+        goal_ = goal_.dot(ee_in_goal_frame)
+    else:
+        goal_ = pre_grasp_pose
 
     # call_xper = rospy.ServiceProxy('pregrasp_pose', xper_srv.ProvidePreGraspPose)
     # res = call_xper(pm.toMsg(pm.fromMatrix(ifco_in_base)), pm.toMsg(pm.fromMatrix(object_frame)), pm.toMsg(pm.fromMatrix(goal_)), "surface")
@@ -104,7 +107,7 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
 
 
 # ================================================================================================
-def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base):
+def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base, pre_grasp_pose = None):
 
     # Get the parameters from the handarm_parameters.py file
     obj_type_params = {}
@@ -149,12 +152,15 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     
     rviz_frames = []
 
-    # this is the EC frame. It is positioned like object and oriented to the wall
-    ec_frame = np.copy(wall_frame)
-    ec_frame[:3, 3] = tra.translation_from_matrix(object_frame)
-    ec_frame = ec_frame.dot(hand_transform)
+    if pre_grasp_pose is None:
+        # this is the EC frame. It is positioned like object and oriented to the wall
+        ec_frame = np.copy(wall_frame)
+        ec_frame[:3, 3] = tra.translation_from_matrix(object_frame)
+        ec_frame = ec_frame.dot(hand_transform)
 
-    pre_approach_pose = ec_frame.dot(pre_approach_transform)
+        pre_approach_pose = ec_frame.dot(pre_approach_transform)
+    else:
+        pre_approach_pose = pre_grasp_pose
 
     # call_xper = rospy.ServiceProxy('pregrasp_pose', xper_srv.ProvidePreGraspPose)
     # res = call_xper(pm.toMsg(pm.fromMatrix(ifco_in_base)), pm.toMsg(pm.fromMatrix(object_frame)), pm.toMsg(pm.fromMatrix(pre_approach_pose)), "wall")

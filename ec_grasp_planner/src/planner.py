@@ -121,39 +121,40 @@ class GraspPlanner():
 
             # Get the object frame in robot base frame
             self.tf_listener.waitForTransform(robot_base_frame, object_frame.header.frame_id, time, rospy.Duration(2.0))
-            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)
+            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)            
             object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
             object_in_base = camera_in_base.dot(object_in_camera)
-            
-            #get camera in ifco frame to be able to get object in ifco frame
-            camera_in_ifco = inv(ifco_in_base).dot(camera_in_base)
-            camera_in_ifco_msg = pm.toMsg(pm.fromMatrix(camera_in_ifco))
 
-            #get pre grasp transforms in object frame for both grasp type 
-            SG_pre_grasp_transform, WG_pre_grasp_transform = getPreGraspTransforms(self.handarm_params, self.object_type)
-
-            SG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(SG_pre_grasp_transform))
-            WG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(WG_pre_grasp_transform))
-
-            call_heuristic = rospy.ServiceProxy('target_selection', target_selection_srv.TargetSelection)
-            res = call_heuristic(objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg)
-            
+            pre_grasp_pose_in_base = None  
+                        
             #get grasp type
             self.grasp_type = req.grasp_type
             if self.grasp_type == 'UseHeuristics':
-                obj_type_params = {}
-                obj_params = {}
-                if (self.object_type in self.handarm_params):            
-                    obj_type_params = self.handarm_params[self.object_type]
-                if 'object' in self.handarm_params:
-                    obj_params = self.handarm_params['object']
-                
-                obj_bbox_uncertainty_offset = getParam(obj_type_params, obj_params, 'obj_bbox_uncertainty_offset')
-                # if self.object_type in self.handarm_params:
-                #     obj_bbox_uncertainty_offset = self.handarm_params[self.object_type]['obj_bbox_uncertainty_offset']
-                # else:
-                #     obj_bbox_uncertainty_offset = self.handarm_params['object']['obj_bbox_uncertainty_offset']
-                self.grasp_type, wall_id = grasp_heuristics(ifco_in_base, object_in_base, bounding_box, obj_bbox_uncertainty_offset)
+                #get camera in ifco frame to be able to get object in ifco frame
+                camera_in_ifco = inv(ifco_in_base).dot(camera_in_base)
+                camera_in_ifco_msg = pm.toMsg(pm.fromMatrix(camera_in_ifco))
+
+                #get pre grasp transforms in object frame for both grasp type 
+                SG_pre_grasp_transform, WG_pre_grasp_transform = get_pre_grasp_transforms(self.handarm_params, self.object_type)
+
+                SG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(SG_pre_grasp_transform))
+                WG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(WG_pre_grasp_transform))
+
+                call_heuristic = rospy.ServiceProxy('target_selection', target_selection_srv.TargetSelection)
+                res = call_heuristic(objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg)
+
+                pre_grasp_pose_in_ifco_frame = pm.toMatrix(pm.fromMsg(res.pre_grasp_pose_in_ifco_frame))
+                target_pose_in_ifco_frame = pm.toMatrix(pm.fromMsg(res.target_pose_in_ifco_frame))
+
+                object_in_base = ifco_in_base.dot(target_pose_in_ifco_frame)
+                pre_grasp_pose_in_base = ifco_in_base.dot(pre_grasp_pose_in_ifco_frame)
+
+                if res.grasp_type == 's':
+                    self.grasp_type = 'SurfaceGrasp'
+                    wall_id = 'NoWall'
+                else:
+                    self.grasp_type = 'WallGrasp'
+                    wall_id = 'wall' + res.grasp_type[1]
                 print("GRASP HEURISTICS " + self.grasp_type + " " + wall_id)
             else:                
                 wall_id = "wall1"
@@ -170,15 +171,12 @@ class GraspPlanner():
 
             grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
 
-            rospy.sleep(0.3)
-
-
-        
+            rospy.sleep(0.3)        
 
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
         ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, object_in_base, bounding_box,
-                                                                self.handarm_params, self.object_type, wall_id, ifco_in_base, req.handarm_type)
+                                                                self.handarm_params, self.object_type, wall_id, ifco_in_base, req.handarm_type, pre_grasp_pose_in_base)
                                                 
         # --------------------------------------------------------
         # Output the hybrid automaton
@@ -215,7 +213,20 @@ def getParam(obj_type_params, obj_params, paramKey):
     return param
 
 # ================================================================================================
-def getPreGraspTransforms(handarm_params, object_type):
+def get_hand_recipes(handarm_type):
+    if handarm_type == "PISAHandKUKA":
+        return PISAHandRecipes
+    elif handarm_type == "PISAGripperKUKA":
+        return PISAGripperRecipes
+    elif handarm_type == "RBOHandO2KUKA":
+        return RBOHandRecipes
+    elif handarm_type == "ClashHandKUKA":
+        return ClashHandRecipes
+    else:
+        raise Exception("Unknown handarm_type: " + handarm_type)
+
+# ================================================================================================
+def get_pre_grasp_transforms(handarm_params, object_type):
     #returns the initial pre_grasp transforms for wall grasp and surface grasp depending on the object type and the hand
     
     #surface grasp pre_grasp transform SG_pre_grasp_transform
@@ -260,41 +271,20 @@ def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
 
 # ================================================================================================
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_object_in_base, bounding_box, handarm_params, object_type, wall_id, ifco_in_base, handarm_type):
+def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_object_in_base, bounding_box, handarm_params, object_type, wall_id, ifco_in_base, handarm_type, pre_grasp_pose_in_base = None):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
 
     grasp_type = graph.nodes[int(motion_sequence[-1].sig[1][1:])].label
-    
+
     print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == 'WallGrasp':
         wall_frame = get_wall_tf(ifco_in_base, wall_id)
-        if handarm_type == "PISAHandKUKA":
-            grasping_recipe, rviz_frames = PISAHandRecipes.create_wall_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base)
-        elif handarm_type == "PISAGripperKUKA":
-            grasping_recipe, rviz_frames = PISAGripperRecipes.create_wall_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base)
-        elif handarm_type == "RBOHandO2KUKA":
-            grasping_recipe, rviz_frames = RBOHandRecipes.create_wall_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base)
-        elif handarm_type == "ClashHandKUKA":
-            grasping_recipe, rviz_frames = ClashHandRecipes.create_wall_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base)
-        else:
-            raise Exception("Unknown handarm_type: " + handarm_type)
-
+        grasping_recipe, rviz_frames = get_hand_recipes(handarm_type).create_wall_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, ifco_in_base, pre_grasp_pose_in_base)        
         
     elif grasp_type == 'SurfaceGrasp':
-        if handarm_type == "PISAHandKUKA":
-            grasping_recipe, rviz_frames = PISAHandRecipes.create_surface_grasp(T_object_in_base, bounding_box, handarm_params, object_type, ifco_in_base)
-        elif handarm_type == "PISAGripperKUKA":
-            grasping_recipe, rviz_frames = PISAGripperRecipes.create_surface_grasp(T_object_in_base, bounding_box, handarm_params, object_type, ifco_in_base)
-        elif handarm_type == "RBOHandO2KUKA":
-            grasping_recipe, rviz_frames = RBOHandRecipes.create_surface_grasp(T_object_in_base, bounding_box, handarm_params, object_type, ifco_in_base)
-        elif handarm_type == "ClashHandKUKA":
-            grasping_recipe, rviz_frames = ClashHandRecipes.create_surface_grasp(T_object_in_base, bounding_box, handarm_params, object_type, ifco_in_base)
-        else:
-            raise Exception("Unknown handarm_type: " + handarm_type)
-    else:
-        raise Exception("Unknown grasp type: " + grasp_type)
-    
+        grasping_recipe, rviz_frames = get_hand_recipes(handarm_type).create_surface_grasp(T_object_in_base, bounding_box, handarm_params, object_type, ifco_in_base, pre_grasp_pose_in_base)
+
     return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + get_transport_recipe(handarm_params, handarm_type)), rviz_frames
 
 def get_transport_recipe(handarm_params, handarm_type):
