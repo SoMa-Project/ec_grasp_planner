@@ -144,11 +144,8 @@ class GraspPlanner():
                 call_heuristic = rospy.ServiceProxy('target_selection', target_selection_srv.TargetSelection)
                 res = call_heuristic(objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg)
 
-                pre_grasp_pose_in_ifco_frame = pm.toMatrix(pm.fromMsg(res.pre_grasp_pose_in_ifco_frame))
-                target_pose_in_ifco_frame = pm.toMatrix(pm.fromMsg(res.target_pose_in_ifco_frame))
-
-                object_in_base = ifco_in_base.dot(target_pose_in_ifco_frame)
-                pre_grasp_pose_in_base = ifco_in_base.dot(pre_grasp_pose_in_ifco_frame)
+                pre_grasp_pose_in_base = pm.toMatrix(pm.fromMsg(res.pre_grasp_pose_in_base_frame))
+                object_in_base = pm.toMatrix(pm.fromMsg(res.target_pose_in_base_frame))
 
                 if res.grasp_type == 's':
                     self.grasp_type = 'SurfaceGrasp'
