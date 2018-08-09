@@ -144,16 +144,22 @@ class GraspPlanner():
                 call_heuristic = rospy.ServiceProxy('target_selection', target_selection_srv.TargetSelection)
                 res = call_heuristic(objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg)
 
-                pre_grasp_pose_in_base = pm.toMatrix(pm.fromMsg(res.pre_grasp_pose_in_base_frame))
-                object_in_base = pm.toMatrix(pm.fromMsg(res.target_pose_in_base_frame))
-
-                if res.grasp_type == 's':
+                if res.grasp_type == 'no_grasp':
+                    print "GRASP HEURISTICS: NO SUITABLE TARGET FOUND EXECUTING SURFACE GRASP ON RANDOM OBJECT"
+                    #TODO: implement a better way for the planner to handle this case
                     self.grasp_type = 'SurfaceGrasp'
                     wall_id = 'NoWall'
                 else:
-                    self.grasp_type = 'WallGrasp'
-                    wall_id = 'wall' + res.grasp_type[1]
-                print("GRASP HEURISTICS " + self.grasp_type + " " + wall_id)
+                    pre_grasp_pose_in_base = pm.toMatrix(pm.fromMsg(res.pre_grasp_pose_in_base_frame))
+                    object_in_base = pm.toMatrix(pm.fromMsg(res.target_pose_in_base_frame))
+
+                    if res.grasp_type == 's':
+                        self.grasp_type = 'SurfaceGrasp'
+                        wall_id = 'NoWall'
+                    else:
+                        self.grasp_type = 'WallGrasp'
+                        wall_id = 'wall' + res.grasp_type[1]
+                    print("GRASP HEURISTICS " + self.grasp_type + " " + wall_id)
             else:                
                 wall_id = "wall1"
                 grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
