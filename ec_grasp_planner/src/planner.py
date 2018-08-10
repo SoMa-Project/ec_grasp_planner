@@ -73,31 +73,49 @@ class GraspPlanner():
         # initialize the object-EC selection handler class
         self.multi_object_handler = mop.multi_object_params(args.object_params_file)
 
+        # clean initialization of planner service arguments in __init__
+        self.object_type = ""
+        self.grasp_type = ""
+        self.handarm_params = None
+
+
     # ------------------------------------------------------------------------------------------------
     def handle_run_grasp_planner(self, req):
 
         print('Handling grasp planner service call')
         self.object_type = req.object_type
         self.grasp_type = req.grasp_type
+
+        # Check for bad service parameters (we don't have to check for object since we always have a default 'object')
         grasp_choices = ["Any", "WallGrasp", "SurfaceGrasp", "EdgeGrasp"]
         if self.grasp_type not in grasp_choices:
-            raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp]")
-            return
+            raise rospy.ServiceException("grasp_type not supported. Choose from {0}".format(grasp_choices))
 
-        #todo: more failure handling here for bad service parameters
+        heuristic_choices = ["Deterministic", "Probabilistic", "Random"]
+        if req.object_heuristic_function not in heuristic_choices:
+            raise rospy.ServiceException("heuristic not supported. Choose from {0}".format(heuristic_choices))
+
+        if req.handarm_type not in handarm_parameters.__dict__:
+            raise rospy.ServiceException("handarm type not supported. Did you add {0} to handarm_parameters.py".format(
+                req.handarm_type))
+
 
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
-        rospy.wait_for_service('compute_ec_graph')
+        try:
+            print('Wait for vision service')
+            rospy.wait_for_service('compute_ec_graph', timeout=30)
+        except rospy.ROSException as e:
+            raise rospy.ServiceException("Vision service call unavailable: %s" % e)
 
         try:
+            print('Call vision service now...!')
             call_vision = rospy.ServiceProxy('compute_ec_graph', vision_srv.ComputeECGraph)
             res = call_vision(self.object_type)
             graph = res.graph
             objects = res.objects.objects
-        except rospy.ServiceException, e:
+        except rospy.ServiceException as e:
             raise rospy.ServiceException("Vision service call failed: %s" % e)
-            return plan_srv.RunGraspPlannerResponse("")
 
         if not objects:
             print("No object was detected")
@@ -142,11 +160,18 @@ class GraspPlanner():
         self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
         graph_in_base_transform = self.tf_listener.asMatrix(robot_base_frame, graph.header)
 
+        self.tf_listener.waitForTransform('ifco', robot_base_frame, time, rospy.Duration(2.0))
+        (ifco_in_base_translation, ifco_in_base_rot) = self.tf_listener.lookupTransform('ifco', robot_base_frame, rospy.Time(0)) #transform_msg_to_homogenous_tf()
+        tf_transformer = tf.TransformerROS()
+        ifco_in_base_transform = tf_transformer.fromTranslationRotation(ifco_in_base_translation, ifco_in_base_rot)
+        print ifco_in_base_transform
+
 
         # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
         (chosen_object, chosen_node) = self.multi_object_handler.process_objects_ecs(object_list,
                                                                                      node_list,
                                                                                      graph_in_base_transform,
+                                                                                     ifco_in_base_transform,
                                                                                      req.object_heuristic_function
                                                                                      )
         # print(" * object type: {}, ec type: {}, heuristc funciton type: {}".format(chosen_object['type'], chosen_node.label, req.object_heuristic_function))
@@ -245,6 +270,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # Set the directions to use TRIK controller with
     dirDown = tra.translation_matrix([0, 0, -down_speed]);
     dirUp = tra.translation_matrix([0, 0, up_speed]);
+
+
 
     # Set the frames to visualize with RViz
     rviz_frames = []
@@ -399,10 +426,9 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 
 
     # Rviz debug frames
-    rviz_frames.append(wall_frame)
-    rviz_frames.append(ec_frame)
-    #rviz_frames.append(position_behind_object)
     rviz_frames.append(pre_approach_pose)
+    rviz_frames.append(ec_frame)
+    rviz_frames.append(wall_frame)
 
     # use the default synergy
     hand_synergy = 1

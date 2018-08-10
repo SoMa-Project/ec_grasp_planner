@@ -233,12 +233,16 @@ Advanced object-ec relational parameter definition:
 ---
 ```
   cucumber:
-    SurfaceGrasp: {'success': 1}
+    SurfaceGrasp: {'success': 1, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': [1, 0.8, 0.7, 0] , 'angle': [0, 180, 360], 'epsilon': 20}
     EdgeGrasp: {'success': 0}
 ```
 ---
-Here `the WallGrasp` strategy success depend on the relative orientation of the cucumber to the wall. We define a set of possible grasping angles in degrees `[0, 180, 360]` and a success rate `[1, 0.8, 0.7]` for each angle. **Important:** the last element in the success rate vector gives the success in other cases. `epsilon` is an upper and lower bound on how exact orientation should be (0 - as precises as given in the angle vector, 10 - `10 deg > |current orientation - reference|` )   
+**Objcet-IFCO relative position**
+Here the `SurfaceGrasp` strategy success is as given (in this case 1) if the object is within a certain area within the IFCO. The `min` and `max` aprameters defin a cropbox inside the IFCO, this cropbox helps to exclude grasp that are infeasable due to possible collision or work space limitation. The reference frame is the `IFOC Frame` and the `min` vecor is `min: [min_x_distance_x, min_y_distance]` for which we compare the object frame relative to IFCO frame such that `object_x > min_x_distance && object_y > min_y_distance`. Similarly done for the `max: [max_x_distance_x, max_y_distance]` parameter. If the object is not within the cropbox, the success is 0.
+
+**Object-EC relative oriantation**
+Here the `WallGrasp` strategy success depend on the relative orientation of the cucumber to the wall. We define a set of possible grasping angles in degrees `[0, 180, 360]` and a success rate `[1, 0.8, 0.7]` for each angle. **Important:** the last element in the success rate vector gives the success in other cases. `epsilon` is an upper and lower bound on how exact orientation should be (0 - as precises as given in the angle vector, 10 - `10 deg > |current orientation - reference|` )   
 
 ## Examples  <a name="examples"></a>
 
