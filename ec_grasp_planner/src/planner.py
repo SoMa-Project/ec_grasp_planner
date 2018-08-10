@@ -89,11 +89,13 @@ class GraspPlanner():
         # Check for bad service parameters (we don't have to check for object since we always have a default 'object')
         grasp_choices = ["Any", "WallGrasp", "SurfaceGrasp", "EdgeGrasp"]
         if self.grasp_type not in grasp_choices:
-            raise rospy.ServiceException("grasp_type not supported. Choose from {0}".format(grasp_choices))
+            raise rospy.ServiceException("grasp_type {0} not supported. Choose from {1}".format(self.grasp_type,
+                                                                                                grasp_choices))
 
         heuristic_choices = ["Deterministic", "Probabilistic", "Random"]
         if req.object_heuristic_function not in heuristic_choices:
-            raise rospy.ServiceException("heuristic not supported. Choose from {0}".format(heuristic_choices))
+            raise rospy.ServiceException("heuristic {0} not supported. Choose from {1}".format(req.object_heuristi,
+                                                                                               heuristic_choices))
 
         if req.handarm_type not in handarm_parameters.__dict__:
             raise rospy.ServiceException("handarm type not supported. Did you add {0} to handarm_parameters.py".format(
@@ -101,6 +103,8 @@ class GraspPlanner():
 
 
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
+        # check if the handarm parameters aren't containing any contradicting information or bugs because of non-copying
+        self.handarm_params.checkValidity()
 
         try:
             print('Wait for vision service')

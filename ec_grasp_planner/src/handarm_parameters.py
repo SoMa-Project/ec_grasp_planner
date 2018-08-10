@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import math
+import itertools
 import numpy as np
 from tf import transformations as tra
 
@@ -30,6 +31,23 @@ class BaseHandArm(dict):
 
 
         self['isForceControllerAvailable'] = False
+
+    def checkValidity(self):
+        # This function should always be called after the constructor of any class inherited from BaseHandArm
+        # This convenience function allows to combine multiple sanity checks to ensure the handarm_parameters are as intended.
+        self.assertNoCopyMissing()
+
+    def assertNoCopyMissing(self):
+        strategies = ['wall_grasp','edge_grasp','surface_grasp']
+        for s, s_other in itertools.product(strategies, repeat=2):
+            for k in self[s]:
+                for k_other in self[s_other]:
+                    if not k_other == k and self[s][k] is self[s_other][k_other]:
+                        # unitended reference copy of dictionary.
+                        # This probably means that some previously defined parameters were overwritten.
+                        raise AssertionError("You probably forgot to call copy(): {0} and {1} are equal for {2}".format(
+                            k,k_other,s))
+
 
 
 class RBOHand2(BaseHandArm):
