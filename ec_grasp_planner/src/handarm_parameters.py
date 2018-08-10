@@ -236,7 +236,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         # object specific parameters for apple
         self['surface_grasp']['apple'] = self['surface_grasp']['object'].copy()
         self['surface_grasp']['apple']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0.0, 0.0, 0.0]), tra.rotation_matrix(math.radians(25.0), [0, 1, 0])) # tested for DEMO
+            tra.translation_matrix([0.0, 0.0, 0.0]), tra.rotation_matrix(math.radians(25.0), [0, 1, 0]))
 
         # object specific parameters for cucumber
         self['surface_grasp']['cucumber'] = self['surface_grasp']['object'].copy()
