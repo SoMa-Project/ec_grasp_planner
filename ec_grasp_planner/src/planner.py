@@ -141,8 +141,10 @@ class GraspPlanner():
                 WG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(WG_pre_grasp_transform))
                 ifco_in_base_msg = pm.toMsg(pm.fromMatrix(ifco_in_base))
 
+                graspable_with_any_hand_orientation = self.handarm_params[self.object_type]['graspable_with_any_hand_orientation']
+
                 call_heuristic = rospy.ServiceProxy('target_selection', target_selection_srv.TargetSelection)
-                res = call_heuristic(objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg)
+                res = call_heuristic(objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation)
 
                 if res.grasp_type == 'no_grasp':
                     print "GRASP HEURISTICS: NO SUITABLE TARGET FOUND EXECUTING SURFACE GRASP ON RANDOM OBJECT"

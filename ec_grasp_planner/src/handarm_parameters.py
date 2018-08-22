@@ -43,7 +43,6 @@ class BaseHandArm(dict):
         self['cucumber'] = {}
         self['mango'] = {}
 
-
 class KUKA(BaseHandArm):
     def __init__(self, **kwargs):
         super(KUKA, self).__init__()
@@ -61,6 +60,14 @@ class KUKA(BaseHandArm):
         self['netbag']['obj_bbox_uncertainty_offset'] = 0.06
         self['punnet']['obj_bbox_uncertainty_offset'] = 0.08
         self['salad']['obj_bbox_uncertainty_offset'] = 0.1
+
+        # this value is used by the reachability node to decide how to sample the hand_orientation interval        
+        self['object']['graspable_with_any_hand_orientation'] = True
+        self['punnet']['graspable_with_any_hand_orientation'] = False
+        self['netbag']['graspable_with_any_hand_orientation'] = True
+        self['salad']['graspable_with_any_hand_orientation'] = True
+        self['cucumber']['graspable_with_any_hand_orientation'] = False
+        self['mango']['graspable_with_any_hand_orientation'] = True
 
         #####################################################################################
         # Common surface grasp params
