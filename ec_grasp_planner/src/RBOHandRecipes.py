@@ -1,5 +1,5 @@
 import tf_conversions.posemath as pm
-from xper_data import srv as xper_srv
+#from xper_data import srv as xper_srv
 from tf import transformations as tra
 import numpy as np
 import math
@@ -73,9 +73,15 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     control_sequence.append(ha.InterpolatedHTransformControlMode(goal_, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
  
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller = 'GoAboveObject', epsilon = '0.01'))
  
-    # 2. Go down onto the object (relative in EE frame) - Godown
+    # 2. Go to gravity compensation 
+    control_sequence.append(ha.GravityCompensationMode(name = 'StayStill'))
+
+    # 2b. Wait for a bit to allow vibrations to attenuate
+    control_sequence.append(ha.TimeSwitch('StayStill', 'GoDown', duration = handarm_params['stay_still_duration']))
+
+    # 3. Go down onto the object (relative in EE frame) - Godown
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(down_IFCO_twist,
                                              controller_name='GoDown',
@@ -84,7 +90,7 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
                                              reference_frame="EE",
                                              v_max=down_IFCO_speed))
 
-    # 2b. Switch when force-torque sensor is triggered
+    # 3b. Switch when force-torque sensor is triggered
     force  = np.array([0, 0, downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                  'LiftHand',
@@ -95,18 +101,18 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
                                                  frame_id = 'world',
                                                  port = '2'))
 
-    # 3. Lift upwards so the hand can inflate
+    # 4. Lift upwards so the hand can inflate
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
                                              reference_frame="world"))
 
-    # 3b. We switch after a short time 
+    # 4b. We switch after a short time 
     control_sequence.append(ha.TimeSwitch('LiftHand', 'softhand_close', duration=lift_time))
 
-    # 4. Call general hand controller
+    # 5. Call general hand controller
     control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
    
-    # 4b. Switch when hand closing time ends
+    # 5b. Switch when hand closing time ends
     control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration = handarm_params['hand_closing_duration']))
 
     return control_sequence, rviz_frames
