@@ -76,7 +76,12 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller = 'GoAboveObject', epsilon = '0.01'))
  
     # 2. Go to gravity compensation 
-    control_sequence.append(ha.GravityCompensationMode(name = 'StayStill'))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, 0]),
+                                             controller_name='StayStillCtrl',
+                                             goal_is_relative='1',
+                                             name="StayStill",
+                                             reference_frame="EE",
+                                             v_max=down_IFCO_speed))
 
     # 2b. Wait for a bit to allow vibrations to attenuate
     control_sequence.append(ha.TimeSwitch('StayStill', 'GoDown', duration = handarm_params['stay_still_duration']))
@@ -200,7 +205,18 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                              name="PreGrasp"))
 
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'GoDown', controller='GoAboveObject', epsilon='0.01'))
+    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'StayStill', controller='GoAboveObject', epsilon='0.01'))
+
+    # 1.1. Go to gravity compensation 
+    control_sequence.append(ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, 0]),
+                                             controller_name='StayStillCtrl',
+                                             goal_is_relative='1',
+                                             name="StayStill",
+                                             reference_frame="EE",
+                                             v_max=down_IFCO_speed))
+
+    # 1.1b. Wait for a bit to allow vibrations to attenuate
+    control_sequence.append(ha.TimeSwitch('StayStill', 'GoDown', duration = handarm_params['stay_still_duration']))
 
     # 2. Go down onto the object/table, in world frame
     control_sequence.append( ha.InterpolatedHTransformControlMode(down_IFCO_twist,
