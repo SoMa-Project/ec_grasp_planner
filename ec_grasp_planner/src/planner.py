@@ -137,6 +137,8 @@ class GraspPlanner():
                 #get pre grasp transforms in object frame for both grasp type 
                 SG_pre_grasp_transform, WG_pre_grasp_transform = get_pre_grasp_transforms(self.handarm_params, self.object_type)
 
+                SG_success_rate, WG_success_rate = get_success_rate(self.handarm_params, self.object_type)
+
                 SG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(SG_pre_grasp_transform))
                 WG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(WG_pre_grasp_transform))
                 ifco_in_base_msg = pm.toMsg(pm.fromMatrix(ifco_in_base))
@@ -144,7 +146,7 @@ class GraspPlanner():
                 graspable_with_any_hand_orientation = self.handarm_params[self.object_type]['graspable_with_any_hand_orientation']
 
                 call_heuristic = rospy.ServiceProxy('target_selection', target_selection_srv.TargetSelection)
-                res = call_heuristic(objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation)
+                res = call_heuristic(objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate)
 
                 if res.grasp_type == 'no_grasp':
                     print "GRASP HEURISTICS: NO SUITABLE TARGET FOUND EXECUTING SURFACE GRASP ON RANDOM OBJECT"
@@ -262,6 +264,32 @@ def get_pre_grasp_transforms(handarm_params, object_type):
     WG_pre_grasp_transform = hand_transform.dot(pre_approach_transform)
 
     return SG_pre_grasp_transform, WG_pre_grasp_transform
+
+# ================================================================================================
+def get_success_rate(handarm_params, object_type):
+    #returns the success rate for the surface and wall grasp for the specific object type
+    
+    #surface grasp success rate
+    obj_type_params = {}
+    obj_params = {}
+    if (object_type in handarm_params['surface_grasp']):            
+        obj_type_params = handarm_params['surface_grasp'][object_type]
+    if 'object' in handarm_params['surface_grasp']:
+        obj_params = handarm_params['surface_grasp']['object']
+
+    SG_success_rate = getParam(obj_type_params, obj_params, 'success_rate')        
+
+    #wall grasp success rate
+    obj_type_params = {}
+    obj_params = {}
+    if (object_type in handarm_params['wall_grasp']):            
+        obj_type_params = handarm_params['wall_grasp'][object_type]
+    if 'object' in handarm_params['wall_grasp']:
+        obj_params = handarm_params['wall_grasp']['object']
+
+    WG_success_rate = getParam(obj_type_params, obj_params, 'success_rate')        
+
+    return SG_success_rate, WG_success_rate
 
 # ================================================================================================
 def transform_msg_to_homogenous_tf(msg):

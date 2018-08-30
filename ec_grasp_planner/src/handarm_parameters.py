@@ -43,6 +43,10 @@ class BaseHandArm(dict):
         self['cucumber'] = {}
         self['mango'] = {}
 
+        #default success rate
+        self['surface_grasp']['object']['success_rate'] = 1. 
+        self['wall_grasp']['object']['success_rate'] = 1. 
+
 class KUKA(BaseHandArm):
     def __init__(self, **kwargs):
         super(KUKA, self).__init__()
@@ -61,7 +65,7 @@ class KUKA(BaseHandArm):
         self['punnet']['obj_bbox_uncertainty_offset'] = 0.08
         self['salad']['obj_bbox_uncertainty_offset'] = 0.1
 
-        # this value is used by the reachability node to decide how to sample the hand_orientation interval        
+        # this value is used by the reachability node (xper_data) to decide how to sample the hand_orientation interval        
         self['object']['graspable_with_any_hand_orientation'] = True
         self['punnet']['graspable_with_any_hand_orientation'] = False
         self['netbag']['graspable_with_any_hand_orientation'] = True
@@ -72,7 +76,7 @@ class KUKA(BaseHandArm):
         #####################################################################################
         # Common surface grasp params
         #####################################################################################
-
+        
         
 
         #####################################################################################
@@ -149,6 +153,21 @@ class RBOHandO2KUKA(KUKA):
 
         self['surface_grasp']['cucumber']['short_lift_duration'] = 2
 
+        #real
+        # self['surface_grasp']['cucumber']['success_rate'] = 0.
+        # self['surface_grasp']['punnet']['success_rate'] = 1.
+        # self['surface_grasp']['netbag']['success_rate'] = 0.85
+        # self['surface_grasp']['mango']['success_rate'] = 0.9
+        # self['surface_grasp']['salad']['success_rate'] = 1.
+
+        #fake
+        self['surface_grasp']['cucumber']['success_rate'] = 0.6
+        self['surface_grasp']['punnet']['success_rate'] = 1.
+        self['surface_grasp']['netbag']['success_rate'] = 0.9
+        self['surface_grasp']['mango']['success_rate'] = 1.
+        self['surface_grasp']['salad']['success_rate'] = 1.
+
+
 
         ####################################################################################
         # RBO specific params for wall grasp
@@ -184,6 +203,20 @@ class RBOHandO2KUKA(KUKA):
         self['wall_grasp']['salad']['post_grasp_transform'] = tra.translation_matrix([0, 0, 0]) 
 
         self['wall_grasp']['object']['rotate_duration'] = 3    
+
+        #real
+        # self['wall_grasp']['cucumber']['success_rate'] = 1.
+        # self['wall_grasp']['punnet']['success_rate'] = 0.
+        # self['wall_grasp']['netbag']['success_rate'] = 0.4
+        # self['wall_grasp']['mango']['success_rate'] = 0.7
+        # self['wall_grasp']['salad']['success_rate'] = 1.
+
+        #fake
+        self['wall_grasp']['cucumber']['success_rate'] = 1.
+        self['wall_grasp']['punnet']['success_rate'] = 0.
+        self['wall_grasp']['netbag']['success_rate'] = 0.8
+        self['wall_grasp']['mango']['success_rate'] = 0.5
+        self['wall_grasp']['salad']['success_rate'] = 0.4
              
         
 class PISAHandKUKA(KUKA):
@@ -331,6 +364,21 @@ class PISAGripperKUKA(KUKA):
         
         self['surface_grasp']['object']['kp'] = 6
 
+        #real
+        # self['surface_grasp']['cucumber']['success_rate'] = 1.0
+        # self['surface_grasp']['punnet']['success_rate'] = 0.
+        # self['surface_grasp']['netbag']['success_rate'] = 1.
+        # self['surface_grasp']['mango']['success_rate'] = 1.
+        # self['surface_grasp']['salad']['success_rate'] = 1.
+
+        #fake
+        self['surface_grasp']['cucumber']['success_rate'] = 1.
+        self['surface_grasp']['punnet']['success_rate'] = 0.
+        self['surface_grasp']['netbag']['success_rate'] = 1.
+        self['surface_grasp']['mango']['success_rate'] = 1.
+        self['surface_grasp']['salad']['success_rate'] = 1.
+
+
         ####################################################################################
         # Gripper specific params for wall grasp
         #################################################################################### 
@@ -370,6 +418,21 @@ class PISAGripperKUKA(KUKA):
         self['wall_grasp']['punnet']['wall_force'] = 9
 
         self['wall_grasp']['object']['kp'] = 6
+
+        #real
+        # self['wall_grasp']['cucumber']['success_rate'] = 1.0
+        # self['wall_grasp']['punnet']['success_rate'] = 0.
+        # self['wall_grasp']['netbag']['success_rate'] = 1.
+        # self['wall_grasp']['mango']['success_rate'] = 1.
+        # self['wall_grasp']['salad']['success_rate'] = 1.
+
+        #fake
+        self['wall_grasp']['cucumber']['success_rate'] = 0.8
+        self['wall_grasp']['punnet']['success_rate'] = 0.
+        self['wall_grasp']['netbag']['success_rate'] = 1.
+        self['wall_grasp']['mango']['success_rate'] = 1.
+        self['wall_grasp']['salad']['success_rate'] = 1.
+
 
 class ClashHandKUKA(KUKA):
     def __init__(self, **kwargs):
