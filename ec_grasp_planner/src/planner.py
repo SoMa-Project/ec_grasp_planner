@@ -349,11 +349,17 @@ def get_transport_recipe(handarm_params, handarm_type):
     # # 2b. Switch after a certain amount of time, the duration is short because the actual transition is done by the controller by exiting the infinite loop
     # control_sequence.append(ha.TimeSwitch('Preplacement1', 'Preplacement2', duration = 0.5)) 
 
-    # 3. Change the orientation to have the hand facing the Delivery tote
+    # 2.1. Change the orientation to have the hand facing the Delivery tote
     control_sequence.append(ha.SlerpControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement2', orientation_or_and_position = 'BOTH'))
 
-    # 3b. Switch after a certain amount of time, the duration is short because the actual transition is done by the controller by exiting the infinite loop
-    control_sequence.append(ha.TimeSwitch('Preplacement2', 'GoDown2', duration = 0.5))
+    # 2.1b. Switch after a certain amount of time, the duration is short because the actual transition is done by the controller by exiting the infinite loop
+    control_sequence.append(ha.TimeSwitch('Preplacement2', 'Preplacement3', duration = 0.5))
+
+    # 3. Added the InterpolatedHTransformControlMode in case slerp fails to avoid going down on the wrong goal
+    control_sequence.append(ha.InterpolatedHTransformControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement3'))
+   
+    # 3b. Switch when hand reaches the goal pose
+    control_sequence.append(ha.FramePoseSwitch('Preplacement3', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
 
     # 4. Go Down
     control_sequence.append(ha.InterpolatedHTransformControlMode(down_tote_twist, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
