@@ -395,9 +395,16 @@ def get_transport_recipe(handarm_params, handarm_type):
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = 1))
 
     # 5b. Switch when hand opening time ends
-    control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration = handarm_params['hand_opening_duration']))
+    control_sequence.append(ha.TimeSwitch('softhand_open', 'initial', duration = handarm_params['hand_opening_duration']))
 
-    # 6. Block joints to finish motion and hold object in air
+    # 6. Return to zero position
+    control_sequence.append(ha.JointControlMode(goal = np.zeros(7), goal_is_relative = 0, name = 'initial', controller_name = 'JointSpaceController'))
+    
+    # 6b. Switch when zero position is reached
+    control_sequence.append(ha.JointConfigurationSwitch('initial', 'finished', controller = 'JointSpaceController', epsilon = str(math.radians(7.0))))
+
+
+    # 6. Block joints to finish motion
     finishedMode = ha.ControlMode(name  = 'finished')
     finishedSet = ha.ControlSet()
     finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'InterpolatedJointController', goal  = np.zeros(7),
