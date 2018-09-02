@@ -79,12 +79,14 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     control_sequence.append(ha.TimeSwitch('Pregrasp', 'finished', duration = handarm_params['recovery_duration']))
 
     # 2. Go to gravity compensation 
-    control_sequence.append(ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, 0]),
-                                             controller_name='StayStillCtrl',
-                                             goal_is_relative='1',
-                                             name="StayStill",
-                                             reference_frame="EE",
-                                             v_max=down_IFCO_speed))
+    # control_sequence.append(ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, 0]),
+    #                                          controller_name='StayStillCtrl',
+    #                                          goal_is_relative='1',
+    #                                          name="StayStill",
+    #                                          reference_frame="EE",
+    #                                          v_max=down_IFCO_speed))
+    control_sequence.append(ha.JointControlMode(goal = np.zeros(7), goal_is_relative = '1', name = 'StayStill', controller_name = 'StayStillController'))
+    
 
     # 2b. Wait for a bit to allow vibrations to attenuate
     control_sequence.append(ha.TimeSwitch('StayStill', 'GoDown', duration = handarm_params['stay_still_duration']))
@@ -216,15 +218,16 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     # 1c. Switch if moveit fails
     control_sequence.append(ha.TimeSwitch('Pregrasp', 'finished', duration = handarm_params['recovery_duration']))
 
-    # 1.1. Go to gravity compensation 
-    control_sequence.append(ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, 0]),
-                                             controller_name='StayStillCtrl',
-                                             goal_is_relative='1',
-                                             name="StayStill",
-                                             reference_frame="EE",
-                                             v_max=down_IFCO_speed))
-
-    # 1.1b. Wait for a bit to allow vibrations to attenuate
+    # # 1.1. Go to gravity compensation 
+    # control_sequence.append(ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, 0]),
+    #                                          controller_name='StayStillCtrl',
+    #                                          goal_is_relative='1',
+    #                                          name="StayStill",
+    #                                          reference_frame="EE",
+    #                                          v_max=down_IFCO_speed))
+    control_sequence.append(ha.JointControlMode(goal = np.zeros(7), goal_is_relative = '1', name = 'StayStill', controller_name = 'StayStillController'))
+    
+    # # 1.1b. Wait for a bit to allow vibrations to attenuate
     control_sequence.append(ha.TimeSwitch('StayStill', 'GoDown', duration = handarm_params['stay_still_duration']))
 
     # 2. Go down onto the object/table, in world frame
