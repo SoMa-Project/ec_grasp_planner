@@ -55,6 +55,9 @@ class KUKA(BaseHandArm):
         # General params 
         ####################################################################################
         self['stay_still_duration'] = 1.5
+        self['recovery_duration'] = 30
+        self['recovery_slide_duration'] = 3
+        self['recovery_slide_back_speed'] = 0.03
 
         ####################################################################################
         # General vision related params 

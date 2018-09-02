@@ -332,10 +332,27 @@ def get_transport_recipe(handarm_params, handarm_type):
     # Up speed is also positive because it is defined on the world frame
     up_IFCO_twist = tra.translation_matrix([0, 0, up_IFCO_speed]);
     # Down speed is negative because it is defined on the world frame
-    down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed]);    
+    down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed]);  
+    # Slide speed is negative because it is defined on the EE frame
+    slide_IFCO_back_twist = tra.translation_matrix([0, 0, -handarm_params['recovery_slide_back_speed']]);  
 
     # assemble controller sequence
     control_sequence = []
+
+    # Recovery from trik failing during guarded move towards a wall
+    control_sequence.append(ha.InterpolatedHTransformControlMode(slide_IFCO_back_twist, controller_name='RecoverSlide', goal_is_relative='1',
+                                             name="RecoverSlide", reference_frame="EE"))
+    control_sequence.append(ha.TimeSwitch('RecoverSlide', 'RecoverDown', duration = handarm_params['recovery_slide_duration']))
+
+    # Recovery from trik failing during guarded move downwards
+
+    # 1. Lift upwards
+    control_sequence.append(ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name = 'GoUpHTransform', name = 'RecoverDown', goal_is_relative='1', reference_frame="world"))
+ 
+    # 1b. Switch after a certain amount of time
+    control_sequence.append(ha.TimeSwitch('RecoverDown', 'softhand_open', duration = lift_time))
+
+    # Normal transport
 
     # 1. Lift upwards
     control_sequence.append(ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
@@ -360,6 +377,9 @@ def get_transport_recipe(handarm_params, handarm_type):
    
     # 3b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('Preplacement3', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
+
+    # 3c. Recover if a plan is not found
+    control_sequence.append(ha.TimeSwitch('Preplacement3', 'RecoverSlide', duration = handarm_params['recovery_duration']))
 
     # 4. Go Down
     control_sequence.append(ha.InterpolatedHTransformControlMode(down_tote_twist, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
@@ -398,19 +418,13 @@ def get_transport_recipe(handarm_params, handarm_type):
     control_sequence.append(ha.TimeSwitch('softhand_open', 'initial', duration = handarm_params['hand_opening_duration']))
 
     # 6. Return to zero position
-    control_sequence.append(ha.JointControlMode(goal = np.zeros(7), goal_is_relative = 0, name = 'initial', controller_name = 'JointSpaceController'))
+    control_sequence.append(ha.JointControlMode(goal = np.zeros(7), goal_is_relative = 0, name = 'initial', controller_name = 'GoToZeroController'))
     
     # 6b. Switch when zero position is reached
-    control_sequence.append(ha.JointConfigurationSwitch('initial', 'finished', controller = 'JointSpaceController', epsilon = str(math.radians(7.0))))
-
+    control_sequence.append(ha.JointConfigurationSwitch('initial', 'finished', controller = 'GoToZeroController', epsilon = str(math.radians(7.0))))
 
     # 6. Block joints to finish motion
-    finishedMode = ha.ControlMode(name  = 'finished')
-    finishedSet = ha.ControlSet()
-    finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'InterpolatedJointController', goal  = np.zeros(7),
-                                   goal_is_relative = 1, v_max = '[0,0]', a_max = '[0,0]'))
-    finishedMode.set(finishedSet)  
-    control_sequence.append(finishedMode)
+    control_sequence.append(ha.GravityCompensationMode(name  = 'finished'))
 
     return control_sequence
 

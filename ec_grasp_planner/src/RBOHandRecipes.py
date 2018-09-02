@@ -74,7 +74,10 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
  
     # 1b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller = 'GoAboveObject', epsilon = '0.01'))
- 
+    
+    # 1c. Switch if moveit fails
+    control_sequence.append(ha.TimeSwitch('Pregrasp', 'finished', duration = handarm_params['recovery_duration']))
+
     # 2. Go to gravity compensation 
     control_sequence.append(ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, 0]),
                                              controller_name='StayStillCtrl',
@@ -105,6 +108,9 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
                                                  goal_is_relative = '1',
                                                  frame_id = 'world',
                                                  port = '2'))
+
+    # 3c. Switch if trik fails
+    control_sequence.append(ha.TimeSwitch('GoDown', 'RecoverDown', duration = handarm_params['recovery_duration']))
 
     # 4. Lift upwards so the hand can inflate
     control_sequence.append(
@@ -207,6 +213,9 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     # 1b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'StayStill', controller='GoAboveObject', epsilon='0.01'))
 
+    # 1c. Switch if moveit fails
+    control_sequence.append(ha.TimeSwitch('Pregrasp', 'finished', duration = handarm_params['recovery_duration']))
+
     # 1.1. Go to gravity compensation 
     control_sequence.append(ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, 0]),
                                              controller_name='StayStillCtrl',
@@ -236,6 +245,9 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                                  frame_id='world',
                                                  port='2'))
 
+    # 2c. Switch if trik fails
+    control_sequence.append(ha.TimeSwitch('GoDown', 'RecoverDown', duration = handarm_params['recovery_duration']))
+
     # 3. Lift upwards so the hand doesn't slide on table surface
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
@@ -255,6 +267,9 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame, port='2'))
+
+    # 4c. Switch if trik fails
+    control_sequence.append(ha.TimeSwitch('SlideToWall', 'RecoverSlide', duration = handarm_params['recovery_duration']))
 
     # 5. Go back a bit to allow the hand to inflate
     control_sequence.append(
