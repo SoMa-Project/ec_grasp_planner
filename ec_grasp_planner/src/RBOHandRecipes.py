@@ -210,10 +210,10 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     # 1. Go above the object
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(pre_approach_pose, controller_name='GoAboveObject', goal_is_relative='0',
-                                             name="PreGrasp"))
+                                             name="Pregrasp"))
 
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'StayStill', controller='GoAboveObject', epsilon='0.01'))
+    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller='GoAboveObject', epsilon='0.01'))
 
     # 1c. Switch if moveit fails
     control_sequence.append(ha.TimeSwitch('Pregrasp', 'finished', duration = handarm_params['recovery_duration']))
