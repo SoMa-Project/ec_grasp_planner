@@ -74,7 +74,7 @@ class KUKA(BaseHandArm):
         self['netbag']['graspable_with_any_hand_orientation'] = True
         self['salad']['graspable_with_any_hand_orientation'] = True
         self['cucumber']['graspable_with_any_hand_orientation'] = False
-        self['mango']['graspable_with_any_hand_orientation'] = True
+        self['mango']['graspable_with_any_hand_orientation'] = False
 
         #####################################################################################
         # Common surface grasp params
