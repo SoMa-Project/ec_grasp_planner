@@ -146,9 +146,9 @@ class RBOHandO2KUKA(KUKA):
                                                                                         math.radians(180.), [1, 0, 0])))
         self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([-0.02, 0.02, 0.0])
 
-        self['surface_grasp']['object']['downward_force'] = 2
+        self['surface_grasp']['object']['downward_force'] = 3
 
-        self['surface_grasp']['netbag']['downward_force'] = 1.5
+        self['surface_grasp']['netbag']['downward_force'] = 2.5
 
         self['surface_grasp']['object']['short_lift_duration'] = 1.5
 
@@ -176,9 +176,9 @@ class RBOHandO2KUKA(KUKA):
         # RBO specific params for wall grasp
         ####################################################################################
 
-        self['wall_grasp']['netbag']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.01, -0.12])
+        self['wall_grasp']['netbag']['pre_approach_transform'] = tra.translation_matrix([-0.20, 0, -0.15])
 
-        self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.015, -0.12])
+        self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.015, -0.13])
 
         self['wall_grasp']['salad']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.01, -0.15])
 
@@ -186,13 +186,17 @@ class RBOHandO2KUKA(KUKA):
 
         self['wall_grasp']['punnet']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.0, -0.14])
 
-        self['wall_grasp']['object']['downward_force'] = 2.
+        self['wall_grasp']['object']['downward_force'] = 2.5
+
+        self['wall_grasp']['salad']['downward_force'] = 2
 
         self['wall_grasp']['object']['short_lift_duration'] = 1.8
 
         self['wall_grasp']['object']['slide_speed'] = 0.02
 
-        self['wall_grasp']['object']['wall_force'] = 2.5        
+        self['wall_grasp']['object']['wall_force'] = 2.5
+
+        self['wall_grasp']['salad']['wall_force'] = 3.5        
 
         self['wall_grasp']['cucumber']['wall_force'] = 3.5
 
@@ -287,9 +291,9 @@ class PISAHandKUKA(KUKA):
         # IIT specific params for wall grasp
         ####################################################################################        
 
-        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.025, 0])
+        self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.025, -0.12])
 
-        self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.04, 0])
+        self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.04, -0.12])
 
         self['wall_grasp']['object']['downward_force'] = 2.
 
