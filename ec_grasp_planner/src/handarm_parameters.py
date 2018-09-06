@@ -288,6 +288,20 @@ class PISAHandKUKA(KUKA):
 
         self['surface_grasp']['object']['kp'] = 6
 
+        #real WRONG VALUES
+        # self['surface_grasp']['cucumber']['success_rate'] = 1.0
+        # self['surface_grasp']['punnet']['success_rate'] = 0.
+        # self['surface_grasp']['netbag']['success_rate'] = 1.
+        # self['surface_grasp']['mango']['success_rate'] = 1.
+        # self['surface_grasp']['salad']['success_rate'] = 1.
+
+        #fake
+        self['surface_grasp']['cucumber']['success_rate'] = 1.
+        self['surface_grasp']['punnet']['success_rate'] = 0.8
+        self['surface_grasp']['netbag']['success_rate'] = 0.9
+        self['surface_grasp']['mango']['success_rate'] = 0.9
+        self['surface_grasp']['salad']['success_rate'] = 1.
+
         ####################################################################################
         # IIT specific params for wall grasp
         ####################################################################################        
@@ -318,6 +332,20 @@ class PISAHandKUKA(KUKA):
                                                                  tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
         
         self['wall_grasp']['object']['kp'] = 6
+
+        #real WRONG VALUES
+        # self['wall_grasp']['cucumber']['success_rate'] = 1.0
+        # self['wall_grasp']['punnet']['success_rate'] = 0.
+        # self['wall_grasp']['netbag']['success_rate'] = 1.
+        # self['wall_grasp']['mango']['success_rate'] = 1.
+        # self['wall_grasp']['salad']['success_rate'] = 1.
+
+        #fake
+        self['wall_grasp']['cucumber']['success_rate'] = 0.8
+        self['wall_grasp']['punnet']['success_rate'] = 0.6
+        self['wall_grasp']['netbag']['success_rate'] = 0.8
+        self['wall_grasp']['mango']['success_rate'] = 0.5
+        self['wall_grasp']['salad']['success_rate'] = 0.6
         
 
 class PISAGripperKUKA(KUKA):
