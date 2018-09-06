@@ -376,7 +376,7 @@ def get_transport_recipe(handarm_params, handarm_type):
     control_sequence.append(ha.InterpolatedHTransformControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement3'))
    
     # 3b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Preplacement3', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch('Preplacement3', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.1'))
 
     # 3c. Recover if a plan is not found
     control_sequence.append(ha.TimeSwitch('Preplacement3', 'RecoverSlide', duration = handarm_params['recovery_duration']))

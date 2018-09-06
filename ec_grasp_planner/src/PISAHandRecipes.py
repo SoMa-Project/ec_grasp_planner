@@ -71,6 +71,9 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     # 1b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller = 'GoAboveObject', epsilon = '0.01'))
  
+    # 1c. Switch if moveit fails
+    control_sequence.append(ha.TimeSwitch('Pregrasp', 'finished', duration = handarm_params['recovery_duration']))
+
     # 2. Go to gravity compensation 
     control_sequence.append(ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, 0]),
                                              controller_name='StayStillCtrl',
@@ -101,6 +104,9 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
                                                  goal_is_relative = '1',
                                                  frame_id = 'world',
                                                  port = '2'))
+
+    # 3c. Switch if trik fails
+    control_sequence.append(ha.TimeSwitch('GoDown', 'RecoverDown', duration = handarm_params['recovery_duration']))
 
     if handarm_params['SimplePositionControl']:
         # if hand is controlled in position mode, then call general hand controller
@@ -143,13 +149,13 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
 
     vision_params = {}
-    if object_type in handarm_params:
-        vision_params = handarm_params[object_type]
-    offset = getParam(vision_params, handarm_params['object'], 'obj_bbox_uncertainty_offset')
-    if abs(object_frame[:3,0].dot(wall_frame[:3,0])) > abs(object_frame[:3,1].dot(wall_frame[:3,0])):
-        pre_approach_transform[2,3] = pre_approach_transform[2,3] - bounding_box.y/2 - offset 
-    else:
-        pre_approach_transform[2,3] = pre_approach_transform[2,3] - bounding_box.x/2 - offset
+    # if object_type in handarm_params:
+    #     vision_params = handarm_params[object_type]
+    # offset = getParam(vision_params, handarm_params['object'], 'obj_bbox_uncertainty_offset')
+    # if abs(object_frame[:3,0].dot(wall_frame[:3,0])) > abs(object_frame[:3,1].dot(wall_frame[:3,0])):
+    #     pre_approach_transform[2,3] = pre_approach_transform[2,3] - bounding_box.y/2 - offset 
+    # else:
+    #     pre_approach_transform[2,3] = pre_approach_transform[2,3] - bounding_box.x/2 - offset
 
     post_grasp_transform = getParam(obj_type_params, obj_params, 'post_grasp_transform')
 
@@ -162,6 +168,8 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     down_IFCO_twist = tra.translation_matrix([0, 0, -down_IFCO_speed]);
     # Slide speed is positive because it is defined on the EE frame
     slide_IFCO_twist = tra.translation_matrix([0, 0, slide_IFCO_speed]);
+    # Slide speed is negative because it is defined on the EE frame
+    slide_IFCO_back_twist = tra.translation_matrix([0, 0, -slide_IFCO_speed]);
 
     
     rviz_frames = []
@@ -195,10 +203,13 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     # 1. Go above the object
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(pre_approach_pose, controller_name='GoAboveObject', goal_is_relative='0',
-                                             name="PreGrasp"))
+                                             name="Pregrasp"))
 
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'StayStill', controller='GoAboveObject', epsilon='0.01'))
+    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller='GoAboveObject', epsilon='0.01'))
+
+    # 1c. Switch if moveit fails
+    control_sequence.append(ha.TimeSwitch('Pregrasp', 'finished', duration = handarm_params['recovery_duration']))
 
     # 1.1. Go to gravity compensation 
     control_sequence.append(ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, 0]),
@@ -229,6 +240,9 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                                  frame_id='world',
                                                  port='2'))
 
+    # 2c. Switch if trik fails
+    control_sequence.append(ha.TimeSwitch('GoDown', 'RecoverDown', duration = handarm_params['recovery_duration']))
+
     # 3. Go towards the wall to slide object to wall
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(slide_IFCO_twist, controller_name='SlideToWall', goal_is_relative='1',
@@ -241,8 +255,11 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame, port='2'))
 
+    # 3c. Switch if trik fails
+    control_sequence.append(ha.TimeSwitch('SlideToWall', 'RecoverSlide', duration = handarm_params['recovery_duration']))
+
+
     # 4. Close the hand
-    
     if handarm_params['SimplePositionControl']:
         # if hand is controlled in position mode, then call general hand controller
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))

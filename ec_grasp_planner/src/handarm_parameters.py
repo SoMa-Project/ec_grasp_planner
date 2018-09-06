@@ -194,7 +194,9 @@ class RBOHandO2KUKA(KUKA):
 
         self['wall_grasp']['object']['wall_force'] = 2.5
 
-        self['wall_grasp']['salad']['wall_force'] = 3.5        
+        self['wall_grasp']['salad']['wall_force'] = 3.5
+
+        self['wall_grasp']['punnet']['wall_force'] = 3.5        
 
         self['wall_grasp']['cucumber']['wall_force'] = 3.5
 
@@ -211,7 +213,7 @@ class RBOHandO2KUKA(KUKA):
 
         #fake
         self['wall_grasp']['cucumber']['success_rate'] = 0.6
-        self['wall_grasp']['punnet']['success_rate'] = 0.
+        self['wall_grasp']['punnet']['success_rate'] = 0.5
         self['wall_grasp']['netbag']['success_rate'] = 0.4
         self['wall_grasp']['mango']['success_rate'] = 0.8
         self['wall_grasp']['salad']['success_rate'] = 0.5
@@ -278,7 +280,7 @@ class PISAHandKUKA(KUKA):
 
         self['surface_grasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
 
-        self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.025, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+        self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.035, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
 
         self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
 
@@ -292,15 +294,25 @@ class PISAHandKUKA(KUKA):
 
         self['wall_grasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.025, -0.12])
 
-        self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.04, -0.12])
+        self['wall_grasp']['netbag']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.05, -0.13])
+
+        self['wall_grasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.05, -0.12])
+
+        self['wall_grasp']['punnet']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.06, -0.14])
 
         self['wall_grasp']['object']['downward_force'] = 2.
 
-        self['wall_grasp']['object']['slide_speed'] = 0.05
+        self['wall_grasp']['object']['slide_speed'] = 0.03
 
         self['wall_grasp']['object']['wall_force'] = 3.5
 
-        self['rotate_duration'] = 3
+        self['wall_grasp']['mango']['wall_force'] = 4
+
+        self['wall_grasp']['salad']['wall_force'] = 4.5
+
+        self['wall_grasp']['punnet']['wall_force'] = 6
+
+        self['rotate_duration'] = 3.5
         
         self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
                                                                  tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
