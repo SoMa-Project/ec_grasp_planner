@@ -40,6 +40,8 @@ from geometry_graph_msgs.msg import Graph
 
 from ec_grasp_planner import srv as plan_srv
 
+from object_segmentation import srv as object_pose_srv
+
 from visualization_msgs.msg import MarkerArray
 from visualization_msgs.msg import Marker
 
@@ -79,6 +81,7 @@ class GraspPlanner():
     def handle_run_grasp_planner(self, req):
         
         print('Handling grasp planner service call')
+        time = rospy.Time(0)
         self.object_type = req.object_type
 
         #todo: more failure handling here for bad service parameters
@@ -86,33 +89,44 @@ class GraspPlanner():
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
 
         # Get the relevant parameters for hand object combination
+        robot_base_frame = self.args.robot_base_frame
 
-        rospy.wait_for_service('compute_ec_graph')
+        self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
+        ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
+
+        
+        self.tf_listener.waitForTransform(robot_base_frame, "camera", time, rospy.Duration(2.0))
+        camera_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "camera"))            
+        
+        rospy.wait_for_service('object_pose')
 
         try:
-            call_vision = rospy.ServiceProxy('compute_ec_graph', vision_srv.ComputeECGraph)
-            res = call_vision(self.object_type)
-            graph = res.graph
-            objects = res.objects.objects
-            objectList = res.objects
-            print("Objects found: " + str(len(objects)))
+            call_vision = rospy.ServiceProxy('object_pose', object_pose_srv.object_pose)
+            ifco_in_camera = ifco_in_base.dot(inv(camera_in_base))
+            res = call_vision(pm.toMsg(pm.fromMatrix(ifco_in_camera)))
+            print res
+            #graph = res.graph
+            graph = []
+            # objects = res.objects.objects
+            # objectList = res.objects
+
+            print("Objects found: " + str(len(res.object_poses)))
         except rospy.ServiceException, e:
             raise rospy.ServiceException("Vision service call failed: %s" % e)
             return plan_srv.RunGraspPlannerResponse("")
 
-        robot_base_frame = self.args.robot_base_frame
-
-        object_id = SystemRandom().randrange(0,len(objects))
         
-        object_frame = objects[object_id].transform
 
-        time = rospy.Time(0)
-        graph.header.stamp = time
-        object_frame.header.stamp = time
-        bounding_box = objects[object_id].boundingbox
+        object_id = SystemRandom().randrange(0,len(res.object_poses))
+        
+        # object_frame = objects[object_id].transform
+        object_frame = res.object_poses[object_id]
 
-        self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
-        ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
+        
+        #graph.header.stamp = time
+        # object_frame.header.stamp = time
+        bounding_box = res.bounding_boxes[object_id]
+
         
         # --------------------------------------------------------
         # Get grasp from graph representation
@@ -120,9 +134,9 @@ class GraspPlanner():
         while grasp_path is None:
 
             # Get the object frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, object_frame.header.frame_id, time, rospy.Duration(2.0))
-            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)            
-            object_in_camera = pm.toMatrix(pm.fromMsg(object_frame.pose))
+            # self.tf_listener.waitForTransform(robot_base_frame, object_frame.header.frame_id, time, rospy.Duration(2.0))
+            # camera_in_base = self.tf_listener.asMatrix(robot_base_frame, object_frame.header)            
+            object_in_camera = pm.toMatrix(pm.fromMsg(object_frame))
             object_in_base = camera_in_base.dot(object_in_camera)
 
             pre_grasp_pose_in_base = None  
@@ -171,14 +185,15 @@ class GraspPlanner():
                     raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp]")
                     return
 
-            print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
+            #print("Received graph with {} nodes and {} edges.".format(len(graph.nodes), len(graph.edges)))
 
             # Find a path in the ECE graph
-            hand_node_id = [n.label for n in graph.nodes].index("Positioning")
-            object_node_id = [n.label for n in graph.nodes].index("Slide")
+            #hand_node_id = [n.label for n in graph.nodes].index("Positioning")
+            #object_node_id = [n.label for n in graph.nodes].index("Slide")
 
-            grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
-
+            #grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
+            #grasp_path = True
+            grasp_path = self.grasp_type
             rospy.sleep(0.3)        
 
         # --------------------------------------------------------
@@ -306,10 +321,12 @@ def get_node_from_actions(actions, action_name, graph):
 
 # ================================================================================================
 def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_object_in_base, bounding_box, handarm_params, object_type, wall_id, ifco_in_base, handarm_type, pre_grasp_pose_in_base = None):
-    assert(len(motion_sequence) > 1)
-    assert(motion_sequence[-1].name.startswith('grasp'))
+    # assert(len(motion_sequence) > 1)
+    # assert(motion_sequence[-1].name.startswith('grasp'))
 
-    grasp_type = graph.nodes[int(motion_sequence[-1].sig[1][1:])].label
+    # grasp_type = graph.nodes[int(motion_sequence[-1].sig[1][1:])].label
+
+    grasp_type = motion_sequence
 
     print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == 'WallGrasp':
