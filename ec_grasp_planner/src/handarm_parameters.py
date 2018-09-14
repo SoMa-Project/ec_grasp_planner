@@ -485,7 +485,11 @@ class ClashHandKUKA(KUKA):
         super(ClashHandKUKA, self).__init__()
 
         # Placement pose reachable for the CLASH hand
-        self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.562259, 0.468926, 0.299963]), tra.quaternion_matrix([0.977061, -0.20029, 0.05786, 0.04345]))
+        self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.30992, -0.67339, 0.22511]), tra.quaternion_matrix([0.54556, 0.83745, -0.031589, -0.0068179]))
+
+        self['ifco_centre_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.5195, 0.2173, 0.318]), tra.quaternion_matrix([0.66887, -0.73386, -0.063432, 0.048477]))
+        
+        self['pre_pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.61398, 0.24118, 0.15]), tra.quaternion_matrix([-0.53604, 0.57741, 0.38813, -0.47814]))
 
         ####################################################################################
         # CLASH specific params irrespective of grasp type and/or object type
@@ -496,9 +500,9 @@ class ClashHandKUKA(KUKA):
 
         self['hand_opening_duration'] = 2
 
-        self['lift_duration'] = 10
+        self['lift_duration'] = 4
 
-        self['place_duration'] = 3
+        self['place_duration'] = 4
 
         # TRIK controller speeds
         self['down_IFCO_speed'] = 0.02
@@ -513,17 +517,16 @@ class ClashHandKUKA(KUKA):
         ####################################################################################
 
         self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0, 0.0]),
-                                                                                tra.concatenate_matrices(
+                                                                                tra.concatenate_matrices(                                                                                    
                                                                                     tra.rotation_matrix(
-                                                                                        math.radians(0.), [0, 0, 1]),
-                                                                                    tra.rotation_matrix(
-                                                                                        math.radians(180.), [1, 0, 0])))
+                                                                                        math.radians(180.), [1, 0, 0]),tra.rotation_matrix(
+                                                                                        math.radians(90.), [0, 0, 1])))
 
-        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.005, -0.15])
+        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.005, -0.2])
 
-        self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.15])
+        self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.2])
 
-        self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.15])
+        self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.2])
         
 
         self['surface_grasp']['object']['downward_force'] = 2.5

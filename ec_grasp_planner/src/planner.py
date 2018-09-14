@@ -27,6 +27,7 @@ from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
+
 from subprocess import call
 from hybrid_automaton_msgs import srv as ha_srv
 from hybrid_automaton_msgs.msg import HAMState
@@ -37,6 +38,8 @@ from pregrasp_msgs.msg import GraspStrategyArray
 from pregrasp_msgs.msg import GraspStrategy
 
 from geometry_graph_msgs.msg import Graph
+from geometry_graph_msgs.msg import ObjectList
+from geometry_graph_msgs.msg import Object
 
 from ec_grasp_planner import srv as plan_srv
 
@@ -109,6 +112,22 @@ class GraspPlanner():
             graph = []
             # objects = res.objects.objects
             # objectList = res.objects
+            
+            #create the objectList from the object_pose call
+            object_names = res.object_names
+            object_poses = res.object_poses
+            bounding_boxes = res.bounding_boxes
+            objectList = ObjectList()
+            index = 0
+            for name in object_names:
+                new_object = Object()
+                new_object.name = name
+                new_object.transform = object_poses[index]
+                new_object.boundingbox = bounding_boxes[index]
+                objectList.objects.append(new_object)
+                index +=1
+            
+            objects = objectList.objects
 
             print("Objects found: " + str(len(res.object_poses)))
         except rospy.ServiceException, e:
@@ -179,7 +198,7 @@ class GraspPlanner():
                         wall_id = 'wall' + res.grasp_type[1]
                     print("GRASP HEURISTICS " + self.grasp_type + " " + wall_id)
             else:                
-                wall_id = "wall1"
+                wall_id = "wall3"
                 grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
                 if self.grasp_type not in grasp_choices:
                     raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp]")
@@ -346,10 +365,14 @@ def get_transport_recipe(handarm_params, handarm_type):
     place_time = handarm_params['place_duration']
     down_tote_speed = handarm_params['down_tote_speed']
 
+    ifco_centre_pose = handarm_params['ifco_centre_pose']
+
+
     # Up speed is also positive because it is defined on the world frame
     up_IFCO_twist = tra.translation_matrix([0, 0, up_IFCO_speed]);
     # Down speed is negative because it is defined on the world frame
     down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed]);  
+    up_tote_twist = tra.translation_matrix([0, 0, down_tote_speed]); 
     # Slide speed is negative because it is defined on the EE frame
     slide_IFCO_back_twist = tra.translation_matrix([0, 0, -handarm_params['recovery_slide_back_speed']]);  
 
@@ -375,7 +398,22 @@ def get_transport_recipe(handarm_params, handarm_type):
     control_sequence.append(ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
  
     # 1b. Switch after a certain amount of time
-    control_sequence.append(ha.TimeSwitch('GoUp', 'Preplacement2', duration = lift_time))
+    control_sequence.append(ha.TimeSwitch('GoUp', 'GoAtIfcoCentreAgain', duration = lift_time))
+
+    # 0. Go above the object - Pregrasp
+    control_sequence.append(ha.InterpolatedHTransformControlMode(ifco_centre_pose, controller_name = 'GoAtIfcoCentreAgain', goal_is_relative='0', name = 'GoAtIfcoCentreAgain'))
+ 
+    # 0b. Switch when hand reaches the goal pose
+    control_sequence.append(ha.FramePoseSwitch('GoAtIfcoCentreAgain', 'Preplacement1', controller = 'GoAtIfcoCentreAgain', epsilon = '0.01'))
+
+    ifco_clear_pose = tra.concatenate_matrices(tra.translation_matrix([-0.4663, -0.019, 0.5006]), tra.quaternion_matrix([0.7050710220955264, -0.7031592243132717, -0.047412584999916386, 0.06538348415311011]))
+    # ifco_clear_pose = tra.concatenate_matrices(tra.translation_matrix([-0.51105, 0.1409, 0.31088]), tra.quaternion_matrix([0.74775, -0.663, -0.0097062, 0.034794]))
+
+    # 3. Added the InterpolatedHTransformControlMode in case slerp fails to avoid going down on the wrong goal
+    control_sequence.append(ha.InterpolatedHTransformControlMode(ifco_clear_pose, controller_name = 'GoAbovePlacement00', goal_is_relative='0', name = 'Preplacement1'))
+   
+    # 3b. Switch when hand reaches the goal pose
+    control_sequence.append(ha.FramePoseSwitch('Preplacement1', 'Preplacement2', controller = 'GoAbovePlacement00', epsilon = '0.1'))
 
     # # 2. Go to Preplacement position and keeping the orientation
     # control_sequence.append(ha.SlerpControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement1', orientation_or_and_position = 'POSITION'))
@@ -403,6 +441,7 @@ def get_transport_recipe(handarm_params, handarm_type):
  
     # 4b. Switch after a certain amount of time
     control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = place_time))
+    
 
     # 5. Release SKU
     if handarm_type == "ClashHandKUKA":
@@ -432,13 +471,27 @@ def get_transport_recipe(handarm_params, handarm_type):
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = 1))
 
     # 5b. Switch when hand opening time ends
-    control_sequence.append(ha.TimeSwitch('softhand_open', 'initial', duration = handarm_params['hand_opening_duration']))
+    control_sequence.append(ha.TimeSwitch('softhand_open', 'GoUp2', duration = handarm_params['hand_opening_duration']))
+
+    # 4. Go Up
+    control_sequence.append(ha.InterpolatedHTransformControlMode(up_tote_twist, controller_name = 'GoUp2', name = 'GoUp2', goal_is_relative='1', reference_frame="world"))
+ 
+    # 4b. Switch after a certain amount of time
+    control_sequence.append(ha.TimeSwitch('GoUp2', 'initial', duration = place_time))
+
+    final_joint_config = np.array([-0.18, 0.59, 0, -1.25, 0.42, 1, 0])
 
     # 6. Return to zero position
-    control_sequence.append(ha.JointControlMode(goal = np.zeros(7), goal_is_relative = '0', name = 'initial', controller_name = 'GoToZeroController'))
+    # control_sequence.append(ha.JointControlMode(goal = final_joint_config, goal_is_relative = '0', name = 'initial', controller_name = 'GoToZeroController'))
     
     # 6b. Switch when zero position is reached
-    control_sequence.append(ha.JointConfigurationSwitch('initial', 'finished', controller = 'GoToZeroController', epsilon = str(math.radians(7.0))))
+    # control_sequence.append(ha.JointConfigurationSwitch('initial', 'finished', controller = 'GoToZeroController', epsilon = str(math.radians(7.0))))
+
+    # 2.1. Change the orientation to have the hand facing the Delivery tote
+    control_sequence.append(ha.SlerpControlMode(ifco_clear_pose, controller_name = 'initial', goal_is_relative='0', name = 'initial', orientation_or_and_position = 'BOTH'))
+
+    # 2.1b. Switch after a certain amount of time, the duration is short because the actual transition is done by the controller by exiting the infinite loop
+    control_sequence.append(ha.TimeSwitch('initial', 'finished', duration = 0.5))
 
     # 6. Block joints to finish motion
     control_sequence.append(ha.GravityCompensationMode(name  = 'finished'))

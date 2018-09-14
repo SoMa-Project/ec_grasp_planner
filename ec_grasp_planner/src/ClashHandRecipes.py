@@ -29,6 +29,7 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     downward_force = getParam(obj_type_params, obj_params, 'downward_force')
     ee_in_goal_frame = getParam(obj_type_params, obj_params, 'ee_in_goal_frame')
     lift_time = getParam(obj_type_params, obj_params, 'short_lift_duration')
+    ifco_centre_pose = handarm_params['ifco_centre_pose']
 
     down_IFCO_speed = handarm_params['down_IFCO_speed']
     up_IFCO_speed = handarm_params['up_IFCO_speed']
@@ -73,6 +74,12 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
 
     # assemble controller sequence
     control_sequence = []
+
+    # 0. Go above the object - Pregrasp
+    control_sequence.append(ha.InterpolatedHTransformControlMode(ifco_centre_pose, controller_name = 'GoAtIfcoCentre', goal_is_relative='0', name = 'GoAtIfcoCentre'))
+ 
+    # 0b. Switch when hand reaches the goal pose
+    control_sequence.append(ha.FramePoseSwitch('GoAtIfcoCentre', 'Pregrasp', controller = 'GoAtIfcoCentre', epsilon = '0.01'))
 
     # 1. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(goal_, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
@@ -188,8 +195,10 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
     scooping_angle_deg = getParam(obj_type_params, obj_params, 'scooping_angle_deg')
 
-    pre_approach_transform = tra.concatenate_matrices(tra.translation_matrix([-0.20, 0, 0]), tra.rotation_matrix(
-                                                                                        math.radians(scooping_angle_deg), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]))
+    pre_pre_approach_pose = handarm_params['pre_pre_placement_pose']
+
+    pre_approach_transform = tra.concatenate_matrices(tra.translation_matrix([-0.2, 0, -0.15]), tra.rotation_matrix(
+                                                                                        math.radians(0), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]))
 
 
     thumb_pos_preshape = getParam(obj_type_params, obj_params, 'thumb_pos_preshape')
@@ -209,8 +218,8 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
 
     # Set the twists to use TRIK controller with
 
-    # Down speed is positive because it is defined on the EE frame
-    down_IFCO_twist = tra.translation_matrix([0, 0, down_IFCO_speed]);
+    # Down speed is negative because it is defined on the world frame
+    down_IFCO_twist = tra.translation_matrix([0, 0, -down_IFCO_speed])
     
     # Slide speed is positive because it is defined on the EE frame + rotation of the scooping angle    
     slide_IFCO_twist = tra.rotation_matrix(math.radians(-scooping_angle_deg), [1, 0, 0]).dot(tra.translation_matrix([0, 0, slide_IFCO_speed]))
@@ -245,6 +254,14 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
 
 
     control_sequence = []
+
+    control_sequence.append(
+        ha.InterpolatedHTransformControlMode(pre_pre_approach_pose, controller_name='PreGoAboveObject', goal_is_relative='0',
+                                             name="PrePreGrasp"))
+
+    # 1b. Switch when hand reaches the goal pose
+    control_sequence.append(ha.FramePoseSwitch('PrePreGrasp', 'PreGrasp', controller='PreGoAboveObject', epsilon='0.01'))
+
 
     # 1. Go above the object
     control_sequence.append(
@@ -284,7 +301,7 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                              controller_name='GoDown',
                                              goal_is_relative='1',
                                              name="GoDown",
-                                             reference_frame="EE"))
+                                             reference_frame="world"))
 
     # 3b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
