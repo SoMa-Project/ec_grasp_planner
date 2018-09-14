@@ -484,12 +484,27 @@ class ClashHandKUKA(KUKA):
     def __init__(self, **kwargs):
         super(ClashHandKUKA, self).__init__()
 
+        self['wall_grasp']['object']['hand_transform'] = tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(180.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(90.0), [0, 0, 1]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 1, 0])
+            )
+
         # Placement pose reachable for the CLASH hand
         self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.30992, -0.67339, 0.22511]), tra.quaternion_matrix([0.54556, 0.83745, -0.031589, -0.0068179]))
 
         self['ifco_centre_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.5195, 0.2173, 0.318]), tra.quaternion_matrix([0.66887, -0.73386, -0.063432, 0.048477]))
         
-        self['pre_pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.61398, 0.24118, 0.15]), tra.quaternion_matrix([-0.53604, 0.57741, 0.38813, -0.47814]))
+        # self['ifco_clear_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.50982, 0.20977, 0.3]), tra.quaternion_matrix([0.61796, 0.55931, -0.38833, -0.39304]))
+
+        self['ifco_clear_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.49566, 0.14231, 0.34962]), tra.quaternion_matrix([0.21225, 0.96761, -0.041404, -0.13027]))
+
+        self['final_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.49566, 0, 0.34962]), tra.quaternion_matrix([0.21225, 0.96761, -0.041404, -0.13027]))
+
+        # self['final_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.50982, -0.1, 0.3]), tra.quaternion_matrix([0.61796, 0.55931, -0.38833, -0.39304]))
 
         ####################################################################################
         # CLASH specific params irrespective of grasp type and/or object type
@@ -598,7 +613,7 @@ class ClashHandKUKA(KUKA):
 
         self['wall_grasp']['salad']['scooping_angle_deg'] = 30  
 
-        self['wall_grasp']['object']['downward_force'] = 1.5
+        self['wall_grasp']['object']['downward_force'] = 1.
 
         self['wall_grasp']['object']['thumb_pos_preshape'] = np.array([ 0, -10, 0])
         

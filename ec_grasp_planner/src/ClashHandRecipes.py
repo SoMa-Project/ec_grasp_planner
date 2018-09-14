@@ -195,10 +195,10 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
     scooping_angle_deg = getParam(obj_type_params, obj_params, 'scooping_angle_deg')
 
-    pre_pre_approach_pose = handarm_params['pre_pre_placement_pose']
+    # ifco_clear_pose = handarm_params['ifco_clear_pose']
 
-    pre_approach_transform = tra.concatenate_matrices(tra.translation_matrix([-0.2, 0, -0.15]), tra.rotation_matrix(
-                                                                                        math.radians(0), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]))
+    pre_approach_transform = tra.concatenate_matrices(tra.translation_matrix([-0.2, 0, -0.2]), tra.rotation_matrix(
+                                                                                        math.radians(scooping_angle_deg), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]))
 
 
     thumb_pos_preshape = getParam(obj_type_params, obj_params, 'thumb_pos_preshape')
@@ -222,7 +222,7 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     down_IFCO_twist = tra.translation_matrix([0, 0, -down_IFCO_speed])
     
     # Slide speed is positive because it is defined on the EE frame + rotation of the scooping angle    
-    slide_IFCO_twist = tra.rotation_matrix(math.radians(-scooping_angle_deg), [1, 0, 0]).dot(tra.translation_matrix([0, 0, slide_IFCO_speed]))
+    slide_IFCO_twist = tra.rotation_matrix(math.radians(scooping_angle_deg), [1, 0, 0]).dot(tra.translation_matrix([0, 0, slide_IFCO_speed]))
     slide_IFCO_twist = tra.translation_matrix(tra.translation_from_matrix(slide_IFCO_twist))
 
 
@@ -236,6 +236,8 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
         ec_frame = ec_frame.dot(hand_transform)
 
         pre_approach_pose = ec_frame.dot(pre_approach_transform)
+        hand_flip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
+        pre_approach_pose = pre_approach_pose.dot(hand_flip_transform)
     else:
         pre_approach_pose = pre_grasp_pose
 
@@ -255,12 +257,12 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
 
     control_sequence = []
 
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(pre_pre_approach_pose, controller_name='PreGoAboveObject', goal_is_relative='0',
-                                             name="PrePreGrasp"))
+    # control_sequence.append(
+    #     ha.InterpolatedHTransformControlMode(pre_pre_approach_pose, controller_name='PreGoAboveObject', goal_is_relative='0',
+    #                                          name="PrePreGrasp"))
 
-    # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PrePreGrasp', 'PreGrasp', controller='PreGoAboveObject', epsilon='0.01'))
+    # # 1b. Switch when hand reaches the goal pose
+    # control_sequence.append(ha.FramePoseSwitch('PrePreGrasp', 'PreGrasp', controller='PreGoAboveObject', epsilon='0.01'))
 
 
     # 1. Go above the object
