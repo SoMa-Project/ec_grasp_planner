@@ -260,17 +260,17 @@ class multi_object_params:
             object_index,  ec_index = self.argmax_h(Q_matrix)
             print(" ** h_mx[{}, {}]".format(object_index, ec_index))
             print(" ** h_mx[{}, {}]".format(object_index, ecs[ec_index]))
-            return objects[object_index], ecs[ec_index]
+            return object_index, ec_index
         # samples from [H(obj, ec)] list
         elif h_process_type == "Probabilistic":
             object_index, ec_index = self.sample_from_pdf(Q_matrix)
-            return objects[object_index], ecs[ec_index]
+            return object_index, ec_index
         elif h_process_type == "Random":
             object_index, ec_index = self.random_from_Qmatrix(Q_matrix)
-            return objects[object_index], ecs[ec_index]
+            return object_index, ec_index
 
-        # worst case jsut return the first object and ec
-        return (objects[0],ecs[0])
+        # worst case just return the first object and ec
+        return 0, 0
 
 
 def test(ece_list = []):
@@ -323,7 +323,10 @@ def test(ece_list = []):
     # load object and ec related probability distribution function
     foo.load_object_params()
     # find object-ec tuple based on the selected heuristic function
-    obj_chosen, ec_chosen = foo.process_objects_ecs(objects, list_of_eces, graphTransform, heuristic_function)
+    obj_chosen_idx, ec_chosen_idx = foo.process_objects_ecs(objects, list_of_eces, graphTransform, heuristic_function)
+
+    obj_chosen = objects[obj_chosen_idx]
+    ec_chosen = list_of_eces[ec_chosen_idx]
 
     print("Chosen object = {} \n\n Exploiting ec = {}".format(obj_chosen, ec_chosen))
 

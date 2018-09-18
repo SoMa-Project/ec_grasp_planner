@@ -123,7 +123,7 @@ class GraspPlanner():
 
         if not objects:
             print("No object was detected")
-            return plan_srv.RunGraspPlannerResponse("")
+            return plan_srv.RunGraspPlannerResponse("", -1)
 
         robot_base_frame = self.args.robot_base_frame
         object_frame = objects[0].transform
@@ -172,12 +172,15 @@ class GraspPlanner():
 
 
         # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
-        (chosen_object, chosen_node) = self.multi_object_handler.process_objects_ecs(object_list,
+        (chosen_object_idx, chosen_node_idx) = self.multi_object_handler.process_objects_ecs(object_list,
                                                                                      node_list,
                                                                                      graph_in_base_transform,
                                                                                      ifco_in_base_transform,
                                                                                      req.object_heuristic_function
                                                                                      )
+
+        chosen_object = object_list[chosen_object_idx]
+        chosen_node = node_list[chosen_node_idx]
         # print(" * object type: {}, ec type: {}, heuristc funciton type: {}".format(chosen_object['type'], chosen_node.label, req.object_heuristic_function))
 
 
@@ -230,8 +233,8 @@ class GraspPlanner():
             publish_rviz_markers(self.rviz_frames, robot_base_frame, self.handarm_params)
             # rospy.spin()
 
-
-        return plan_srv.RunGraspPlannerResponse(ha.xml())
+        ha_as_xml = ha.xml()
+        return plan_srv.RunGraspPlannerResponse(ha_as_xml, chosen_object_idx if ha_as_xml != "" else -1)
 
 
 # ================================================================================================
