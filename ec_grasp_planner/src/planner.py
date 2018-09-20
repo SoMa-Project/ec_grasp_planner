@@ -98,14 +98,14 @@ class GraspPlanner():
         ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
 
         
-        self.tf_listener.waitForTransform(robot_base_frame, "camera", time, rospy.Duration(2.0))
+        self.tf_listener.waitForTransform(robot_base_frame, "/camera", time, rospy.Duration(2.0))
         camera_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "camera"))            
         
         rospy.wait_for_service('object_pose')
 
         try:
             call_vision = rospy.ServiceProxy('object_pose', object_pose_srv.object_pose)
-            ifco_in_camera = ifco_in_base.dot(inv(camera_in_base))
+            ifco_in_camera = (inv(camera_in_base)).dot(ifco_in_base)
             res = call_vision(pm.toMsg(pm.fromMatrix(ifco_in_camera)))
             print res
             #graph = res.graph
