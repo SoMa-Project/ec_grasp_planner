@@ -68,7 +68,7 @@ class KUKA(BaseHandArm):
         self['punnet']['obj_bbox_uncertainty_offset'] = 0.08
         self['salad']['obj_bbox_uncertainty_offset'] = 0.1
 
-        # this value is used by the reachability node (xper_data) to decide how to sample the hand_orientation interval        
+        # this value is used by the reachability node (reachability_analyzer) to decide how to sample the hand_orientation interval        
         self['object']['graspable_with_any_hand_orientation'] = True
         self['punnet']['graspable_with_any_hand_orientation'] = False
         self['netbag']['graspable_with_any_hand_orientation'] = True
