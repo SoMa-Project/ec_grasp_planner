@@ -87,7 +87,7 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
                                              v_max=down_IFCO_speed))
 
     # 2b. Wait for a bit to allow vibrations to attenuate
-    control_sequence.append(ha.TimeSwitch('StayStill', 'softhand_preshape', duration = handarm_params['stay_still_duration']))
+    control_sequence.append(ha.TimeSwitch('StayStill', 'GoDown', duration = handarm_params['stay_still_duration']))
 
     speed = np.array([20]) 
     thumb_pos = thumb_pos_preshape
@@ -140,7 +140,7 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
                                              reference_frame="world"))
 
     # 5b. We switch after a short time 
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'softhand_close', duration=lift_time))
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'GoUp', duration=lift_time))
 
     # 6. Close the hand
     speed = np.array([30]) 

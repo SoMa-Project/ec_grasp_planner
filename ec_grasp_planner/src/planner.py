@@ -399,7 +399,7 @@ def get_transport_recipe(handarm_params, handarm_type):
  
     # 1b. Switch after a certain amount of time
     # OVERRIDIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING
-    control_sequence.append(ha.TimeSwitch('GoUp', 'softhand_open', duration = 7))
+    control_sequence.append(ha.TimeSwitch('GoUp', 'initial', duration = 7))
 
     # 0. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(handarm_params['ifco_clear_pose'], controller_name = 'GoAtIfcoCentreAgain', goal_is_relative='0', name = 'GoAtIfcoCentreAgain'))
