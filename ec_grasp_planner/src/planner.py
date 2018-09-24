@@ -198,7 +198,7 @@ class GraspPlanner():
                         wall_id = 'wall' + res.grasp_type[1]
                     print("GRASP HEURISTICS " + self.grasp_type + " " + wall_id)
             else:                
-                wall_id = "wall1"
+                wall_id = "wall3"
                 grasp_choices = ["any", "WallGrasp", "SurfaceGrasp"]
                 if self.grasp_type not in grasp_choices:
                     raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp]")
@@ -365,34 +365,18 @@ def get_transport_recipe(handarm_params, handarm_type):
     place_time = handarm_params['place_duration']
     down_tote_speed = handarm_params['down_tote_speed']
 
-    ifco_centre_pose = handarm_params['ifco_centre_pose']
     init_joint_config = handarm_params['init_joint_config']
-    clear_ifco_config = handarm_params['clear_ifco_config']
     above_tote_config = handarm_params['above_tote_config']
 
     # Up speed is also positive because it is defined on the world frame
     up_IFCO_twist = np.array([0, 0, up_IFCO_speed, 0, 0, 0]);
-    # Down speed is negative because it is defined on the world frame
+
+    # The twists are defined on the world frame
     down_tote_twist = np.array([0, 0, -down_tote_speed, 0, 0, 0]);  
     up_tote_twist = np.array([0, 0, down_tote_speed, 0, 0, 0]); 
-    # Slide speed is negative because it is defined on the EE frame
-    slide_IFCO_back_twist = np.array([0, 0, -handarm_params['recovery_slide_back_speed'], 0, 0, 0]);  
 
     # assemble controller sequence
     control_sequence = []
-
-    # # Recovery from trik failing during guarded move towards a wall
-    # control_sequence.append(ha.InterpolatedHTransformControlMode(slide_IFCO_back_twist, controller_name='RecoverSlide', goal_is_relative='1',
-    #                                          name="RecoverSlide", reference_frame="EE"))
-    # control_sequence.append(ha.TimeSwitch('RecoverSlide', 'RecoverDown', duration = handarm_params['recovery_slide_duration']))
-
-    # # Recovery from trik failing during guarded move downwards
-
-    # # 1. Lift upwards
-    # control_sequence.append(ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name = 'GoUpHTransform', name = 'RecoverDown', goal_is_relative='1', reference_frame="world"))
- 
-    # # 1b. Switch after a certain amount of time
-    # control_sequence.append(ha.TimeSwitch('RecoverDown', 'softhand_open', duration = lift_time))
 
     # Normal transport
 
@@ -402,60 +386,23 @@ def get_transport_recipe(handarm_params, handarm_type):
     # 1b. Switch after a certain amount of time
     control_sequence.append(ha.TimeSwitch('GoUp', 'Preplacement1', duration = lift_time))
 
-    # # 2. Clear the IFCO
-    # control_sequence.append(ha.JointControlMode(goal = clear_ifco_config, goal_is_relative = '0', name = 'ClearIFCO', controller_name = 'ClearIFCO'))
-    
-    # # 2b. Switch when config is reached
-    # control_sequence.append(ha.JointConfigurationSwitch('ClearIFCO', 'Preplacement1', controller = 'ClearIFCO', epsilon = str(math.radians(7.0))))
-
-    # 3. Go to initial nice mid-joint configuration
+    # 2. Go to initial nice mid-joint configuration
     control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'Preplacement1', controller_name = 'GoToMiddleController'))
     
-    # 3b. Switch when config is reached
+    # 2b. Switch when config is reached
     control_sequence.append(ha.JointConfigurationSwitch('Preplacement1', 'Preplacement2', controller = 'GoToMiddleController', epsilon = str(math.radians(7.0))))
 
-    # 4. Go to above tote joint configuration
+    # 3. Go to above tote joint configuration
     control_sequence.append(ha.JointControlMode(goal = above_tote_config, goal_is_relative = '0', name = 'Preplacement2', controller_name = 'GoToToteController'))
     
-    # 4b. Switch when config is reached
+    # 3b. Switch when config is reached
     control_sequence.append(ha.JointConfigurationSwitch('Preplacement2', 'GoDown2', controller = 'GoToToteController', epsilon = str(math.radians(7.0))))
 
-
-    # ifco_clear_pose = tra.concatenate_matrices(tra.translation_matrix([-0.4663, -0.019, 0.5006]), tra.quaternion_matrix([0.7050710220955264, -0.7031592243132717, -0.047412584999916386, 0.06538348415311011]))
-    # ifco_clear_pose = tra.concatenate_matrices(tra.translation_matrix([-0.51105, 0.1409, 0.31088]), tra.quaternion_matrix([0.74775, -0.663, -0.0097062, 0.034794]))
-
-    # 3. Added the InterpolatedHTransformControlMode in case slerp fails to avoid going down on the wrong goal
-    # control_sequence.append(ha.InterpolatedHTransformControlMode(handarm_params['final_pose'], controller_name = 'GoAbovePlacement00', goal_is_relative='0', name = 'Preplacement1'))
-   
-    # # 3b. Switch when hand reaches the goal pose
-    # control_sequence.append(ha.FramePoseSwitch('Preplacement1', 'Preplacement2', controller = 'GoAbovePlacement00', epsilon = '0.1'))
-
-    # # 2. Go to Preplacement position and keeping the orientation
-    # control_sequence.append(ha.SlerpControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement1', orientation_or_and_position = 'POSITION'))
-    
-    # # 2b. Switch after a certain amount of time, the duration is short because the actual transition is done by the controller by exiting the infinite loop
-    # control_sequence.append(ha.TimeSwitch('Preplacement1', 'Preplacement2', duration = 0.5)) 
-
-    # 2.1. Change the orientation to have the hand facing the Delivery tote
-    # control_sequence.append(ha.SlerpControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement2', orientation_or_and_position = 'BOTH'))
-
-    # # 2.1b. Switch after a certain amount of time, the duration is short because the actual transition is done by the controller by exiting the infinite loop
-    # control_sequence.append(ha.TimeSwitch('Preplacement2', 'Preplacement3', duration = 0.5))
-
-    # # 3. Added the InterpolatedHTransformControlMode in case slerp fails to avoid going down on the wrong goal
-    # control_sequence.append(ha.InterpolatedHTransformControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement3'))
-   
-    # # 3b. Switch when hand reaches the goal pose
-    # control_sequence.append(ha.FramePoseSwitch('Preplacement3', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.1'))
-
-    # # 3c. Recover if a plan is not found
-    # control_sequence.append(ha.TimeSwitch('Preplacement3', 'RecoverSlide', duration = handarm_params['recovery_duration']))
-
-    # 5. Go Down
+    # 4. Go Down
     control_sequence.append(ha.CartesianVelocityControlMode(down_tote_twist, controller_name = 'GoToDropOff', name = 'GoDown2', reference_frame="world"))
  
-    # 5b. Switch after a certain amount of time
-    control_sequence.append(ha.TimeSwitch('GoDown2', 'GoUp2', duration = place_time))
+    # 4b. Switch after a certain amount of time
+    control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = place_time))
     
 
     # 5. Release SKU
@@ -486,35 +433,21 @@ def get_transport_recipe(handarm_params, handarm_type):
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = 1))
 
     # 5b. Switch when hand opening time ends
-    control_sequence.append(ha.TimeSwitch('softhand_open', 'initial', duration = handarm_params['hand_opening_duration']))
+    control_sequence.append(ha.TimeSwitch('softhand_open', 'GoUp2', duration = handarm_params['hand_opening_duration']))
 
-    # 4. Go Up
+    # 6. Go Up
     control_sequence.append(ha.CartesianVelocityControlMode(up_tote_twist, controller_name = 'GoUp2', name = 'GoUp2', reference_frame="world"))
  
-    # 4b. Switch after a certain amount of time
+    # 6b. Switch after a certain amount of time
     control_sequence.append(ha.TimeSwitch('GoUp2', 'initial', duration = place_time))
 
-    # final_joint_config = np.array([-0.18, 0.59, 0, -1.25, 0.42, 1, 0])
-
-    # 3. Go to initial nice mid-joint configuration
+    # 7. Go to initial nice mid-joint configuration
     control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'initial', controller_name = 'GoBackToInitController'))
     
-    # 3b. Switch when config is reached
+    # 7b. Switch when config is reached
     control_sequence.append(ha.JointConfigurationSwitch('initial', 'finished', controller = 'GoBackToInitController', epsilon = str(math.radians(7.0))))
 
-    # 6. Return to zero position
-    # control_sequence.append(ha.JointControlMode(goal = final_joint_config, goal_is_relative = '0', name = 'initial', controller_name = 'GoToZeroController'))
-    
-    # 6b. Switch when zero position is reached
-    # control_sequence.append(ha.JointConfigurationSwitch('initial', 'finished', controller = 'GoToZeroController', epsilon = str(math.radians(7.0))))
-
-    # 2.1. Change the orientation to have the hand facing the Delivery tote
-    # control_sequence.append(ha.SlerpControlMode(handarm_params['final_pose'], controller_name = 'initial', goal_is_relative='0', name = 'initial', orientation_or_and_position = 'BOTH'))
-
-    # # 2.1b. Switch after a certain amount of time, the duration is short because the actual transition is done by the controller by exiting the infinite loop
-    # control_sequence.append(ha.TimeSwitch('initial', 'finished', duration = 0.5))
-
-    # 6. Block joints to finish motion
+    # 8. Block joints to finish motion
     control_sequence.append(ha.GravityCompensationMode(name  = 'finished'))
 
     return control_sequence
