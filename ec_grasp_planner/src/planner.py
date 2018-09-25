@@ -439,15 +439,9 @@ def get_transport_recipe(handarm_params, handarm_type):
     control_sequence.append(ha.CartesianVelocityControlMode(up_tote_twist, controller_name = 'GoUp2', name = 'GoUp2', reference_frame="world"))
  
     # 6b. Switch after a certain amount of time
-    control_sequence.append(ha.TimeSwitch('GoUp2', 'initial', duration = place_time))
+    control_sequence.append(ha.TimeSwitch('GoUp2', 'finished', duration = place_time))
 
-    # 7. Go to initial nice mid-joint configuration
-    control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'initial', controller_name = 'GoBackToInitController'))
-    
-    # 7b. Switch when config is reached
-    control_sequence.append(ha.JointConfigurationSwitch('initial', 'finished', controller = 'GoBackToInitController', epsilon = str(math.radians(1.0))))
-
-    # 8. Block joints to finish motion
+    # 7. Block joints to finish motion
     control_sequence.append(ha.GravityCompensationMode(name  = 'finished'))
 
     return control_sequence
