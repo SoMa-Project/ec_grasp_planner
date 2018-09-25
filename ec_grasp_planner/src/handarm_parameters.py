@@ -68,7 +68,7 @@ class KUKA(BaseHandArm):
         self['punnet']['obj_bbox_uncertainty_offset'] = 0.08
         self['salad']['obj_bbox_uncertainty_offset'] = 0.1
 
-        # this value is used by the reachability node (xper_data) to decide how to sample the hand_orientation interval        
+        # this value is used by the reachability node (reachability_analyzer) to decide how to sample the hand_orientation interval        
         self['object']['graspable_with_any_hand_orientation'] = True
         self['punnet']['graspable_with_any_hand_orientation'] = False
         self['netbag']['graspable_with_any_hand_orientation'] = True
@@ -115,7 +115,7 @@ class RBOHandO2KUKA(KUKA):
 
         self['hand_opening_duration'] = 4
 
-        self['lift_duration'] = 13
+        self['lift_duration'] = 7
 
         self['place_duration'] = 5
 
@@ -255,7 +255,7 @@ class PISAHandKUKA(KUKA):
 
         self['compensation_duration'] = 10
 
-        self['lift_duration'] = 13
+        self['lift_duration'] = 7
 
         self['place_duration'] = 5
 
@@ -374,7 +374,7 @@ class PISAGripperKUKA(KUKA):
 
         self['hand_opening_duration'] = 2
 
-        self['lift_duration'] = 13
+        self['lift_duration'] = 7
 
         self['place_duration'] = 5
 
@@ -493,19 +493,9 @@ class ClashHandKUKA(KUKA):
                     math.radians(0.0), [0, 1, 0])
             )
 
-        # Placement pose reachable for the CLASH hand
-        self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.30992, -0.67339, 0.22511]), tra.quaternion_matrix([0.54556, 0.83745, -0.031589, -0.0068179]))
-
-        self['ifco_centre_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.5195, 0.2173, 0.318]), tra.quaternion_matrix([0.66887, -0.73386, -0.063432, 0.048477]))
-        
-        # self['ifco_clear_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.50982, 0.20977, 0.3]), tra.quaternion_matrix([0.61796, 0.55931, -0.38833, -0.39304]))
-
-        self['ifco_clear_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.49566, 0.14231, 0.34962]), tra.quaternion_matrix([0.21225, 0.96761, -0.041404, -0.13027]))
-
-        self['final_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.49566, 0, 0.34962]), tra.quaternion_matrix([0.21225, 0.96761, -0.041404, -0.13027]))
-
-        # self['final_pose'] = tra.concatenate_matrices(tra.translation_matrix([-0.50982, -0.1, 0.3]), tra.quaternion_matrix([0.61796, 0.55931, -0.38833, -0.39304]))
-
+        self['init_joint_config'] = np.array([0, 0.25, 0, -1.13, 0, 0.67, 0.71])
+        self['clear_ifco_config'] = np.array([-0.18, 0.25, 0, -1.13, 0, 0.67, 0.71])
+        self['above_tote_config'] = np.array([1.13, 0.59, 0, -1.13, 0, 0.42, 0.71])
         ####################################################################################
         # CLASH specific params irrespective of grasp type and/or object type
         ####################################################################################
@@ -638,8 +628,7 @@ class ClashHandKUKA(KUKA):
 
         self['wall_grasp']['salad']['wall_force'] = 1.5
         
-        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
-                                                                 tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
+        self['wall_grasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, 0, 0])
         
         self['rotate_duration'] = 3
         
