@@ -606,12 +606,19 @@ class ClashHandKUKA(KUKA):
         ####################################################################################
         # CLASH specific params for wall grasp
         ####################################################################################        
+        
+        scooping_angle_deg = 30
 
-        self['wall_grasp']['object']['scooping_angle_deg'] = 10
+        self['wall_grasp']['object']['scooping_angle_deg'] = scooping_angle_deg
 
-        self['wall_grasp']['mango']['scooping_angle_deg'] = 20
+        # self['wall_grasp']['object']['scooping_angle_deg'] = 10
 
-        self['wall_grasp']['salad']['scooping_angle_deg'] = 30  
+        # self['wall_grasp']['mango']['scooping_angle_deg'] = 20
+
+        # self['wall_grasp']['salad']['scooping_angle_deg'] = 30  
+
+        self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.2, 0, -0.2]), tra.rotation_matrix(
+                                                                                        math.radians(scooping_angle_deg), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]), tra.rotation_matrix(math.radians(180.0), [0, 0, 1]))
 
         self['wall_grasp']['object']['downward_force'] = 1.
 

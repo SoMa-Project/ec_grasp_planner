@@ -193,13 +193,10 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     downward_force = getParam(obj_type_params, obj_params, 'downward_force')
     wall_force = getParam(obj_type_params, obj_params, 'wall_force')
     slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
+    pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
     scooping_angle_deg = getParam(obj_type_params, obj_params, 'scooping_angle_deg')
 
-    # ifco_clear_pose = handarm_params['ifco_clear_pose']
-
-    pre_approach_transform = tra.concatenate_matrices(tra.translation_matrix([-0.2, 0, -0.2]), tra.rotation_matrix(
-                                                                                        math.radians(scooping_angle_deg), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]))
-
+    # ifco_clear_pose = handarm_params['ifco_clear_pose']    
 
     thumb_pos_preshape = getParam(obj_type_params, obj_params, 'thumb_pos_preshape')
     post_grasp_transform = getParam(obj_type_params, obj_params, 'post_grasp_transform')
@@ -236,8 +233,7 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
         ec_frame = ec_frame.dot(hand_transform)
 
         pre_approach_pose = ec_frame.dot(pre_approach_transform)
-        hand_flip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
-        pre_approach_pose = pre_approach_pose.dot(hand_flip_transform)
+
     else:
         pre_approach_pose = pre_grasp_pose
 
