@@ -390,13 +390,13 @@ def get_transport_recipe(handarm_params, handarm_type):
     control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'Preplacement1', controller_name = 'GoToMiddleController'))
     
     # 2b. Switch when config is reached
-    control_sequence.append(ha.JointConfigurationSwitch('Preplacement1', 'Preplacement2', controller = 'GoToMiddleController', epsilon = str(math.radians(7.0))))
+    control_sequence.append(ha.JointConfigurationSwitch('Preplacement1', 'Preplacement2', controller = 'GoToMiddleController', epsilon = str(math.radians(1.0))))
 
     # 3. Go to above tote joint configuration
     control_sequence.append(ha.JointControlMode(goal = above_tote_config, goal_is_relative = '0', name = 'Preplacement2', controller_name = 'GoToToteController'))
     
     # 3b. Switch when config is reached
-    control_sequence.append(ha.JointConfigurationSwitch('Preplacement2', 'GoDown2', controller = 'GoToToteController', epsilon = str(math.radians(7.0))))
+    control_sequence.append(ha.JointConfigurationSwitch('Preplacement2', 'GoDown2', controller = 'GoToToteController', epsilon = str(math.radians(1.0))))
 
     # 4. Go Down
     control_sequence.append(ha.CartesianVelocityControlMode(down_tote_twist, controller_name = 'GoToDropOff', name = 'GoDown2', reference_frame="world"))
@@ -445,7 +445,7 @@ def get_transport_recipe(handarm_params, handarm_type):
     control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'initial', controller_name = 'GoBackToInitController'))
     
     # 7b. Switch when config is reached
-    control_sequence.append(ha.JointConfigurationSwitch('initial', 'finished', controller = 'GoBackToInitController', epsilon = str(math.radians(7.0))))
+    control_sequence.append(ha.JointConfigurationSwitch('initial', 'finished', controller = 'GoBackToInitController', epsilon = str(math.radians(1.0))))
 
     # 8. Block joints to finish motion
     control_sequence.append(ha.GravityCompensationMode(name  = 'finished'))
