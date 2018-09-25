@@ -76,7 +76,7 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     control_sequence.append(ha.InterpolatedHTransformControlMode(goal_, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
  
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller = 'GoAboveObject', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller = 'GoAboveObject', epsilon = '0.008'))
  
     # 2. Go to gravity compensation 
     control_sequence.append(ha.CartesianVelocityControlMode(np.array([0, 0, 0, 0, 0, 0]),
@@ -237,7 +237,7 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                              name="Pregrasp"))
 
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'softhand_pretension', controller='GoAboveObject', epsilon='0.01'))
+    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'softhand_pretension', controller='GoAboveObject', epsilon='0.008'))
 
     # 2. Pretension
     speed = np.array([20]) 
