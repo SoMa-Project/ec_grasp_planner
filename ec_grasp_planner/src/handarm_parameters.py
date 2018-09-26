@@ -379,7 +379,7 @@ class PISAGripperKUKA(KUKA):
         ####################################################################################
 
         # Controller timeouts
-        self['hand_closing_duration'] = 2
+        self['hand_closing_duration'] = 1
 
         self['hand_opening_duration'] = 2
 
