@@ -117,6 +117,14 @@ class GraspPlanner():
             object_names = res.object_names
             object_poses = res.object_poses
             bounding_boxes = res.bounding_boxes
+            if "object" in res.object_names[0]:
+                self.object_type = req.object_type
+                print "Vision node does not have object recognition"
+            else:
+                self.object_type = res.object_names[0]
+                if self.object_type == "banana":
+                    self.object_type = "cucumber"
+                print "Vision node performs object recognition"
             objectList = ObjectList()
             index = 0
             for name in object_names:
