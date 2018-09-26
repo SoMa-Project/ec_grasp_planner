@@ -212,10 +212,9 @@ class RBOHandO2KUKA(KUKA):
 
         self['wall_grasp']['cucumber']['short_slide_duration'] = 2 
 
-        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, -0.01]),
-                                                                 tra.rotation_matrix(math.radians(-5), [0, 1, 0]))    
+        self['wall_grasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, math.radians(-5), 0])    
 
-        self['wall_grasp']['salad']['post_grasp_transform'] = tra.translation_matrix([0, 0, 0]) 
+        self['wall_grasp']['salad']['post_grasp_transform'] = np.array([0,0,0,0,0,0])
 
         self['wall_grasp']['object']['rotate_duration'] = 3    
 
