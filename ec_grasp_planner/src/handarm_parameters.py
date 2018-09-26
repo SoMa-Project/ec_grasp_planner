@@ -77,10 +77,18 @@ class KUKA(BaseHandArm):
         self['mango']['graspable_with_any_hand_orientation'] = False
 
         #####################################################################################
-        # Common surface grasp params
+        # Common grasp params
         #####################################################################################
         
-        
+        self['init_joint_config'] = np.array([0, 0.25, 0, -1.13, 0, 0.67, 0.71])
+        self['clear_ifco_config'] = np.array([-0.18, 0.25, 0, -1.13, 0, 0.67, 0.71])
+        self['above_tote_config'] = np.array([1.13, 0.59, 0, -1.13, 0, 0.42, 0.71])
+
+
+        #####################################################################################
+        # Common surface grasp params
+        #####################################################################################
+     
 
         #####################################################################################
         # Common wall grasp params
@@ -233,7 +241,7 @@ class PISAHandKUKA(KUKA):
 
         # Placement pose reachable for the PISA hand
         self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
-
+        
         ####################################################################################
         # Params that define the grasping controller
         ####################################################################################
@@ -249,7 +257,7 @@ class PISAHandKUKA(KUKA):
         ####################################################################################
 
         # Controller timeouts
-        self['hand_closing_duration'] = 2
+        self['hand_closing_duration'] = 1
 
         self['hand_opening_duration'] = 2
 
@@ -328,9 +336,11 @@ class PISAHandKUKA(KUKA):
 
         self['rotate_duration'] = 3.5
         
-        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
-                                                                 tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
+        # self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
+        #                                                          tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
         
+        self['wall_grasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, -0.09, 0])
+
         self['wall_grasp']['object']['kp'] = 6
 
         #real WRONG VALUES
