@@ -46,8 +46,6 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
 
     # Down speed is positive because it is defined on the EE frame
     down_IFCO_twist = np.array([0, 0, -down_IFCO_speed, 0, 0, 0]);
-    # Slow Up speed is also positive because it is defined on the world frame
-    up_IFCO_twist = np.array([0, 0, up_IFCO_speed, 0, 0, 0]);
 
     # Set the frames to visualize with RViz
     rviz_frames = []
@@ -58,7 +56,7 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     # assemble controller sequence
     control_sequence = []
 
-    # 0. Go above the object - Pregrasp
+    # 0. Go to the init joint config 
     control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'init', controller_name = 'GoToInitController'))
  
     # 0b. Switch when config is reached
