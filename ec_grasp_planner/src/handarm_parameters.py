@@ -504,9 +504,6 @@ class ClashHandKUKA(KUKA):
                     math.radians(0.0), [0, 1, 0])
             )
 
-        self['init_joint_config'] = np.array([0, 0.25, 0, -1.13, 0, 0.67, 0.71])
-        self['clear_ifco_config'] = np.array([-0.18, 0.25, 0, -1.13, 0, 0.67, 0.71])
-        self['above_tote_config'] = np.array([1.13, 0.59, 0, -1.13, 0, 0.42, 0.71])
         ####################################################################################
         # CLASH specific params irrespective of grasp type and/or object type
         ####################################################################################
