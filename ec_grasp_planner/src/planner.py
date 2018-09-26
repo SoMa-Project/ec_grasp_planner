@@ -122,7 +122,7 @@ class GraspPlanner():
             for name in object_names:
                 new_object = Object()
                 new_object.name = name
-                new_object.transform = object_poses[index]
+                new_object.transform.pose = object_poses[index]
                 new_object.boundingbox = bounding_boxes[index]
                 objectList.objects.append(new_object)
                 index +=1

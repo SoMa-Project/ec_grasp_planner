@@ -76,7 +76,7 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     control_sequence.append(ha.InterpolatedHTransformControlMode(goal_, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
  
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller = 'GoAboveObject', epsilon = '0.008'))
+    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller = 'GoAboveObject', epsilon = '0.01'))
  
     # 2. Go to gravity compensation 
     control_sequence.append(ha.CartesianVelocityControlMode(np.array([0, 0, 0, 0, 0, 0]),
@@ -180,13 +180,12 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     downward_force = getParam(obj_type_params, obj_params, 'downward_force')
     wall_force = getParam(obj_type_params, obj_params, 'wall_force')
     slide_IFCO_speed = getParam(obj_type_params, obj_params, 'slide_speed')
+    pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
     scooping_angle_deg = getParam(obj_type_params, obj_params, 'scooping_angle_deg')
 
     init_joint_config = handarm_params['init_joint_config']
 
-    pre_approach_transform = tra.concatenate_matrices(tra.translation_matrix([-0.2, 0, -0.2]), tra.rotation_matrix(
-                                                                                        math.radians(scooping_angle_deg), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]))
-
+    
 
     thumb_pos_preshape = getParam(obj_type_params, obj_params, 'thumb_pos_preshape')
     post_grasp_transform = getParam(obj_type_params, obj_params, 'post_grasp_transform')
@@ -212,8 +211,7 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
         ec_frame = ec_frame.dot(hand_transform)
 
         pre_approach_pose = ec_frame.dot(pre_approach_transform)
-        hand_flip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
-        pre_approach_pose = pre_approach_pose.dot(hand_flip_transform)
+
     else:
         pre_approach_pose = pre_grasp_pose
 
@@ -237,7 +235,7 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                              name="Pregrasp"))
 
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'softhand_pretension', controller='GoAboveObject', epsilon='0.008'))
+    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'softhand_pretension', controller='GoAboveObject', epsilon='0.01'))
 
     # 2. Pretension
     speed = np.array([20]) 
