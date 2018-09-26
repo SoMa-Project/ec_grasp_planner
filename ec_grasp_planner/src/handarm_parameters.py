@@ -536,7 +536,7 @@ class ClashHandKUKA(KUKA):
                                                                                 tra.concatenate_matrices(                                                                                    
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(180.), [1, 0, 0]),tra.rotation_matrix(
-                                                                                        math.radians(90.), [0, 0, 1])))
+                                                                                        math.radians(0.), [0, 0, 1])))
 
         self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.005, -0.2])
 
