@@ -235,9 +235,18 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                              name="Pregrasp"))
 
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'softhand_pretension', controller='GoAboveObject', epsilon='0.01'))
+    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller='GoAboveObject', epsilon='0.01'))
 
-    # 2. Pretension
+    # 2. Go to gravity compensation 
+    control_sequence.append(ha.CartesianVelocityControlMode(np.array([0, 0, 0, 0, 0, 0]),
+                                             controller_name='StayStillCtrl',
+                                             name="StayStill",
+                                             reference_frame="EE"))
+
+    # 2b. Wait for a bit to allow vibrations to attenuate
+    control_sequence.append(ha.TimeSwitch('StayStill', 'softhand_pretension', duration = handarm_params['stay_still_duration']))
+
+    # 3. Pretension
     speed = np.array([20]) 
     thumb_pos = np.array([ 0, 0, 0])
     diff_pos = np.array([0, 0, 15])
@@ -258,17 +267,17 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                                                             thumb_pretension, diff_pretension, force_feedback_ratio, 
                                                                             prox_level, touch_level, mode, command_count)), name  = 'softhand_pretension'))
 
-    # 2b. Switch when hand closing time ends
+    # 3b. Switch when hand closing time ends
     control_sequence.append(ha.TimeSwitch('softhand_pretension', 'GoDown', duration = handarm_params['hand_closing_duration']))
 
 
-    # 3. Go down onto the object/table, in world frame
+    # 4. Go down onto the object/table, in world frame
     control_sequence.append( ha.CartesianVelocityControlMode(down_IFCO_twist,
                                              controller_name='GoDown',
                                              name="GoDown",
                                              reference_frame="world"))
 
-    # 3b. Switch when force threshold is exceeded
+    # 4b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                  'CloseBeforeSlide',
@@ -279,7 +288,7 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                                  frame_id='world',
                                                  port='2'))
 
-    # 4. Close a bit before sliding
+    # 5. Close a bit before sliding
     speed = np.array([30]) 
     thumb_pos = thumb_pos_preshape
     diff_pos = np.array([10, 15, 0])
@@ -300,23 +309,23 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                                                             thumb_pretension, diff_pretension, force_feedback_ratio, 
                                                                             prox_level, touch_level, mode, command_count)), name  = 'CloseBeforeSlide'))
 
-    # 4b. Time switch
+    # 5b. Time switch
     control_sequence.append(ha.TimeSwitch('CloseBeforeSlide', 'SlideToWall', duration = handarm_params['hand_closing_duration']))
 
 
-    # 5. Go towards the wall to slide object to wall
+    # 6. Go towards the wall to slide object to wall
     control_sequence.append(
         ha.CartesianVelocityControlMode(slide_IFCO_twist, controller_name='SlideToWall',
                                              name="SlideToWall", reference_frame="EE"))
 
-    # 5b. Switch when the f/t sensor is triggered with normal force from wall
+    # 6b. Switch when the f/t sensor is triggered with normal force from wall
     force = np.array([0, 0, wall_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'softhand_close', 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame, port='2'))
 
-    # 6. Close the hand
+    # 7. Close the hand
     speed = np.array([30]) 
     thumb_pos = np.array([ 0, 50, 30])
     diff_pos = np.array([55, 50, 20])
@@ -338,14 +347,14 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                                                             prox_level, touch_level, mode, command_count)), name  = 'softhand_close'))
 
 
-    # 6b. Switch when hand closing time ends
+    # 7b. Switch when hand closing time ends
     control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration = handarm_params['hand_closing_duration']))
     
-    # 7. Rotate hand after closing and before lifting it up relative to current hand pose
+    # 8. Rotate hand after closing and before lifting it up relative to current hand pose
     control_sequence.append(
         ha.CartesianVelocityControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', reference_frame='EE'))
 
-    # 7b. Switch when hand rotated
+    # 8b. Switch when hand rotated
     control_sequence.append(ha.TimeSwitch('PostGraspRotate', 'GoUp', duration = rotate_time))
 
     return control_sequence, rviz_frames
