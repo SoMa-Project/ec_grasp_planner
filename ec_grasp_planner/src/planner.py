@@ -366,7 +366,10 @@ def get_transport_recipe(handarm_params, handarm_type):
     down_tote_speed = handarm_params['down_tote_speed']
 
     init_joint_config = handarm_params['init_joint_config']
-    above_tote_config = handarm_params['above_tote_config']
+
+    bag_id = SystemRandom().randrange(0,3)
+    print "I am going to place the object in bag " + str(bag_id)
+    above_tote_config = handarm_params['above_tote_config'][bag_id]
 
     # Up speed is also positive because it is defined on the world frame
     up_IFCO_twist = np.array([0, 0, up_IFCO_speed, 0, 0, 0]);
