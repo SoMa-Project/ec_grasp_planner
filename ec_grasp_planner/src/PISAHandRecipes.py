@@ -45,7 +45,7 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     # Set the twists to use TRIK controller with
 
     # Down speed is positive because it is defined on the EE frame
-    down_IFCO_twist = np.array([0, 0, -down_IFCO_speed, 0, 0, 0]);
+    down_IFCO_twist = np.array([0, 0, down_IFCO_speed, 0, 0, 0]);
 
     # Set the frames to visualize with RViz
     rviz_frames = []
