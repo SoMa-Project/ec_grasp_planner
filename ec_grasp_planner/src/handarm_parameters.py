@@ -82,9 +82,9 @@ class KUKA(BaseHandArm):
         
         self['init_joint_config'] = np.array([0, 0.25, 0, -1.13, 0, 0.67, 0.71])
         self['clear_ifco_config'] = np.array([-0.18, 0.25, 0, -1.13, 0, 0.67, 0.71])
-        self['above_tote_config'] = np.array([[1.13, 0.59, 0, -1.13, 0, 0.42, 0.71], 
-                                              [1.23, 0.59, 0, -1.13, 0, 0.42, 0.71], 
-                                              [1.33, 0.59, 0, -1.13, 0, 0.42, 0.71]])
+        self['above_tote_config'] = np.array([[0.87, 1.02, -0.05, -0.78, 0.43, 0.85, 0.07], 
+                                              [1.1, 0.81, -0.05, -1.15, 0.07, 0.85, 0.31], 
+                                              [1.34, 0.81, -0.05, -1.15, 0.07, 0.85, 0.67]])
 
 
         #####################################################################################
@@ -127,7 +127,7 @@ class RBOHandO2KUKA(KUKA):
 
         self['lift_duration'] = 7
 
-        self['place_duration'] = 5
+        self['place_duration'] = 4
 
         # TRIK controller speeds
         self['down_IFCO_speed'] = 0.03
@@ -266,7 +266,7 @@ class PISAHandKUKA(KUKA):
 
         self['lift_duration'] = 7
 
-        self['place_duration'] = 5
+        self['place_duration'] = 4
 
         # Hand properties
         self['hand_max_aperture'] = 0.25
@@ -387,7 +387,7 @@ class PISAGripperKUKA(KUKA):
 
         self['lift_duration'] = 7
 
-        self['place_duration'] = 5
+        self['place_duration'] = 4
 
         # Hand properties
         self['hand_max_aperture'] = 0.25

@@ -124,13 +124,23 @@ class GraspPlanner():
                 self.object_type = res.object_names[0]
                 if self.object_type == "banana":
                     self.object_type = "cucumber"
+                if self.object_type == "apple":
+                    self.object_type = "netbag"
+                if self.object_type == "peach":
+                    self.object_type = "netbag"
+                if self.object_type == "lime":
+                    self.object_type = "mango"
                 print "Vision node performs object recognition"
             objectList = ObjectList()
             index = 0
+            z_transform = tra.rotation_matrix(math.radians(90.0), [0, 0, 1])
             for name in object_names:
                 new_object = Object()
                 new_object.name = name
-                new_object.transform.pose = object_poses[index]
+                obj_pose = pm.toMatrix(pm.fromMsg(object_poses[index]))
+                obj_pose = obj_pose.dot(z_transform)
+                new_object.transform.pose = pm.toMsg(pm.fromMatrix(obj_pose))
+                # new_object.transform.pose = object_poses[index]
                 new_object.boundingbox = bounding_boxes[index]
                 objectList.objects.append(new_object)
                 index +=1
@@ -450,9 +460,16 @@ def get_transport_recipe(handarm_params, handarm_type):
     control_sequence.append(ha.CartesianVelocityControlMode(up_tote_twist, controller_name = 'GoUp2', name = 'GoUp2', reference_frame="world"))
  
     # 6b. Switch after a certain amount of time
-    control_sequence.append(ha.TimeSwitch('GoUp2', 'finished', duration = place_time))
+    control_sequence.append(ha.TimeSwitch('GoUp2', 'GoBackToMiddle', duration = place_time))
 
-    # 7. Block joints to finish motion
+    # 7. Go to initial nice mid-joint configuration
+    control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'GoBackToMiddle', controller_name = 'GoBackToMiddleController'))
+    
+    # 7b. Switch when config is reached
+    control_sequence.append(ha.JointConfigurationSwitch('GoBackToMiddle', 'finished', controller = 'GoBackToMiddleController', epsilon = str(math.radians(1.0))))
+
+
+    # 8. Block joints to finish motion
     control_sequence.append(ha.GravityCompensationMode(name  = 'finished'))
 
     return control_sequence
