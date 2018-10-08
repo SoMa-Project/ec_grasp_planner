@@ -26,6 +26,7 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')
     downward_force = getParam(obj_type_params, obj_params, 'downward_force')
     ee_in_goal_frame = getParam(obj_type_params, obj_params, 'ee_in_goal_frame')
+    init_joint_config = handarm_params['init_joint_config']
 
     down_IFCO_speed = handarm_params['down_IFCO_speed']
     
@@ -44,8 +45,8 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     # Set the twists to use TRIK controller with
 
     # Down speed is positive because it is defined on the EE frame
-    down_IFCO_twist = tra.translation_matrix([0, 0, down_IFCO_speed]);
-
+    down_IFCO_twist = np.array([0, 0, -down_IFCO_speed, 0, 0, 0]);
+    
     # Set the frames to visualize with RViz
     rviz_frames = []
     rviz_frames.append(object_frame)
@@ -55,6 +56,12 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     # assemble controller sequence
     control_sequence = []
 
+    # # 0. Go to initial nice mid-joint configuration
+    # control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'init', controller_name = 'GoToInitController'))
+    
+    # # 0b. Switch when config is reached
+    # control_sequence.append(ha.JointConfigurationSwitch('init', 'Pregrasp', controller = 'GoToInitController', epsilon = str(math.radians(1.0))))
+
     # 1. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(goal_, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
  
@@ -62,24 +69,21 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller = 'GoAboveObject', epsilon = '0.01'))
  
     # 2. Go to gravity compensation 
-    control_sequence.append(ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, 0]),
+    control_sequence.append(ha.CartesianVelocityControlMode(np.array([0, 0, 0, 0, 0, 0]),
                                              controller_name='StayStillCtrl',
-                                             goal_is_relative='1',
                                              name="StayStill",
-                                             reference_frame="EE",
-                                             v_max=down_IFCO_speed))
+                                             reference_frame="EE"))
+
 
     # 2b. Wait for a bit to allow vibrations to attenuate
     control_sequence.append(ha.TimeSwitch('StayStill', 'GoDown', duration = handarm_params['stay_still_duration']))
     
     # 3. Go down onto the object (relative in EE frame) - Godown
     control_sequence.append(
-        ha.InterpolatedHTransformControlMode(down_IFCO_twist,
+        ha.CartesianVelocityControlMode(down_IFCO_twist,
                                              controller_name='GoDown',
-                                             goal_is_relative='1',
                                              name="GoDown",
-                                             reference_frame="EE",
-                                             v_max=down_IFCO_speed))
+                                             reference_frame="EE"))
 
     # 3b. Switch when force-torque sensor is triggered
     force  = np.array([0, 0, downward_force, 0, 0, 0])
@@ -91,7 +95,7 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
                                                  goal_is_relative = '1',
                                                  frame_id = 'world',
                                                  port = '2'))
-
+    # 4. Close the hand
     if handarm_params['SimplePositionControl']:
         # if hand is controlled in position mode, then call general hand controller
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
@@ -125,14 +129,7 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
     scooping_angle_deg = getParam(obj_type_params, obj_params, 'scooping_angle_deg')
     
-    vision_params = {}
-    # if object_type in handarm_params:
-    #     vision_params = handarm_params[object_type]
-    # offset = getParam(vision_params, handarm_params['object'], 'obj_bbox_uncertainty_offset')
-    # if abs(object_frame[:3,0].dot(wall_frame[:3,0])) > abs(object_frame[:3,1].dot(wall_frame[:3,0])):
-    #     pre_approach_transform[2,3] = pre_approach_transform[2,3] - bounding_box.y/2 - offset 
-    # else:
-    #     pre_approach_transform[2,3] = pre_approach_transform[2,3] - bounding_box.x/2 - offset
+    init_joint_config = handarm_params['init_joint_config']
 
     lift_time = handarm_params['short_lift_duration'] 
     down_IFCO_speed = handarm_params['down_IFCO_speed']
@@ -141,15 +138,13 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
     # Set the twists to use TRIK controller with
 
     # Down speed is negative because it is defined on the world frame
-    down_IFCO_twist = tra.translation_matrix([0, 0, -down_IFCO_speed]);
+    down_IFCO_twist = np.array([0, 0, -down_IFCO_speed, 0, 0, 0]);
     # Slow Up speed is also positive because it is defined on the world frame
-    up_IFCO_twist = tra.translation_matrix([0, 0, up_IFCO_speed]);
+    up_IFCO_twist = np.array([0, 0, up_IFCO_speed, 0, 0, 0]);
     
     # Slide speed is positive because it is defined on the EE frame + rotation of the scooping angle    
-    slide_IFCO_twist = tra.rotation_matrix(math.radians(-scooping_angle_deg), [0, 1, 0]).dot(tra.translation_matrix([0, 0, slide_IFCO_speed]));
-    slide_IFCO_twist = tra.translation_matrix(tra.translation_from_matrix(slide_IFCO_twist))
-
-
+    slide_IFCO_twist_matrix = tra.rotation_matrix(math.radians(-scooping_angle_deg), [0, 1, 0]).dot(tra.translation_matrix([0, 0, slide_IFCO_speed]));
+    slide_IFCO_twist = np.array([slide_IFCO_twist_matrix[0,3], slide_IFCO_twist_matrix[1,3], slide_IFCO_twist_matrix[2,3], 0, 0, 0 ])
     
     rviz_frames = []
 
@@ -171,29 +166,33 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
 
     control_sequence = []
 
+    # # 0. Go to initial nice mid-joint configuration
+    # control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'init', controller_name = 'GoToInitController'))
+    
+    # # 0b. Switch when config is reached
+    # control_sequence.append(ha.JointConfigurationSwitch('init', 'Pregrasp', controller = 'GoToInitController', epsilon = str(math.radians(1.0))))
+
     # 1. Go above the object
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(pre_approach_pose, controller_name='GoAboveObject', goal_is_relative='0',
-                                             name="PreGrasp"))
+                                             name="Pregrasp"))
 
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'StayStill', controller='GoAboveObject', epsilon='0.01'))
+    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'StayStill', controller='GoAboveObject', epsilon='0.01'))
 
     # 1.1. Go to gravity compensation 
-    control_sequence.append(ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, 0]),
+    control_sequence.append(ha.CartesianVelocityControlMode(np.array([0, 0, 0, 0, 0, 0]),
                                              controller_name='StayStillCtrl',
-                                             goal_is_relative='1',
                                              name="StayStill",
-                                             reference_frame="EE",
-                                             v_max=down_IFCO_speed))
+                                             reference_frame="EE"))
+
 
     # 1.1b. Wait for a bit to allow vibrations to attenuate
     control_sequence.append(ha.TimeSwitch('StayStill', 'GoDown', duration = handarm_params['stay_still_duration']))
 
     # 2. Go down onto the object/table, in world frame
-    control_sequence.append( ha.InterpolatedHTransformControlMode(down_IFCO_twist,
+    control_sequence.append( ha.CartesianVelocityControlMode(down_IFCO_twist,
                                              controller_name='GoDown',
-                                             goal_is_relative='1',
                                              name="GoDown",
                                              reference_frame="world"))
 
@@ -210,7 +209,7 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
 
     # 3. Lift upwards so the hand doesn't slide on table surface
     control_sequence.append(
-        ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
+        ha.CartesianVelocityControlMode(up_IFCO_twist, controller_name='Lift1', name="LiftHand",
                                              reference_frame="world"))
 
     # 3b. We switch after a short time as this allows us to do a small, precise lift motion
@@ -218,7 +217,7 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
 
     # 4. Go towards the wall to slide object to wall
     control_sequence.append(
-        ha.InterpolatedHTransformControlMode(slide_IFCO_twist, controller_name='SlideToWall', goal_is_relative='1',
+        ha.CartesianVelocityControlMode(slide_IFCO_twist, controller_name='SlideToWall',
                                              name="SlideToWall", reference_frame="EE"))
 
     # 4b. Switch when the f/t sensor is triggered with normal force from wall
@@ -229,7 +228,6 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
                                                  frame_id='world', frame=wall_frame, port='2'))
 
     # 5. Close the hand
-    
     if handarm_params['SimplePositionControl']:
         # if hand is controlled in position mode, then call general hand controller
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
