@@ -77,10 +77,20 @@ class KUKA(BaseHandArm):
         self['mango']['graspable_with_any_hand_orientation'] = False
 
         #####################################################################################
-        # Common surface grasp params
+        # Common grasp params
         #####################################################################################
         
-        
+        self['init_joint_config'] = np.array([0, 0.25, 0, -1.13, 0, 0.67, 0.71])
+        self['clear_ifco_config'] = np.array([-0.18, 0.25, 0, -1.13, 0, 0.67, 0.71])
+        self['above_tote_config'] = np.array([[0.87, 1.02, -0.05, -0.78, 0.43, 0.85, 0.07], 
+                                              [1.1, 0.81, -0.05, -1.15, 0.07, 0.85, 0.31], 
+                                              [1.34, 0.81, -0.05, -1.15, 0.07, 0.85, 0.67]])
+
+
+        #####################################################################################
+        # Common surface grasp params
+        #####################################################################################
+     
 
         #####################################################################################
         # Common wall grasp params
@@ -115,9 +125,9 @@ class RBOHandO2KUKA(KUKA):
 
         self['hand_opening_duration'] = 4
 
-        self['lift_duration'] = 13
+        self['lift_duration'] = 7
 
-        self['place_duration'] = 5
+        self['place_duration'] = 4
 
         # TRIK controller speeds
         self['down_IFCO_speed'] = 0.03
@@ -204,10 +214,9 @@ class RBOHandO2KUKA(KUKA):
 
         self['wall_grasp']['cucumber']['short_slide_duration'] = 2 
 
-        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, -0.01]),
-                                                                 tra.rotation_matrix(math.radians(-5), [0, 1, 0]))    
+        self['wall_grasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, math.radians(-5), 0])    
 
-        self['wall_grasp']['salad']['post_grasp_transform'] = tra.translation_matrix([0, 0, 0]) 
+        self['wall_grasp']['salad']['post_grasp_transform'] = np.array([0,0,0,0,0,0])
 
         self['wall_grasp']['object']['rotate_duration'] = 3    
 
@@ -233,7 +242,7 @@ class PISAHandKUKA(KUKA):
 
         # Placement pose reachable for the PISA hand
         self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
-
+        
         ####################################################################################
         # Params that define the grasping controller
         ####################################################################################
@@ -249,15 +258,15 @@ class PISAHandKUKA(KUKA):
         ####################################################################################
 
         # Controller timeouts
-        self['hand_closing_duration'] = 2
+        self['hand_closing_duration'] = 1
 
         self['hand_opening_duration'] = 2
 
         self['compensation_duration'] = 10
 
-        self['lift_duration'] = 13
+        self['lift_duration'] = 7
 
-        self['place_duration'] = 5
+        self['place_duration'] = 4
 
         # Hand properties
         self['hand_max_aperture'] = 0.25
@@ -326,11 +335,14 @@ class PISAHandKUKA(KUKA):
 
         self['wall_grasp']['punnet']['wall_force'] = 6
 
-        self['rotate_duration'] = 3.5
+        self['rotate_duration'] = 4
         
-        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
-                                                                 tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
+        # self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
+        #                                                          tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
         
+        #self['wall_grasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, -0.09, 0])
+        self['wall_grasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, 0, 0])
+
         self['wall_grasp']['object']['kp'] = 6
 
         #real WRONG VALUES
@@ -370,13 +382,13 @@ class PISAGripperKUKA(KUKA):
         ####################################################################################
 
         # Controller timeouts
-        self['hand_closing_duration'] = 2
+        self['hand_closing_duration'] = 1
 
         self['hand_opening_duration'] = 2
 
-        self['lift_duration'] = 13
+        self['lift_duration'] = 7
 
-        self['place_duration'] = 5
+        self['place_duration'] = 4
 
         # Hand properties
         self['hand_max_aperture'] = 0.25
@@ -484,8 +496,14 @@ class ClashHandKUKA(KUKA):
     def __init__(self, **kwargs):
         super(ClashHandKUKA, self).__init__()
 
-        # Placement pose reachable for the CLASH hand
-        self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.562259, 0.468926, 0.299963]), tra.quaternion_matrix([0.977061, -0.20029, 0.05786, 0.04345]))
+        self['wall_grasp']['object']['hand_transform'] = tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(180.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(90.0), [0, 0, 1]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 1, 0])
+            )
 
         ####################################################################################
         # CLASH specific params irrespective of grasp type and/or object type
@@ -496,9 +514,9 @@ class ClashHandKUKA(KUKA):
 
         self['hand_opening_duration'] = 2
 
-        self['lift_duration'] = 10
+        self['lift_duration'] = 4
 
-        self['place_duration'] = 3
+        self['place_duration'] = 4
 
         # TRIK controller speeds
         self['down_IFCO_speed'] = 0.02
@@ -513,17 +531,16 @@ class ClashHandKUKA(KUKA):
         ####################################################################################
 
         self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0, 0.0]),
-                                                                                tra.concatenate_matrices(
+                                                                                tra.concatenate_matrices(                                                                                    
                                                                                     tra.rotation_matrix(
-                                                                                        math.radians(0.), [0, 0, 1]),
-                                                                                    tra.rotation_matrix(
-                                                                                        math.radians(180.), [1, 0, 0])))
+                                                                                        math.radians(180.), [1, 0, 0]),tra.rotation_matrix(
+                                                                                        math.radians(0.), [0, 0, 1])))
 
-        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.005, -0.15])
+        self['surface_grasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.005, -0.2])
 
-        self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.15])
+        self['surface_grasp']['punnet']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.2])
 
-        self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.15])
+        self['surface_grasp']['netbag']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.2])
         
 
         self['surface_grasp']['object']['downward_force'] = 2.5
@@ -588,14 +605,21 @@ class ClashHandKUKA(KUKA):
         ####################################################################################
         # CLASH specific params for wall grasp
         ####################################################################################        
+        
+        scooping_angle_deg = 30
 
-        self['wall_grasp']['object']['scooping_angle_deg'] = 10
+        self['wall_grasp']['object']['scooping_angle_deg'] = scooping_angle_deg
 
-        self['wall_grasp']['mango']['scooping_angle_deg'] = 20
+        # self['wall_grasp']['object']['scooping_angle_deg'] = 10
 
-        self['wall_grasp']['salad']['scooping_angle_deg'] = 30  
+        # self['wall_grasp']['mango']['scooping_angle_deg'] = 20
 
-        self['wall_grasp']['object']['downward_force'] = 1.5
+        # self['wall_grasp']['salad']['scooping_angle_deg'] = 30  
+
+        self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.2, 0, -0.2]), tra.rotation_matrix(
+                                                                                        math.radians(scooping_angle_deg), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]), tra.rotation_matrix(math.radians(180.0), [0, 0, 1]))
+
+        self['wall_grasp']['object']['downward_force'] = 1.
 
         self['wall_grasp']['object']['thumb_pos_preshape'] = np.array([ 0, -10, 0])
         
@@ -613,8 +637,7 @@ class ClashHandKUKA(KUKA):
 
         self['wall_grasp']['salad']['wall_force'] = 1.5
         
-        self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
-                                                                 tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
+        self['wall_grasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, 0, 0])
         
         self['rotate_duration'] = 3
         
