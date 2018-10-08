@@ -335,12 +335,13 @@ class PISAHandKUKA(KUKA):
 
         self['wall_grasp']['punnet']['wall_force'] = 6
 
-        self['rotate_duration'] = 3.5
+        self['rotate_duration'] = 4
         
         # self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
         #                                                          tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
         
-        self['wall_grasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, -0.09, 0])
+        #self['wall_grasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, -0.09, 0])
+        self['wall_grasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, 0, 0])
 
         self['wall_grasp']['object']['kp'] = 6
 

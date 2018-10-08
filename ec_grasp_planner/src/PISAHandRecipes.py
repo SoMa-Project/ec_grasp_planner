@@ -104,7 +104,7 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
      # 4. Close the hand
     if handarm_params['SimplePositionControl']:
         # if hand is controlled in position mode, then call general hand controller
-        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([1]), name  = 'softhand_close', synergy = '1'))
+        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0.8]), name  = 'softhand_close', synergy = '1'))
         # 4b. Switch when hand closing time ends
         control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp', duration = handarm_params['hand_closing_duration']))
     
