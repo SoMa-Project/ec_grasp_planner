@@ -330,59 +330,50 @@ def get_transport_recipe(handarm_params, handarm_type):
     down_tote_speed = handarm_params['down_tote_speed']
 
     # Up speed is also positive because it is defined on the world frame
-    up_IFCO_twist = tra.translation_matrix([0, 0, up_IFCO_speed]);
-    # Down speed is negative because it is defined on the world frame
-    down_tote_twist = tra.translation_matrix([0, 0, -down_tote_speed]);  
+    up_IFCO_twist = np.array([0, 0, up_IFCO_speed, 0, 0, 0]);
+
+    # The twists are defined on the world frame
+    down_tote_twist = np.array([0, 0, -down_tote_speed, 0, 0, 0]);  
+    up_tote_twist = np.array([0, 0, down_tote_speed, 0, 0, 0]); 
+
     # Slide speed is negative because it is defined on the EE frame
-    slide_IFCO_back_twist = tra.translation_matrix([0, 0, -handarm_params['recovery_slide_back_speed']]);  
+    slide_IFCO_back_twist = np.array([0, 0, -handarm_params['recovery_slide_back_speed'], 0, 0, 0]);  
 
     # assemble controller sequence
     control_sequence = []
 
-    # Recovery from trik failing during guarded move towards a wall
-    control_sequence.append(ha.InterpolatedHTransformControlMode(slide_IFCO_back_twist, controller_name='RecoverSlide', goal_is_relative='1',
-                                             name="RecoverSlide", reference_frame="EE"))
-    control_sequence.append(ha.TimeSwitch('RecoverSlide', 'RecoverDown', duration = handarm_params['recovery_slide_duration']))
+    # # Recovery from trik failing during guarded move towards a wall
+    # control_sequence.append(ha.InterpolatedHTransformControlMode(slide_IFCO_back_twist, controller_name='RecoverSlide', goal_is_relative='1',
+    #                                          name="RecoverSlide", reference_frame="EE"))
+    # control_sequence.append(ha.TimeSwitch('RecoverSlide', 'RecoverDown', duration = handarm_params['recovery_slide_duration']))
 
-    # Recovery from trik failing during guarded move downwards
+    # # Recovery from trik failing during guarded move downwards
 
-    # 1. Lift upwards
-    control_sequence.append(ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name = 'GoUpHTransform', name = 'RecoverDown', goal_is_relative='1', reference_frame="world"))
+    # # 1. Lift upwards
+    # control_sequence.append(ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name = 'GoUpHTransform', name = 'RecoverDown', goal_is_relative='1', reference_frame="world"))
  
-    # 1b. Switch after a certain amount of time
-    control_sequence.append(ha.TimeSwitch('RecoverDown', 'softhand_open', duration = lift_time))
+    # # 1b. Switch after a certain amount of time
+    # control_sequence.append(ha.TimeSwitch('RecoverDown', 'softhand_open', duration = lift_time))
 
     # Normal transport
 
     # 1. Lift upwards
-    control_sequence.append(ha.InterpolatedHTransformControlMode(up_IFCO_twist, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
+    control_sequence.append(ha.CartesianVelocityControlMode(up_IFCO_twist, controller_name = 'GoUpHTransform', name = 'GoUp', reference_frame="world"))
  
     # 1b. Switch after a certain amount of time
-    control_sequence.append(ha.TimeSwitch('GoUp', 'Preplacement2', duration = lift_time))
+    control_sequence.append(ha.TimeSwitch('GoUp', 'Preplacement1', duration = lift_time))
 
-    # # 2. Go to Preplacement position and keeping the orientation
-    # control_sequence.append(ha.SlerpControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement1', orientation_or_and_position = 'POSITION'))
-    
-    # # 2b. Switch after a certain amount of time, the duration is short because the actual transition is done by the controller by exiting the infinite loop
-    # control_sequence.append(ha.TimeSwitch('Preplacement1', 'Preplacement2', duration = 0.5)) 
+    # 2. Change the orientation to have the hand facing the Delivery tote
+    control_sequence.append(ha.InterpolatedHTransformControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement1'))
 
-    # 2.1. Change the orientation to have the hand facing the Delivery tote
-    control_sequence.append(ha.SlerpControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement2', orientation_or_and_position = 'BOTH'))
+    # 2b. Switch when hand reaches the goal pose
+    control_sequence.append(ha.FramePoseSwitch('Preplacement1', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.1'))
 
-    # 2.1b. Switch after a certain amount of time, the duration is short because the actual transition is done by the controller by exiting the infinite loop
-    control_sequence.append(ha.TimeSwitch('Preplacement2', 'Preplacement3', duration = 0.5))
-
-    # 3. Added the InterpolatedHTransformControlMode in case slerp fails to avoid going down on the wrong goal
-    control_sequence.append(ha.InterpolatedHTransformControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement3'))
-   
-    # 3b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Preplacement3', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.1'))
-
-    # 3c. Recover if a plan is not found
-    control_sequence.append(ha.TimeSwitch('Preplacement3', 'RecoverSlide', duration = handarm_params['recovery_duration']))
+    # # 3c. Recover if a plan is not found
+    # control_sequence.append(ha.TimeSwitch('Preplacement3', 'RecoverSlide', duration = handarm_params['recovery_duration']))
 
     # 4. Go Down
-    control_sequence.append(ha.InterpolatedHTransformControlMode(down_tote_twist, controller_name = 'GoToDropOff', name = 'GoDown2', goal_is_relative='1', reference_frame="world"))
+    control_sequence.append(ha.CartesianVelocityControlMode(down_tote_twist, controller_name = 'GoToDropOff', name = 'GoDown2', reference_frame="world"))
  
     # 4b. Switch after a certain amount of time
     control_sequence.append(ha.TimeSwitch('GoDown2', 'softhand_open', duration = place_time))
