@@ -5,4 +5,5 @@ string object_heuristic_function
 ---
 string hybrid_automaton_xml
 int32 chosen_object_idx
+geometry_graph_msgs/Node chosen_node
 
