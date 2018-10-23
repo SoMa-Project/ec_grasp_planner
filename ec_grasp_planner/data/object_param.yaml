@@ -10,14 +10,17 @@
     SurfaceGrasp: {'success': 1, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': [1, 0.8, 0.7, 0] , 'angle': [0, 180, 360], 'epsilon': 20, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
     EdgeGrasp: {'success': 0}
+    mass: {'mean': 0.07058, 'stddev': 0.00359} # values for fake cucumbers
   netbag:
     SurfaceGrasp: {'success': 0, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': 1, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.042]}
     EdgeGrasp: {'success': 0}
+    mass: {'mean': 0.193, 'stddev': 0.02281} # values for fake lime netbags
   punnet:
     SurfaceGrasp: {'success': 0.5, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': [0.8, 0.8, 0], 'angle': [0, 180, 360] , 'epsilon': 20, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
     EdgeGrasp: {'success': 1}
+    mass: {'mean': 0.23008, 'stddev': 0.00395} # values for fake new punnets
   lettuce:
     SurfaceGrasp: {'success': 1, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': 0.5, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
