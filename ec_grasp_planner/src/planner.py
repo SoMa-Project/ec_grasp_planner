@@ -234,7 +234,7 @@ class GraspPlanner():
             # rospy.spin()
 
         ha_as_xml = ha.xml()
-        return plan_srv.RunGraspPlannerResponse(ha_as_xml, chosen_object_idx if ha_as_xml != "" else -1)
+        return plan_srv.RunGraspPlannerResponse(ha_as_xml, chosen_object_idx if ha_as_xml != "" else -1, chosen_node)
 
 
 # ================================================================================================
@@ -275,8 +275,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     pre_grasp_pose = goal_.dot(pregrasp_transform)
 
     # Set the directions to use TRIK controller with
-    dirDown = tra.translation_matrix([0, 0, -down_speed]);
-    dirUp = tra.translation_matrix([0, 0, up_speed]);
+    dirDown = tra.translation_matrix([0, 0, -down_speed])
+    dirUp = tra.translation_matrix([0, 0, up_speed])
 
 
 
@@ -290,23 +290,23 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # assemble controller sequence
     control_sequence = []
 
-    # # 1. Go above the object - Pregrasp
+    # # 1. Go above the object - PreGrasp
     # control_sequence.append(
     #     ha.InterpolatedHTransformControlMode(pre_grasp_pose, controller_name='GoAboveIFCO', goal_is_relative='0',
     #                                          name='Pre_preGrasp'))
     #
     # # 1b. Switch when hand reaches the goal pose
-    # control_sequence.append(ha.FramePoseSwitch('Pre_preGrasp', 'Pregrasp', controller='GoAboveIFCO', epsilon='0.01'))
+    # control_sequence.append(ha.FramePoseSwitch('Pre_preGrasp', 'PreGrasp', controller='GoAboveIFCO', epsilon='0.01'))
 
-    # 2. Go above the object - Pregrasp
+    # 2. Go above the object - PreGrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose,
                                                                  controller_name = 'GoAboveObject',
                                                                  goal_is_relative='0',
-                                                                 name = 'Pregrasp',
+                                                                 name = 'PreGrasp',
                                                                  v_max = pre_grasp_velocity))
 
     # 2b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
 
     # 3. Go down onto the object (relative in world frame) - Godown
     control_sequence.append(
@@ -785,9 +785,7 @@ if __name__ == '__main__':
 
     planner = GraspPlanner(args)
 
-
-
-    r = rospy.Rate(5);
+    r = rospy.Rate(5)
 
     marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
     br = tf.TransformBroadcaster()
