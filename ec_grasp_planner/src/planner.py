@@ -278,6 +278,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     dirDown = tra.translation_matrix([0, 0, -down_speed])
     dirUp = tra.translation_matrix([0, 0, up_speed])
 
+    dirUp_2 = tra.translation_matrix([0, 0, up_speed/2.0])  # TODO only for test
+
 
 
     # Set the frames to visualize with RViz
@@ -306,7 +308,22 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                                  v_max = pre_grasp_velocity))
 
     # 2b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
+    #control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
+                                               epsilon='0.01'))
+
+    # TODO add a time switch and short waiting time before the reference measurement is actually done?
+    # 3. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
+    control_sequence.append(ha.BlockJointControlMode(name='ReferenceMassMeasurement'))  # TODO use gravity comp instead?
+
+    # 3b. Switch when reference measurement was done
+    control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([0.0]),  # 0.0 = REFERENCE_MEASUREMENT_SUCCESS
+                                              ))
+    # TODO also add time out switch and failure switch?
+
+    # TODO more and better documentation!
 
     # 3. Go down onto the object (relative in world frame) - Godown
     control_sequence.append(
@@ -353,13 +370,45 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', goal_is_relative='1'))
 
     # 5b. Switch when hand rotated
-    control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp', controller='PostGraspRotate', epsilon='0.01', goal_is_relative='1', reference_frame = 'EE'))
+    control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp_1', controller='PostGraspRotate',
+                                               epsilon='0.01', goal_is_relative='1', reference_frame='EE'))
 
-    # 6. Lift upwards
-    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
+    # 6. Lift upwards 1
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp_2, controller_name = 'GoUpHTransform',
+                                                                 name = 'GoUp_1', goal_is_relative='1', reference_frame="world"))
 
     # 6b. Switch when joint is reached
-    control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
+    #control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
+    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'EstimationMassMeasurement', controller='GoUpHTransform', epsilon='0.01',
+                                               goal_is_relative='1', reference_frame="world"))
+
+    control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
+
+    # 3b. Switch when reference measurement was done
+    # No object was grasped => go to failure mode.
+    # Since it is a surface grasp we might still be able to simple re-run the plan
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', 'failure_rerun_3',
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([10.0]),  # 10.0 = ESTIMATION_RESULT_NO_OBJECT
+                                              ))
+
+    # Exactly one object was grasped => success (continue lifting the object and go to drop off)
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', 'GoUp_2',
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([11.0]),  # 11.0 = ESTIMATION_RESULT_OKAY
+                                              ))
+    # TODO add timeout switch
+    # TODO add switch for too many objects
+
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp_2, controller_name='GoUpHTransform',
+                                                                 name='GoUp_2', goal_is_relative='1',
+                                                                 reference_frame="world"))
+
+    control_sequence.append(ha.FramePoseSwitch('GoUp_2', 'GoDropOff', controller='GoUpHTransform', epsilon='0.01',
+                                               goal_is_relative='1', reference_frame="world"))
+
+    # Failure control mode representing grasping failure, which might be corrected by re-running the plan.
+    control_sequence.append(ha.GravityCompensationMode(name='failure_rerun_3'))
 
     # 7. Go to dropOFF
     control_sequence.append(ha.JointControlMode(drop_off_config, controller_name = 'GoToDropJointConfig', name = 'GoDropOff'))
@@ -368,13 +417,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'finished', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))
 
     # 8. Block joints to finish motion and hold object in air
-    finishedMode = ha.ControlMode(name  = 'finished')
-    finishedSet = ha.ControlSet()
-    finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'JointController', goal  = np.zeros(7),
-                                   goal_is_relative = 1, v_max = '[0,0]', a_max = '[0,0]'))
-    finishedMode.set(finishedSet)  
-    control_sequence.append(finishedMode)    
-    
+    control_sequence.append(ha.BlockJointControlMode(name='finished'))
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
