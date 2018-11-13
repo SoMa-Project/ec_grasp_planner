@@ -26,9 +26,16 @@ def angle_between(v1, v2):
     v2_u = unit_vector(v2)
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
+
 class multi_object_params:
-    def __init__(self, file_name = "object_param.yaml"):
+    def __init__(self, file_name="object_param.yaml"):
         self.file_name = file_name
+        self.data = None
+
+    def get_object_params(self):
+        if self.data is None:
+            self.load_object_params()
+        return self.data
 
     # ================================================================================================
     def transform_msg_to_homogenous_tf(self, msg):
@@ -38,10 +45,10 @@ class multi_object_params:
     ## --------------------------------------------------------- ##
     #load parameters for hand-object-strategy
     def load_object_params(self):
-        file = pkg_path + '/data/'+ self.file_name
+        file = pkg_path + '/data/' + self.file_name
         with open(file, 'r') as stream:
             try:
-                self.data =yaml.load(stream)
+                self.data = yaml.load(stream)
                 # print("data loaded {}".format(file))
             except yaml.YAMLError as exc:
                 print(exc)
@@ -74,7 +81,7 @@ class multi_object_params:
                 diff_angle = math.fabs(angle_between(obj_x_axis, ec_x_axis) - math.radians(val))
                 # print("obj_x = {}, ec_x = {}, eps = {}, optimalDeg = {}, copare = {}".format(
                 #     obj_x_axis, ec_x_axis, angle_epsilon, val, diff_angle))
-                if (diff_angle <= math.radians(angle_epsilon)):
+                if diff_angle <= math.radians(angle_epsilon):
                     q_val = success[idx]
                     break
             # if the angle was not within the given bounded sets
@@ -88,7 +95,7 @@ class multi_object_params:
 
         # distance form EC (wall end edge)
         # this is the tr from object_frame to ec_frame in object frame
-        if (strategy in ["WallGrasp", "EdgeGrasp"]):
+        if strategy in ["WallGrasp", "EdgeGrasp"]:
             delta = np.linalg.inv(ec_frame).dot(object_frame)
             # this is the distance between object and EC
             dist = delta[2, 3]
@@ -105,19 +112,18 @@ class multi_object_params:
         # the one on th right side of the robot
         # y coord is the smallest
 
-        if (all_ec_frames[current_ec_index][1,3] > 0):
+        if all_ec_frames[current_ec_index][1,3] > 0:
                 return 0
 
         min_y = 10000
-        min_y_index = 0;
-
+        min_y_index = 0
 
         for i, ec in enumerate(all_ec_frames):
             if min_y > ec[1,3]:
                 min_y = ec[1,3]
                 min_y_index = i
 
-        if (min_y_index == current_ec_index):
+        if min_y_index == current_ec_index:
             return 1
         else:
             return 0
