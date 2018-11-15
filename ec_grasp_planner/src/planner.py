@@ -328,6 +328,7 @@ def get_transport_recipe(handarm_params, handarm_type):
 
     place_time = handarm_params['place_duration']
     down_tote_speed = handarm_params['down_tote_speed']
+    init_joint_config = handarm_params['init_joint_config']
 
     # Up speed is also positive because it is defined on the world frame
     up_IFCO_twist = np.array([0, 0, up_IFCO_speed, 0, 0, 0]);
@@ -409,7 +410,7 @@ def get_transport_recipe(handarm_params, handarm_type):
     control_sequence.append(ha.TimeSwitch('softhand_open', 'initial', duration = handarm_params['hand_opening_duration']))
 
     # 6. Return to zero position
-    control_sequence.append(ha.JointControlMode(goal = np.zeros(7), goal_is_relative = '0', name = 'initial', controller_name = 'GoToZeroController'))
+    control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'initial', controller_name = 'GoToZeroController'))
     
     # 6b. Switch when zero position is reached
     control_sequence.append(ha.JointConfigurationSwitch('initial', 'finished', controller = 'GoToZeroController', epsilon = str(math.radians(7.0))))

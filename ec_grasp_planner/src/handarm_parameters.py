@@ -80,7 +80,8 @@ class KUKA(BaseHandArm):
         # Common grasp params
         #####################################################################################
         
-        self['init_joint_config'] = np.array([0, 0.25, 0, -1.13, 0, 0.67, 0.71])
+        # self['init_joint_config'] = np.array([0, 0.25, 0, -1.13, 0, 0.67, 0.71])
+        self['init_joint_config'] = np.array([0.31, 0.47, 0.0, -0.87, 0.0, 0.87, 0.0])
         self['clear_ifco_config'] = np.array([-0.18, 0.25, 0, -1.13, 0, 0.67, 0.71])
         self['above_tote_config'] = np.array([[0.87, 1.02, -0.05, -0.78, 0.43, 0.85, 0.07], 
                                               [1.1, 0.81, -0.05, -1.15, 0.07, 0.85, 0.31], 
