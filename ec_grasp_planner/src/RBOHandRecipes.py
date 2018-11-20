@@ -61,11 +61,11 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
     # assemble controller sequence
     control_sequence = []
 
-    # # 0. Go to initial nice mid-joint configuration
-    # control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'init', controller_name = 'GoToInitController'))
+    # 0. Go to initial nice mid-joint configuration
+    control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'init', controller_name = 'GoToInitController'))
     
-    # # 0b. Switch when config is reached
-    # control_sequence.append(ha.JointConfigurationSwitch('init', 'Pregrasp', controller = 'GoToInitController', epsilon = str(math.radians(1.0))))
+    # 0b. Switch when config is reached
+    control_sequence.append(ha.JointConfigurationSwitch('init', 'Pregrasp', controller = 'GoToInitController', epsilon = str(math.radians(1.0))))
 
     # 1. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(goal_, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
@@ -176,11 +176,11 @@ def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, ob
 
     control_sequence = []
 
-    # # 0. Go to initial nice mid-joint configuration
-    # control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'init', controller_name = 'GoToInitController'))
+    # 0. Go to initial nice mid-joint configuration
+    control_sequence.append(ha.JointControlMode(goal = init_joint_config, goal_is_relative = '0', name = 'init', controller_name = 'GoToInitController'))
     
-    # # 0b. Switch when config is reached
-    # control_sequence.append(ha.JointConfigurationSwitch('init', 'Pregrasp', controller = 'GoToInitController', epsilon = str(math.radians(1.0))))
+    # 0b. Switch when config is reached
+    control_sequence.append(ha.JointConfigurationSwitch('init', 'Pregrasp', controller = 'GoToInitController', epsilon = str(math.radians(1.0))))
 
     # 1. Go above the object
     control_sequence.append(
