@@ -16,7 +16,11 @@ import datetime
 from random import randint
 from random import uniform
 
+import smach
+import smach_ros
+
 import tf
+from numpy.random.mtrand import choice
 from tf import transformations as tra
 import numpy as np
 
@@ -26,8 +30,12 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from subprocess import call
 from hybrid_automaton_msgs import srv as ha_srv
+from hybrid_automaton_msgs.msg import HAMState
 
 from std_msgs.msg import Header
+
+from pregrasp_msgs.msg import GraspStrategyArray
+from pregrasp_msgs.msg import GraspStrategy
 
 from geometry_graph_msgs.msg import Graph
 
@@ -65,17 +73,25 @@ class GraspPlanner():
         # initialize the object-EC selection handler class
         self.multi_object_handler = mop.multi_object_params(args.object_params_file)
 
+        # clean initialization of planner service arguments in __init__
+        self.object_type = ""
+        self.grasp_type = ""
+        self.handarm_params = None
+
+
     # ------------------------------------------------------------------------------------------------
     def handle_run_grasp_planner(self, req):
 
         print('Handling grasp planner service call')
         self.object_type = req.object_type
         self.grasp_type = req.grasp_type
+
+        # Check for bad service parameters (we don't have to check for object since we always have a default 'object')
         self.handover = req.handover
         grasp_choices = ["Any", "WallGrasp", "SurfaceGrasp", "EdgeGrasp"]
         if self.grasp_type not in grasp_choices:
-            raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp,EdgeGrasp]")
-            return
+            raise rospy.ServiceException("grasp_type {0} not supported. Choose from {1}".format(self.grasp_type,
+                                                                                                grasp_choices))
 
         heuristic_choices = ["Deterministic", "Probabilistic", "Random"]
         if req.object_heuristic_function not in heuristic_choices:
@@ -83,29 +99,40 @@ class GraspPlanner():
                                                                                                heuristic_choices))
 
         if req.handarm_type not in handarm_parameters.__dict__:
+            raise rospy.ServiceException("handarm type not supported. Did you add {0} to handarm_parameters.py".format(
+                req.handarm_type))
 
-        #todo: more failure handling here for bad service parameters
 
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
-
-        rospy.wait_for_service('compute_ec_graph')
+        # check if the handarm parameters aren't containing any contradicting information or bugs because of non-copying
+        self.handarm_params.checkValidity()
 
         try:
+            print('Wait for vision service')
+            rospy.wait_for_service('compute_ec_graph', timeout=30)
+        except rospy.ROSException as e:
+            raise rospy.ServiceException("Vision service call unavailable: %s" % e)
+
+        try:
+            print('Call vision service now...!')
             call_vision = rospy.ServiceProxy('compute_ec_graph', vision_srv.ComputeECGraph)
             res = call_vision(self.object_type)
             graph = res.graph
             objects = res.objects.objects
-        except rospy.ServiceException, e:
+        except rospy.ServiceException as e:
             raise rospy.ServiceException("Vision service call failed: %s" % e)
-            return plan_srv.RunGraspPlannerResponse("")
+			# below line is missing from master
+			#return plan_srv.RunGraspPlannerResponse("")
 
         if not objects:
             print("No object was detected")
-            return plan_srv.RunGraspPlannerResponse("")
+            return plan_srv.RunGraspPlannerResponse("", -1)
 
         robot_base_frame = self.args.robot_base_frame
         object_frame = objects[0].transform
 
+		# TODO: framconvention shoudl be always type old for disney use-case! 
+		# use use-case selectioin al clean_start.sh
         if self.args.frame_convention == 'new':
             frame_convention = 0
         elif self.args.frame_convention == 'old':
@@ -113,7 +140,7 @@ class GraspPlanner():
 
         time = rospy.Time(0)
         graph.header.stamp = time
-        object_frame.header.stamp = time
+        object_frame.header.stamp = time # TODO why do we need to change the time in the header?
         bounding_box = objects[0].boundingbox
 
         # build list of objects
@@ -241,6 +268,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     hand_over_config = params['hand_over_config']
     hand_over_force = params['hand_over_force']
+    hand_synergy = params['hand_closing_synergy']
 
     # Set the initial pose above the object
 
@@ -269,6 +297,9 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     dirDown = tra.translation_matrix([0, 0, -down_speed])
     dirUp = tra.translation_matrix([0, 0, up_speed])
 
+    # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
+    mode_name_hand_closing = 'softhand_close_' + hand_synergy
+
     # Set the frames to visualize with RViz
     rviz_frames = []
     rviz_frames.append(object_frame)
@@ -279,21 +310,23 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # assemble controller sequence
     control_sequence = []
 
-    # # 1. Go above the object - Pregrasp
+    # # 1. Go above the object - PreGrasp
     # control_sequence.append(
     #     ha.InterpolatedHTransformControlMode(pre_grasp_pose, controller_name='GoAboveIFCO', goal_is_relative='0',
     #                                          name='Pre_preGrasp'))
     #
     # # 1b. Switch when hand reaches the goal pose
-    # control_sequence.append(ha.FramePoseSwitch('Pre_preGrasp', 'Pregrasp', controller='GoAboveIFCO', epsilon='0.01'))
+    # control_sequence.append(ha.FramePoseSwitch('Pre_preGrasp', 'PreGrasp', controller='GoAboveIFCO', epsilon='0.01'))
 
-    # 2. Go above the object - Pregrasp
-    control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'Pregrasp'))
-
-
+    # 2. Go above the object - PreGrasp
+    control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose,
+                                                                 controller_name = 'GoAboveObject',
+                                                                 goal_is_relative='0',
+                                                                 name = 'PreGrasp',
+                                                                 v_max = pre_grasp_velocity))
 
     # 2b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('Pregrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
  
     param_name = rospy.search_param('/planner/downward_speed')
     if param_name == "":
@@ -324,7 +357,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     # 3b. Switch when goal is reached
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'softhand_close',
+                                                 mode_name_hand_closing,
                                                  goal = force,
                                                  norm_weights = np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion = "THRESH_UPPER_BOUND",
@@ -335,32 +368,32 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 4. Maintain the position
     desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
     force_gradient = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
-    desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])    
+    desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
 
     if handarm_params['isForceControllerAvailable']:
-        control_sequence.append(ha.HandControlMode_ForceHT(name  = 'softhand_close', synergy = hand_synergy,
-                                                        desired_displacement = desired_displacement, 
-                                                        force_gradient = force_gradient, 
+        control_sequence.append(ha.HandControlMode_ForceHT(name  = mode_name_hand_closing, synergy = hand_synergy,
+                                                        desired_displacement = desired_displacement,
+                                                        force_gradient = force_gradient,
                                                         desired_force_dimension = desired_force_dimension))
     else:
         # if hand is not RBO then create general hand closing mode?
-        control_sequence.append(ha.SimpleRBOHandControlMode(name  = 'softhand_close', goal = np.array([1])))
+        control_sequence.append(ha.SimpleRBOHandControlMode(goal = np.array([1.0]), name  = mode_name_hand_closing))
 
 
     # 4b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration = hand_closing_duration))
+    control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration = hand_closing_duration))
 
     # 5. Rotate hand after closing and before lifting it up
     # relative to current hand pose
     control_sequence.append(
-        ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', goal_is_relative='1', ))
+        ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', goal_is_relative='1'))
 
     # 5b. Switch when hand rotated
     control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp', controller='PostGraspRotate', epsilon='0.01', goal_is_relative='1', reference_frame = 'EE'))
 
     # 6. Lift upwards
     control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
- 
+
     # 6b. Switch when joint is reached
     control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
 
@@ -420,7 +453,6 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         finishedMode.set(finishedSet)
         control_sequence.append(finishedMode)
 
-
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
 
@@ -455,6 +487,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     go_down_velocity = params['go_down_velocity']
     slide_velocity = params['slide_velocity']
     hand_closing_duration = params['hand_closing_duration']
+    hand_synergy = params['hand_closing_synergy']
 
     # Get the pose above the object
     global rviz_frames
@@ -476,6 +509,8 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     # - palm facing the object and wall
     pre_approach_pose = ec_frame.dot(pre_approach_transform)
 
+    # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
+    mode_name_hand_closing = 'softhand_close_'+hand_synergy
 
     # Rviz debug frames
     rviz_frames.append(wall_frame)
@@ -525,6 +560,8 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                                  frame_id='world',
                                                  port='2'))
 
+    # TODO: remove 3 and 3b if hand should slide on surface
+    # OR duration=0.0
     # 3. Lift upwards so the hand doesn't slide on table surface
     dirLift = tra.translation_matrix([0, 0, lift_dist])
     control_sequence.append(
@@ -549,7 +586,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     # 4b. Switch when the f/t sensor is triggered with normal force from wall
     # TODO arne: needs tuning
     force = np.array([0, 0, wall_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'softhand_close', 'ForceSwitch', goal=force,
+    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame, port='2'))
@@ -563,17 +600,16 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
         force_gradient = np.array(
             [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
         desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
-        control_sequence.append(ha.HandControlMode_ForceHT(name='softhand_close', synergy=hand_synergy,
+        control_sequence.append(ha.HandControlMode_ForceHT(name=mode_name_hand_closing, synergy=hand_synergy,
                                                            desired_displacement=desired_displacement,
                                                            force_gradient=force_gradient,
                                                            desired_force_dimension=desired_force_dimension))
     else:
-        # if hand is not RBO then create general hand closing mode?
-        control_sequence.append(ha.SimpleRBOHandControlMode(name  = 'softhand_close', goal = np.array([1])))
-
+        # just close the hand
+        control_sequence.append(ha.close_rbohand())
 
     # 5b. Switch when hand closing duration ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=hand_closing_duration))
+    control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration=hand_closing_duration))
 
     # 6. Move hand after closing and before lifting it up
     # relative to current hand pose
@@ -618,7 +654,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_params, object_type, handover):
 
     # Get the parameters from the handarm_parameters.py file
-    if (object_type in handarm_params['edge_grasp']):
+    if object_type in handarm_params['edge_grasp']:
         params = handarm_params['edge_grasp'][object_type]
     else:
         params = handarm_params['edge_grasp']['object']
@@ -643,6 +679,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     go_down_velocity = params['go_down_velocity']
     slide_velocity = params['slide_velocity']
     hand_closing_duration = params['hand_closing_duration']
+    hand_synergy = params['hand_closing_synergy']
     palm_edge_offset = params['palm_edge_offset']
 
     # Get the pose above the object
@@ -650,17 +687,17 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     rviz_frames = []
 
     # this is the EC frame. It is positioned like object and oriented to the edge?
-    # TODO rename EC_FRAME to initial_slide_frame
-    ec_frame = np.copy(edge_frame)
-    ec_frame[:3, 3] = tra.translation_from_matrix(object_frame)
+    initial_slide_frame = np.copy(edge_frame)
+    initial_slide_frame[:3, 3] = tra.translation_from_matrix(object_frame)
     # apply hand transformation
-    ec_frame = (ec_frame.dot(hand_transform))
+    # hand on object fingers pointing toward the edge
+    initial_slide_frame = (initial_slide_frame.dot(hand_transform))
 
     #the grasp frame is symmetrical - we flip so that the hand axis always points away from the robot base
-    # TODO check for edge EC if this stands
-    zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
-    if ec_frame[0][0]<0:
-        goal_ = ec_frame.dot(zflip_transform)
+    # TODO check for edge EC if this stands - this should not be necessary but practically not checked
+    # zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
+    # if initial_slide_frame[0][0]<0:
+    #     goal_ = initial_slide_frame.dot(zflip_transform)
 
 
     # the pre-approach pose should be:
@@ -669,19 +706,18 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     #   TODO define pre_approach_transform(egdeTF, objectTF, objectBB)
     # - fingers pointing toward the edge (edge x-axis orthogonal to palm frame x-axis)
     # - palm normal perpendicualr to surface normal
-    pre_approach_pose = ec_frame.dot(pre_approach_transform)
+    pre_approach_pose = initial_slide_frame.dot(pre_approach_transform)
 
+    # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
+    mode_name_hand_closing = 'softhand_close_'+hand_synergy
 
     # Rviz debug frames
     rviz_frames.append(edge_frame)
-    #rviz_frames.append(ec_frame)
+    #rviz_frames.append(initial_slide_frame)
     #rviz_frames.append(position_behind_object)
-    rviz_frames.append(ec_frame)
+    rviz_frames.append(initial_slide_frame)
     rviz_frames.append(pre_approach_pose)
 
-
-    # use the default synergy
-    hand_synergy = 1
 
     control_sequence = []
 
@@ -732,26 +768,24 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     control_sequence.append(ha.TimeSwitch('Pause_1', 'SlideToEdge', duration=0.02))
 
     # 4. Go towards the edge to slide object to edge
-    #this is the tr from ec_frame to edge frame in ec_frame
-    delta = np.linalg.inv(edge_frame).dot(ec_frame)
+    #this is the tr from initial_slide_frame to edge frame in initial_slide_frame
+    delta = np.linalg.inv(edge_frame).dot(initial_slide_frame)
 
     # this is the distance to the edge, given by the z axis of the edge frame
     # add some extra forward distance to avoid grasping the edge of the table palm_edge_offset
     dist = delta[2,3] + np.sign(delta[2,3])*palm_edge_offset
 
     # handPalm pose on the edge right before grasping
-    hand_on_edge_pose = ec_frame.dot(tra.translation_matrix([dist, 0, 0]))
+    hand_on_edge_pose = initial_slide_frame.dot(tra.translation_matrix([dist, 0, 0]))
 
     # direction toward the edge and distance without any rotation in worldFrame
     dirEdge = np.identity(4)
     # relative distance from initial slide position to final hand on the edge position
-    distance_to_edge = hand_on_edge_pose - ec_frame
+    distance_to_edge = hand_on_edge_pose - initial_slide_frame
     # TODO might need tuning based on object and palm frame
     dirEdge[:3, 3] = tra.translation_from_matrix(distance_to_edge)
     # no lifting motion applied while sliding
     dirEdge[2, 3] = 0
-
-
 
     # slide direction is given by the x-axis of the edge
     rviz_frames.append(hand_on_edge_pose)
@@ -761,7 +795,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                              v_max=slide_velocity))
 
     # 4b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('SlideToEdge', 'softhand_close',
+    control_sequence.append(ha.FramePoseSwitch('SlideToEdge', mode_name_hand_closing,
                                                controller='SlideToEdge',
                                                epsilon='0.01',
                                                reference_frame="world",
@@ -770,22 +804,22 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     # 5. Maintain contact while closing the hand
     if handarm_params['isForceControllerAvailable']:
         # apply force on object while closing the hand
-        # TODO arne: validate these values
+        # TODO arne: validate these values - done once at MS4 demo
         desired_displacement = np.array(
             [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
         force_gradient = np.array(
             [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
         desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
-        control_sequence.append(ha.HandControlMode_ForceHT(name='softhand_close', synergy=hand_synergy,
+        control_sequence.append(ha.HandControlMode_ForceHT(name  = mode_name_hand_closing, synergy=hand_synergy,
                                                            desired_displacement=desired_displacement,
                                                            force_gradient=force_gradient,
                                                            desired_force_dimension=desired_force_dimension))
     else:
         # if hand is not RBO then create general hand closing mode?
-        control_sequence.append(ha.SimpleRBOHandControlMode(name='softhand_close', goal=np.array([1])))
+        control_sequence.append(ha.SimpleRBOHandControlMode(name=mode_name_hand_closing, goal=np.array([1])))
 
-    # 5b time switch for closing hand to post grasp rotation to increase grasp success - TODO might be not needed check it
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=hand_closing_duration))
+    # 5b time switch for closing hand to post grasp rotation to increase grasp success
+    control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration=hand_closing_duration))
 
     # 6. Move hand after closing and before lifting it up
     # relative to current hand pose
@@ -1116,9 +1150,7 @@ if __name__ == '__main__':
 
     planner = GraspPlanner(args)
 
-
-
-    r = rospy.Rate(5);
+    r = rospy.Rate(5)
 
     marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
     br = tf.TransformBroadcaster()

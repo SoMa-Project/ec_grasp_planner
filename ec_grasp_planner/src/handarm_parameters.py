@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import math
+import itertools
 import numpy as np
 from tf import transformations as tra
 
@@ -18,21 +19,35 @@ class BaseHandArm(dict):
         self['edge_grasp'] = {}
         self['surface_grasp'] = {}
 
-        # surface grasp parameters for differnt objects
+        # surface grasp parameters for different objects
         # 'object' is the default parameter set
         self['surface_grasp']['object'] = {}
 
 
         # wall grasp parameters for differnt objects
         self['wall_grasp']['object'] = {}
-        self['wall_grasp']['object'] = {}
 
-        # wall grasp parameters for differnt objects
+        # edge grasp parameters for differnt objects
         self['edge_grasp']['object'] = {}
-        self['edge_grasp']['object'] = {}
-
 
         self['isForceControllerAvailable'] = False
+
+    def checkValidity(self):
+        # This function should always be called after the constructor of any class inherited from BaseHandArm
+        # This convenience function allows to combine multiple sanity checks to ensure the handarm_parameters are as intended.
+        self.assertNoCopyMissing()
+
+    def assertNoCopyMissing(self):
+        strategies = ['wall_grasp','edge_grasp','surface_grasp']
+        for s, s_other in itertools.product(strategies, repeat=2):
+            for k in self[s]:
+                for k_other in self[s_other]:
+                    if not k_other == k and self[s][k] is self[s_other][k_other]:
+                        # unitended reference copy of dictionary.
+                        # This probably means that some previously defined parameters were overwritten.
+                        raise AssertionError("You probably forgot to call copy(): {0} and {1} are equal for {2}".format(
+                            k,k_other,s))
+
 
 
 class RBOHand2(BaseHandArm):
@@ -62,7 +77,8 @@ class RBOHandP24WAM(RBOHand2):
         # you can define a default strategy for all objects by setting the second field to  'object'
         # for object-specific strategies set it to the object label
 
-        # transformation (only rotation) between object frame and hand palm frame
+        # transformation between object frame and hand palm frame above the object- should not be changed per object
+        # please don't set x and y position, this should be done in pre_grasp_transform
         # the convention at our lab is: x along the fingers and z normal on the palm.
         # please follow the same convention
         self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
@@ -72,11 +88,12 @@ class RBOHandP24WAM(RBOHand2):
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(180.), [1, 0, 0])))
 
-        # above the object, in hand palm frame
+        # position of hand relative to the object before and at grasping
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(25.0), [0, 1, 0]))
 
-        # first motion after grasp, in hand palm frame only rotation
+
+        # first motion after grasp, in hand palm frame
         self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, 0.0]),
             tra.rotation_matrix(math.radians(-10.),
@@ -158,6 +175,8 @@ class RBOHandP24WAM(RBOHand2):
         # Specific Objects: headband, ticket
         # ----------------------------------------------------------------------------
 
+        #synergy type for soft hand closing
+        self['edge_grasp']['object']['hand_closing_synergy'] = 3
         self['edge_grasp']['object']['hand_closing_duration'] = 5
         self['edge_grasp']['object']['initial_goal'] = np.array(
             [0.764798, 1.11152, -1.04516, 2.09602, -0.405398, -0.191906, 2.01431])
@@ -307,6 +326,7 @@ class RBOHandP24WAM(RBOHand2):
         #####################################################################################
         # WALL GRASP - not used in disney
         #####################################################################################
+        self['edge_grasp']['object']['hand_closing_synergy'] = 2
         self['wall_grasp']['object']['hand_closing_duration'] = 5
         self['wall_grasp']['object']['initial_goal'] = np.array(
             [0.439999, 0.624437, -0.218715, 1.71695, -0.735594, 0.197093, -0.920799])
