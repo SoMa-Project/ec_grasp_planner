@@ -363,9 +363,13 @@ def get_transport_recipe(handarm_params, handarm_type):
  
     # 1b. Switch after a certain amount of time
     control_sequence.append(ha.TimeSwitch('GoUp', 'Preplacement1', duration = lift_time))
-
+    
+    bag_id = SystemRandom().randrange(0,3)
+    print "I am going to place the object in bag " + str(bag_id)
+    above_tote_pose = handarm_params['above_tote_pose'][bag_id]
+    
     # 2. Change the orientation to have the hand facing the Delivery tote
-    control_sequence.append(ha.InterpolatedHTransformControlMode(handarm_params['pre_placement_pose'], controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement1'))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(above_tote_pose, controller_name = 'GoAbovePlacement', goal_is_relative='0', name = 'Preplacement1'))
 
     # 2b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('Preplacement1', 'GoDown2', controller = 'GoAbovePlacement', epsilon = '0.1'))

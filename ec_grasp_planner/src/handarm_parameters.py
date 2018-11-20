@@ -87,6 +87,13 @@ class KUKA(BaseHandArm):
                                               [1.1, 0.81, -0.05, -1.15, 0.07, 0.85, 0.31], 
                                               [1.34, 0.81, -0.05, -1.15, 0.07, 0.85, 0.67]])
 
+        # Placement pose reachable for the RBO hand
+        self['pre_placement_pose1'] = tra.concatenate_matrices(tra.translation_matrix([0.48436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+        self['pre_placement_pose2'] = tra.concatenate_matrices(tra.translation_matrix([0.63436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+        self['pre_placement_pose3'] = tra.concatenate_matrices(tra.translation_matrix([0.73436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+
+        self['above_tote_pose'] = np.array([self['pre_placement_pose1'], self['pre_placement_pose2'], self['pre_placement_pose3']])
+
 
         #####################################################################################
         # Common surface grasp params
@@ -112,7 +119,11 @@ class RBOHandO2KUKA(KUKA):
         super(RBOHandO2KUKA, self).__init__()
 
         # Placement pose reachable for the RBO hand
-        self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+        # self['pre_placement_pose1'] = tra.concatenate_matrices(tra.translation_matrix([0.48436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+        # self['pre_placement_pose2'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+        # self['pre_placement_pose3'] = tra.concatenate_matrices(tra.translation_matrix([0.68436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+
+        # self['above_tote_pose'] = np.array([self['pre_placement_pose1'], self['pre_placement_pose2'], self['pre_placement_pose3']])
 
         ####################################################################################
         # RBOHand specific params irrespective of grasp type and/or object type
@@ -163,7 +174,7 @@ class RBOHandO2KUKA(KUKA):
 
         self['surface_grasp']['object']['short_lift_duration'] = 1.5
 
-        self['surface_grasp']['mango']['short_lift_duration'] = 0
+        self['surface_grasp']['mango']['short_lift_duration'] = 1.0
 
         self['surface_grasp']['cucumber']['short_lift_duration'] = 2
 
@@ -357,7 +368,7 @@ class PISAHandKUKA(KUKA):
         self['wall_grasp']['cucumber']['success_rate'] = 0.8
         self['wall_grasp']['punnet']['success_rate'] = 0.6
         self['wall_grasp']['netbag']['success_rate'] = 0.8
-        self['wall_grasp']['mango']['success_rate'] = 0.5
+        self['wall_grasp']['mango']['success_rate'] = 0.1
         self['wall_grasp']['salad']['success_rate'] = 0.6
         
 
