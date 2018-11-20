@@ -97,7 +97,16 @@ class Reaction:
         else:
             self.mass = None
 
+    # returns true iff no reaction was defined at all
+    def is_no_reaction(self):
+        return not self.reactions  # reactions is not empty
+
     def cm_name_for(self, failure_case, default):
+
+        if self.is_no_reaction():
+            # No reactions defined => there is no special (failure) control mode => return the default CM
+            return default
+
         if failure_case not in self.reactions:
             raise KeyError("No reaction parameter set for {} ({}, {})".format(failure_case, self.object_type,
                                                                               self.strategy))

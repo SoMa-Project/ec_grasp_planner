@@ -32,7 +32,7 @@
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': 0}
-    mass: {'mean': 0.2, 'stddev': 0.05} # artificial values, since no fake mangos available. TODO get params as soon as we have the fake mangos again!
+    mass: {'mean': 0.28052, 'stddev': 0.05958} # artificial values, since no fake mangos available. TODO get params as soon as we have the fake mangos again!
 
   cucumber:
     SurfaceGrasp: 
