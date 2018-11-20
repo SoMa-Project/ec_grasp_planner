@@ -3,24 +3,24 @@
     WallGrasp: {'success': 1}
     EdgeGrasp: {'success': 0}
   mango:
-    SurfaceGrasp: {'success': 1}
-    WallGrasp: {'success': 1}
+    SurfaceGrasp: {'success': 1,'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
+    WallGrasp: {'success': 1, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
     EdgeGrasp: {'success': 0}
   cucumber:
-    SurfaceGrasp: {'success': 1}
-    WallGrasp: {'success': [1, 0.8, 0.7, 0] , 'angle': [0, 180, 360], 'epsilon': 20}
+    SurfaceGrasp: {'success': 1, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
+    WallGrasp: {'success': [1, 0.8, 0.7, 0] , 'angle': [0, 180, 360], 'epsilon': 20, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
     EdgeGrasp: {'success': 0}
   netbag:
-    SurfaceGrasp: {'success': 0}
-    WallGrasp: {'success': 1}
+    SurfaceGrasp: {'success': 0, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
+    WallGrasp: {'success': 1, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.042]}
     EdgeGrasp: {'success': 0}
   punnet:
-    SurfaceGrasp: {'success': 0.5}
-    WallGrasp: {'success': [0.8, 0.8, 0], 'angle': [0, 180, 360] , 'epsilon': 20}
+    SurfaceGrasp: {'success': 0.5, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
+    WallGrasp: {'success': [0.8, 0.8, 0], 'angle': [0, 180, 360] , 'epsilon': 20, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
     EdgeGrasp: {'success': 1}
   lettuce:
-    SurfaceGrasp: {'success':1}
-    WallGrasp: {'success': 0.5}
+    SurfaceGrasp: {'success': 1, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
+    WallGrasp: {'success': 0.5, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
     EdgeGrasp: {'success': 0.25}
   banana:
     SurfaceGrasp: {'success': 1}

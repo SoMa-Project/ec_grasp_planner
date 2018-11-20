@@ -77,6 +77,13 @@ class GraspPlanner():
             raise rospy.ServiceException("grasp_type not supported. Choose from [any,WallGrasp,SurfaceGrasp,EdgeGrasp]")
             return
 
+        heuristic_choices = ["Deterministic", "Probabilistic", "Random"]
+        if req.object_heuristic_function not in heuristic_choices:
+            raise rospy.ServiceException("heuristic {0} not supported. Choose from {1}".format(req.object_heuristi,
+                                                                                               heuristic_choices))
+
+        if req.handarm_type not in handarm_parameters.__dict__:
+
         #todo: more failure handling here for bad service parameters
 
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
@@ -143,12 +150,16 @@ class GraspPlanner():
         object_heuristic_function = "Deterministic"
 
         # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
-        (chosen_object, chosen_node) = self.multi_object_handler.process_objects_ecs(object_list,
+		# TODO: there is no base transform for ifco, and we dont need it, but we might need another transform!
+        (chosen_object_idx, chosen_node_idx) = self.multi_object_handler.process_objects_ecs(object_list,
                                                                                      node_list,
                                                                                      graph_in_base_transform,
-                                                                                     object_heuristic_function
-                                                                                     )
-        print(" * object type: {}, ec type: {}, heuristc funciton type: {}".format(chosen_object['type'], chosen_node.label, object_heuristic_function))
+                                                                                     ifco_in_base_transform,
+                                                                                     req.object_heuristic_function)
+
+        chosen_object = object_list[chosen_object_idx]
+        chosen_node = node_list[chosen_node_idx]
+        # print(" * object type: {}, ec type: {}, heuristc funciton type: {}".format(chosen_object['type'], chosen_node.label, req.object_heuristic_function))
 
 
         # --------------------------------------------------------
@@ -201,19 +212,20 @@ class GraspPlanner():
             publish_rviz_markers(self.rviz_frames, robot_base_frame, self.handarm_params)
             # rospy.spin()
 
+        ha_as_xml = ha.xml()
+        return plan_srv.RunGraspPlannerResponse(ha_as_xml, chosen_object_idx if ha_as_xml != "" else -1, chosen_node)
 
-        return plan_srv.RunGraspPlannerResponse(ha.xml())
 
 # ================================================================================================
 def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type, handover):
 
     # Get the relevant parameters for hand object combination
-    if (object_type in handarm_params['surface_grasp']):            
+    if object_type in handarm_params['surface_grasp']:
         params = handarm_params['surface_grasp'][object_type]
-        print("object found: {}".format(object_type))
+        #print("object found: {}".format(object_type))
     else:
         params = handarm_params['surface_grasp']['object']
-        print("object NOT found: {}".format(object_type))
+        #print("object NOT found: {}".format(object_type))
 
     hand_transform = params['hand_transform']
     pregrasp_transform = params['pregrasp_transform']

@@ -152,10 +152,9 @@ class multi_object_params:
         q_val = 1
         q_val = q_val * \
                 self.pdf_object_strategy(object_params) * \
-                self.black_list_walls(current_ec_index, all_ec_frames, strategy)
                 #self.pdf_object_ec(object_params, ec_frame, strategy) * \
                 # self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)* \
-
+                self.black_list_walls(current_ec_index, all_ec_frames, strategy)
 
 
         #print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
@@ -261,17 +260,17 @@ class multi_object_params:
             object_index,  ec_index = self.argmax_h(Q_matrix)
             print(" ** h_mx[{}, {}]".format(object_index, ec_index))
             print(" ** h_mx[{}, {}]".format(object_index, ecs[ec_index]))
-            return objects[object_index], ecs[ec_index]
+            return object_index, ec_index
         # samples from [H(obj, ec)] list
         elif h_process_type == "Probabilistic":
             object_index, ec_index = self.sample_from_pdf(Q_matrix)
-            return objects[object_index], ecs[ec_index]
+            return object_index, ec_index
         elif h_process_type == "Random":
             object_index, ec_index = self.random_from_Qmatrix(Q_matrix)
-            return objects[object_index], ecs[ec_index]
+            return object_index, ec_index
 
-        # worst case jsut return the first object and ec
-        return (objects[0],ecs[0])
+        # worst case just return the first object and ec
+        return 0, 0
 
 
 def test(ece_list = []):
@@ -324,7 +323,10 @@ def test(ece_list = []):
     # load object and ec related probability distribution function
     foo.load_object_params()
     # find object-ec tuple based on the selected heuristic function
-    obj_chosen, ec_chosen = foo.process_objects_ecs(objects, list_of_eces, graphTransform, heuristic_function)
+    obj_chosen_idx, ec_chosen_idx = foo.process_objects_ecs(objects, list_of_eces, graphTransform, heuristic_function)
+
+    obj_chosen = objects[obj_chosen_idx]
+    ec_chosen = list_of_eces[ec_chosen_idx]
 
     print("Chosen object = {} \n\n Exploiting ec = {}".format(obj_chosen, ec_chosen))
 

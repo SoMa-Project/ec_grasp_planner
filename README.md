@@ -171,7 +171,7 @@ catkin build ec_grasp_planner
 ```
 planner.py [-h] [--ros_service_call] [--file_output]
                 [--rviz][--robot_base_frame ROBOT_BASE_FRAME]
-                [--object_frame OBJECT_FRAME]
+                [--object_frame OBJECT_FRAME] [--object_params_file]
 
 Find path in graph and turn it into a hybrid automaton.
 
@@ -188,6 +188,9 @@ optional arguments:
                         Name of the robot base frame. (default: base_link)
   --object_frame OBJECT_FRAME
                         Name of the object frame. (default: object)
+  --object_params_file 
+                        Name of the file containing parameters for object-EC selection when multiple objects are present
+                        (default: object_param.yaml)
 ```
 ---
 
@@ -202,13 +205,44 @@ Step 1: start the planner in the background in simulation:
 `rosrun ec_grasp_planner planner.py --rviz --file_output`
 
 Step 2, call the rosservice
-`rosservice call /run_grasp_planner "object_type: 'Apple' grasp_type: 'SurfaceGrasp' handarm_type: 'RBOHand2Kuka'"`
+`rosservice call /run_grasp_planner "object_type: 'Apple' grasp_type: 'SurfaceGrasp' handarm_type: 'RBOHand2Kuka' object_heuristic_function: Random"`
 
 object_type can be specified to do certain object-specific behaviours. Right now there is only a default behaviour which is the same for all objects.
 
 grasp_type should be one of {any,EdgeGrasp,WallGrasp,SurfaceGrasp}. In this version only SurfaceGrasp is supported.
 
 handarm_type should match your specific robot/hand combination, i.e. RBOHand2Kuka for the rbo hand mounted omn the KUKA iiwa.  The value must match one of the class names in handarm_parameters.py.
+
+object_heuristic_function should be one of {Random, Deterministic, Probabilistic}. This parameter selects one of the three heuristic functions for multi-object and multi-EC selection.
+The planner assumes that all EC are exploitable for all objects. The multi-object-EC heuristics are:
+- Random: select one object-EC-pair randomly, independent of heuristic values
+- Deterministic: pick the maximum of a heuristic function: `(object,ec) = argmax q(object_i, ec_j) i in 1..n & j in 1..m`. `q()` is taken from a parameter file `multi_object_params.py` which contains probability values for given objects (use-case relevant) and strategies (Surface-, Wall-, EdgeGrasp). The default parameter file is in `./data/object_param.yaml`.
+- Probabilistic: Use the heuristic function as a prior for sampling random strategies: samples from the pdf given by the `Q[n x m]` matrix, where `Q[i,j] = q(object_i, ec_j)`
+ 
+ A simple example of object_params:
+ ---
+ ```
+ apple:
+    SurfaceGrasp: {'success': 1}    # Success rate for Surface grasping an apple is 100%
+    WallGrasp: {'success': 1}       # Success rate for Wall grasping an apple is 100%
+    EdgeGrasp: {'success': 0}       # Success rate for Edge grasping an apple is 0%
+```
+---
+Advanced object-ec relational parameter definition:
+
+---
+```
+  cucumber:
+    SurfaceGrasp: {'success': 1, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
+    WallGrasp: {'success': [1, 0.8, 0.7, 0] , 'angle': [0, 180, 360], 'epsilon': 20}
+    EdgeGrasp: {'success': 0}
+```
+---
+**Objcet-IFCO relative position**
+Here the `SurfaceGrasp` strategy success is as given (in this case 1) if the object is within a certain area within the IFCO. The `min` and `max` aprameters defin a cropbox inside the IFCO, this cropbox helps to exclude grasp that are infeasable due to possible collision or work space limitation. The reference frame is the `IFOC Frame` and the `min` vecor is `min: [min_x_distance_x, min_y_distance]` for which we compare the object frame relative to IFCO frame such that `object_x > min_x_distance && object_y > min_y_distance`. Similarly done for the `max: [max_x_distance_x, max_y_distance]` parameter. If the object is not within the cropbox, the success is 0.
+
+**Object-EC relative oriantation**
+Here the `WallGrasp` strategy success depend on the relative orientation of the cucumber to the wall. We define a set of possible grasping angles in degrees `[0, 180, 360]` and a success rate `[1, 0.8, 0.7]` for each angle. **Important:** the last element in the success rate vector gives the success in other cases. `epsilon` is an upper and lower bound on how exact orientation should be (0 - as precises as given in the angle vector, 10 - `10 deg > |current orientation - reference|` )   
 
 ## Examples  <a name="examples"></a>
 
