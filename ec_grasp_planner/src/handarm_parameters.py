@@ -38,7 +38,7 @@ class BaseHandArm(dict):
         self.assertNoCopyMissing()
 
     def assertNoCopyMissing(self):
-        strategies = ['wall_grasp','edge_grasp','surface_grasp']
+        strategies = ['wall_grasp', 'edge_grasp', 'surface_grasp']
         for s, s_other in itertools.product(strategies, repeat=2):
             for k in self[s]:
                 for k_other in self[s_other]:

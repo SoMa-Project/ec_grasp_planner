@@ -24,6 +24,8 @@ from numpy.random.mtrand import choice
 from tf import transformations as tra
 import numpy as np
 
+from grasp_success_estimator import RESPONSES
+
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
@@ -46,6 +48,8 @@ from visualization_msgs.msg import Marker
 
 from pregrasp_msgs import srv as vision_srv
 
+from enum import Enum
+
 import pyddl
 
 import rospkg
@@ -63,7 +67,67 @@ import multi_object_params as mop
 markers_rviz = MarkerArray()
 frames_rviz = []
 
-class GraspPlanner():
+
+class FailureCases(Enum):
+    MASS_ESTIMATION_NO_OBJECT = 3
+    MASS_ESTIMATION_TOO_MANY = 4
+
+
+class Reaction:
+    def __init__(self, object_type, strategy, object_params):
+        self.label_to_cm = {
+            'REEXECUTE': 'failure_rerun_',
+            'REPLAN': 'failure_replan_',
+            'CONTINUE': None,  # depends on the non-failure case
+        }
+
+        # contains all failure cases that depend on the mass parameter
+        self.mass_depended = [FailureCases.MASS_ESTIMATION_NO_OBJECT, FailureCases.MASS_ESTIMATION_TOO_MANY]
+
+        self.reactions = {}
+        if 'reactions' in object_params[object_type][strategy]:
+            reaction_param = object_params[object_type][strategy]['reactions']
+            for rp in reaction_param:
+                self.reactions[FailureCases[rp.upper()]] = reaction_param[rp]
+
+        self.object_type = object_type
+        self.strategy = strategy
+        if 'mass' in object_params[object_type]:
+            self.mass = object_params[object_type]['mass']
+        else:
+            self.mass = None
+
+    # returns true iff no reaction was defined at all
+    def is_no_reaction(self):
+        return not self.reactions  # reactions is not empty
+
+    def cm_name_for(self, failure_case, default):
+
+        if self.is_no_reaction():
+            # No reactions defined => there is no special (failure) control mode => return the default CM
+            return default
+
+        if failure_case not in self.reactions:
+            raise KeyError("No reaction parameter set for {} ({}, {})".format(failure_case, self.object_type,
+                                                                              self.strategy))
+
+        if self.mass is None and failure_case in self.mass_depended:
+            raise ValueError("No mass parameter set for {} ({}, {})".format(failure_case, self.object_type,
+                                                                            self.strategy))
+
+        if self.label_to_cm[self.reactions[failure_case]] is None:
+            # There is no special (failure) control mode required (e.g. CONTINUE) return the default
+            return default
+
+        # return the name of the cm for the respective failure case
+        return self.label_to_cm[self.reactions[failure_case]] + str(failure_case.value)
+
+
+class GraspPlanner:
+
+    # maximum amount of time (in seconds) that the success estimator has for its measurements per control mode.
+    success_estimator_timeout = 10.0
+
     def __init__(self, args):
         # initialize the ros node
         rospy.init_node('ec_planner')
@@ -101,7 +165,7 @@ class GraspPlanner():
             raise rospy.ServiceException("handarm type not supported. Did you add {0} to handarm_parameters.py".format(
                 req.handarm_type))
 
-
+        # load hand arm parameters set in handarm_parameters.py
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
         # check if the handarm parameters aren't containing any contradicting information or bugs because of non-copying
         self.handarm_params.checkValidity()
@@ -210,7 +274,8 @@ class GraspPlanner():
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
         ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
-                                                                self.handarm_params, self.object_type)
+                                                                     self.handarm_params, self.object_type,
+                                                                     self.multi_object_handler.get_object_params())
 
         # --------------------------------------------------------
         # Output the hybrid automaton
@@ -238,13 +303,15 @@ class GraspPlanner():
 
 
 # ================================================================================================
-def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type):
+def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type, object_params):
 
     # Get the relevant parameters for hand object combination
     if object_type in handarm_params['surface_grasp']:
         params = handarm_params['surface_grasp'][object_type]
     else:
         params = handarm_params['surface_grasp']['object']
+
+    reaction = Reaction(object_type, 'SurfaceGrasp', object_params)
 
     hand_transform = params['hand_transform']
     pregrasp_transform = params['pregrasp_transform']
@@ -264,28 +331,22 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     goal_[:3,3] = tra.translation_from_matrix(object_frame)
     goal_ =  goal_.dot(hand_transform)
 
-    #the grasp frame is symmetrical - check which side is nicer to reach
-    #this is a hacky first version for our WAM
+    # the grasp frame is symmetrical - check which side is nicer to reach
+    # this is a hacky first version for our WAM
     zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
-    if goal_[0][0]<0:
+    if goal_[0][0] < 0:
         goal_ = goal_.dot(zflip_transform)
-
 
     # hand pose above object
     pre_grasp_pose = goal_.dot(pregrasp_transform)
 
     # Set the directions to use TRIK controller with
     dirDown = tra.translation_matrix([0, 0, -down_speed])
-    dirUp = tra.translation_matrix([0, 0, up_speed])
-
-
+    # half the distance we want to achieve since we do two consecutive lifts
+    dirUp_2 = tra.translation_matrix([0, 0, up_speed/2.0])
 
     # Set the frames to visualize with RViz
-    rviz_frames = []
-    rviz_frames.append(object_frame)
-    rviz_frames.append(goal_)
-    rviz_frames.append(pre_grasp_pose)
-
+    rviz_frames = [object_frame, goal_, pre_grasp_pose]
 
     # assemble controller sequence
     control_sequence = []
@@ -298,15 +359,40 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # # 1b. Switch when hand reaches the goal pose
     # control_sequence.append(ha.FramePoseSwitch('Pre_preGrasp', 'PreGrasp', controller='GoAboveIFCO', epsilon='0.01'))
 
-    # 2. Go above the object - PreGrasp
+    # 1. Go above the object - PreGrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose,
-                                                                 controller_name = 'GoAboveObject',
+                                                                 controller_name='GoAboveObject',
                                                                  goal_is_relative='0',
-                                                                 name = 'PreGrasp',
-                                                                 v_max = pre_grasp_velocity))
+                                                                 name='PreGrasp',
+                                                                 v_max=pre_grasp_velocity))
 
-    # 2b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'GoDown', controller = 'GoAboveObject', epsilon = '0.01'))
+    # 1b. Switch when hand reaches the goal pose
+    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
+                                               epsilon='0.01'))
+
+    # TODO add a time switch and short waiting time before the reference measurement is actually done?
+    # 2. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
+    control_sequence.append(ha.BlockJointControlMode(name='ReferenceMassMeasurement'))  # TODO use gravity comp instead?
+
+    # 2b. Switches when reference measurement was done
+    # 2b.1 Successful reference measurement
+    control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([RESPONSES.REFERENCE_MEASUREMENT_SUCCESS.value]),
+                                              ))
+
+    # 2b.2 The grasp success estimator module is inactive
+    control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE.value]),
+                                              ))
+
+    # 2b.3 Timeout (grasp success estimator module not started, an error occurred or it takes too long)
+    control_sequence.append(ha.TimeSwitch('ReferenceMassMeasurement', 'GoDown',
+                                          duration=GraspPlanner.success_estimator_timeout))
+
+    # 2b.4 There is no special switch for unknown error response (estimator signals REFERENCE_MEASUREMENT_FAILURE)
+    #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
 
     # 3. Go down onto the object (relative in world frame) - Godown
     control_sequence.append(
@@ -317,76 +403,150 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                              reference_frame="world",
                                              v_max=go_down_velocity))
 
-    force  = np.array([0, 0, downward_force, 0, 0, 0])
-    mode_name_hand_closing = 'softhand_close_1' # the 1 represents a surface grasp. This way the strategy is encoded in the HA.
+    # force threshold that if reached will trigger the closing of the hand
+    force = np.array([0, 0, downward_force, 0, 0, 0])
+    # the 1 in softhand_close_1 represents a surface grasp. This way the strategy is encoded in the HA.
+    mode_name_hand_closing = 'softhand_close_1'
+
     # 3b. Switch when goal is reached
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                  mode_name_hand_closing,
-                                                 goal = force,
-                                                 norm_weights = np.array([0, 0, 1, 0, 0, 0]),
-                                                 jump_criterion = "THRESH_UPPER_BOUND",
-                                                 goal_is_relative = '1',
-                                                 frame_id = 'world',
-                                                 port = '2'))
+                                                 goal=force,
+                                                 norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                 jump_criterion="THRESH_UPPER_BOUND",
+                                                 goal_is_relative='1',
+                                                 frame_id='world',
+                                                 port='2'))
 
     # 4. Maintain the position
-    desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
-    force_gradient = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0 ], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
+    desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0],
+                                     [0.0, 1.0, 0.0, 0.0],
+                                     [0.0, 0.0, 1.0, 0.0],
+                                     [0.0, 0.0, 0.0, 1.0]])
+
+    force_gradient = np.array([[1.0, 0.0, 0.0, 0.0],
+                               [0.0, 1.0, 0.0, 0.0],
+                               [0.0, 0.0, 1.0, 0.005],
+                               [0.0, 0.0, 0.0, 1.0]])
+
     desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
 
     if handarm_params['isForceControllerAvailable']:
-        control_sequence.append(ha.HandControlMode_ForceHT(name  = mode_name_hand_closing, synergy = hand_synergy,
-                                                        desired_displacement = desired_displacement,
-                                                        force_gradient = force_gradient,
-                                                        desired_force_dimension = desired_force_dimension))
+        control_sequence.append(ha.HandControlMode_ForceHT(name=mode_name_hand_closing, synergy=hand_synergy,
+                                                           desired_displacement=desired_displacement,
+                                                           force_gradient=force_gradient,
+                                                           desired_force_dimension=desired_force_dimension))
     else:
         # if hand is not RBO then create general hand closing mode?
-        control_sequence.append(ha.SimpleRBOHandControlMode(goal = np.array([1.0]), name  = mode_name_hand_closing))
-
+        control_sequence.append(ha.SimpleRBOHandControlMode(goal=np.array([1.0]), name=mode_name_hand_closing))
 
     # 4b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration = hand_closing_time))
+    control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration=hand_closing_time))
 
-    # 5. Rotate hand after closing and before lifting it up
-    # relative to current hand pose
-    control_sequence.append(
-        ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate', goal_is_relative='1'))
+    # 5. Rotate hand after closing and before lifting it up relative to current hand pose
+    control_sequence.append(ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate',
+                                                     name='PostGraspRotate', goal_is_relative='1'))
 
     # 5b. Switch when hand rotated
-    control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp', controller='PostGraspRotate', epsilon='0.01', goal_is_relative='1', reference_frame = 'EE'))
+    control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp_1', controller='PostGraspRotate',
+                                               epsilon='0.01', goal_is_relative='1', reference_frame='EE'))
 
-    # 6. Lift upwards
-    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
+    # 6. Lift upwards a little bit (half way up)
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp_2, controller_name='GoUpHTransform',
+                                                                 name='GoUp_1', goal_is_relative='1',
+                                                                 reference_frame="world"))
 
-    # 6b. Switch when joint is reached
-    control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
+    # 6b. Switch when joint configuration (half way up) is reached
+    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'EstimationMassMeasurement', controller='GoUpHTransform',
+                                               epsilon='0.01', goal_is_relative='1', reference_frame="world"))
 
-    # 7. Go to dropOFF
-    control_sequence.append(ha.JointControlMode(drop_off_config, controller_name = 'GoToDropJointConfig', name = 'GoDropOff'))
+    # 7. Measure the mass again and estimate number of grasped objects (grasp success estimation)
+    control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
 
-    # 7.b  Switch when joint is reached
-    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'finished', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))
+    # 7b. Switches after estimation measurement was done
+    target_cm_okay = 'GoUp_2'
 
-    # 8. Block joints to finish motion and hold object in air
-    finishedMode = ha.ControlMode(name  = 'finished')
-    finishedSet = ha.ControlSet()
-    finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'JointController', goal  = np.zeros(7),
-                                   goal_is_relative = 1, v_max = '[0,0]', a_max = '[0,0]'))
-    finishedMode.set(finishedSet)  
-    control_sequence.append(finishedMode)    
-    
+    # 7b.1 No object was grasped => go to failure mode.
+    target_cm_estimation_no_object = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_NO_OBJECT, default=target_cm_okay)
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_estimation_no_object,
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([RESPONSES.ESTIMATION_RESULT_NO_OBJECT.value]),
+                                              ))
+
+    # 7b.2 More than one object was grasped => failure
+    target_cm_estimation_too_many = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_TOO_MANY, default=target_cm_okay)
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_estimation_too_many,
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([RESPONSES.ESTIMATION_RESULT_TOO_MANY.value]),
+                                              ))
+
+    # 7b.3 Exactly one object was grasped => success (continue lifting the object and go to drop off)
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_okay,
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([RESPONSES.ESTIMATION_RESULT_OKAY.value]),
+                                              ))
+
+    # 7b.4 The grasp success estimator module is inactive => directly continue lifting the object and go to drop off
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_okay,
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE.value]),
+                                              ))
+
+    # 7b.5 Timeout (grasp success estimator module not started, an error occurred or it takes too long)
+    control_sequence.append(ha.TimeSwitch('EstimationMassMeasurement', target_cm_okay,
+                                          duration=GraspPlanner.success_estimator_timeout))
+
+    # 7b.6 There is no special switch for unknown error response (estimator signals ESTIMATION_RESULT_UNKNOWN_FAILURE)
+    #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
+
+    # 8. After estimation measurement control modes.
+    extra_failure_cms = set()
+    if target_cm_estimation_no_object != target_cm_okay:
+        extra_failure_cms.add(target_cm_estimation_no_object)
+    if target_cm_estimation_too_many != target_cm_okay:
+        extra_failure_cms.add(target_cm_estimation_too_many)
+
+    for cm in extra_failure_cms:
+        if cm.startswith('failure_rerun'):
+            # 8.1 Failure control mode representing grasping failure, which might be corrected by re-running the plan.
+            control_sequence.append(ha.GravityCompensationMode(name=cm))
+        if cm.startswith('failure_replan'):
+            # 8.2 Failure control mode representing grasping failure, which can't be corrected and requires to re-plan.
+            control_sequence.append(ha.GravityCompensationMode(name=cm))
+
+    # 8.3 Success control mode. Lift hand even further
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp_2, controller_name='GoUpHTransform',
+                                                                 name=target_cm_okay, goal_is_relative='1',
+                                                                 reference_frame="world"))
+
+    # 8.3b Switch when joint configuration is reached
+    control_sequence.append(ha.FramePoseSwitch(target_cm_okay, 'GoDropOff', controller='GoUpHTransform', epsilon='0.01',
+                                               goal_is_relative='1', reference_frame="world"))
+
+    # 9. Go to dropOFF location
+    control_sequence.append(ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig',
+                                                name='GoDropOff'))
+
+    # 9.b  Switch when joint is reached
+    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'finished', controller = 'GoToDropJointConfig',
+                                                        epsilon=str(math.radians(7.))))
+
+    # 10. Block joints to finish motion and hold object in air
+    control_sequence.append(ha.BlockJointControlMode(name='finished'))
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
 
 # ================================================================================================
-def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params, object_type):
+def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params, object_type, object_params):
 
     # Get the parameters from the handarm_parameters.py file
     if (object_type in handarm_params['wall_grasp']):
         params = handarm_params['wall_grasp'][object_type]
     else:
         params = handarm_params['wall_grasp']['object']
+
+    reaction = Reaction(object_type, 'WallGrasp', object_params)
 
     # initial configuration above IFCO. Should be easy to go from here to pregrasp pose
     # TODO remove this once we have configuration space planning capabilities
@@ -456,9 +616,34 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                              name="PreGrasp"))
 
     # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'GoDown', controller='GoAboveObject', epsilon='0.01'))
+    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
+                                               epsilon='0.01'))
 
-    # 2. Go down onto the object/table, in world frame
+    # TODO add a time switch and short waiting time before the reference measurement is actually done?
+    # 2. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
+    control_sequence.append(ha.BlockJointControlMode(name='ReferenceMassMeasurement'))  # TODO use gravity comp instead?
+
+    # 2b. Switches when reference measurement was done
+    # 2b.1 Successful reference measurement
+    control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([RESPONSES.REFERENCE_MEASUREMENT_SUCCESS.value]),
+                                              ))
+
+    # 2b.2 The grasp success estimator module is inactive
+    control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE.value]),
+                                              ))
+
+    # 2b.3 Timeout (grasp success estimator module not started, an error occurred or it takes too long)
+    control_sequence.append(ha.TimeSwitch('ReferenceMassMeasurement', 'GoDown',
+                                          duration=GraspPlanner.success_estimator_timeout))
+
+    # 2b.4 There is no special switch for unknown error response (estimator signals REFERENCE_MEASUREMENT_FAILURE)
+    #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
+
+    # 3. Go down onto the object/table, in world frame
     dirDown = tra.translation_matrix([0, 0, -down_dist])
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(dirDown,
@@ -468,7 +653,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                              reference_frame="world",
                                              v_max=go_down_velocity))
 
-    # 2b. Switch when force threshold is exceeded
+    # 3b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                  'LiftHand',
@@ -479,19 +664,19 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                                  frame_id='world',
                                                  port='2'))
 
-    # TODO: remove 3 and 3b if hand should slide on surface
+    # TODO: remove 4 and 4b if hand should slide on surface
     # OR duration=0.0
-    # 3. Lift upwards so the hand doesn't slide on table surface
+    # 4. Lift upwards so the hand doesn't slide on table surface
     dirLift = tra.translation_matrix([0, 0, lift_dist])
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(dirLift, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
                                              reference_frame="world"))
 
-    # 3b. We switch after a short time as this allows us to do a small, precise lift motion
+    # 4b. We switch after a short time as this allows us to do a small, precise lift motion
     # TODO partners: this can be replaced by a frame pose switch if your robot is able to do small motions precisely
     control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.2))
 
-    # 4. Go towards the wall to slide object to wall
+    # 5. Go towards the wall to slide object to wall
     dirWall = tra.translation_matrix([0, 0, -sliding_dist])
     #TODO sliding_distance should be computed from wall and hand frame.
 
@@ -502,16 +687,18 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                              name="SlideToWall", reference_frame="world",
                                              v_max=slide_velocity))
 
-    # 4b. Switch when the f/t sensor is triggered with normal force from wall
+    # 5b. Switch when the f/t sensor is triggered with normal force from wall
     # TODO arne: needs tuning
     force = np.array([0, 0, wall_force, 0, 0, 0])
-    mode_name_hand_closing = 'softhand_close_2'  # the 2 represents a wall grasp. This way the strategy is encoded in the HA.
+    # the 2 in softhand_close_2 represents a wall grasp. This way the strategy is encoded in the HA.
+    mode_name_hand_closing = 'softhand_close_2'
+
     control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame, port='2'))
 
-    # 5. Maintain contact while closing the hand
+    # 6. Maintain contact while closing the hand
     if handarm_params['isForceControllerAvailable']:
         # apply force on object while closing the hand
         # TODO arne: validate these values
@@ -528,62 +715,129 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
         # just close the hand
         control_sequence.append(ha.close_rbohand())
 
-    # 5b. Switch when hand closing duration ends
+    # 6b. Switch when hand closing duration ends
     control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration=hand_closing_duration))
 
-    # 6. Move hand after closing and before lifting it up
+    # 7. Move hand after closing and before lifting it up
     # relative to current hand pose
     control_sequence.append(
         ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate',
                                  goal_is_relative='1', ))
 
-    # 6b. Switch when hand reaches post grasp pose
-    control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp', controller='PostGraspRotate', epsilon='0.01',
-                                               goal_is_relative='1', reference_frame='EE'))
+    # 7b. Switch when hand reaches post grasp pose
+    control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp_1', controller='PostGraspRotate',
+                                               epsilon='0.01', goal_is_relative='1', reference_frame='EE'))
 
-    # 7. Lift upwards (+z in world frame)
-    dirUp = tra.translation_matrix([0, 0, up_dist])
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform', name='GoUp', goal_is_relative='1',
-                                             reference_frame="world"))
+    # 8. Lift upwards (+z in world frame)
+    # half the distance we want to achieve since we do two consecutive lifts
+    dir_up_2 = tra.translation_matrix([0, 0, up_dist / 2.0])
 
-    # 7b. Switch when lifting motion is completed
-    control_sequence.append(
-        ha.FramePoseSwitch('GoUp', 'GoDropOff', controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
-                           reference_frame="world"))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dir_up_2, controller_name='GoUpHTransform',
+                                                                 name='GoUp_1', goal_is_relative='1',
+                                                                 reference_frame="world"))
 
-    # 8. Go to drop off configuration
+    # 8b. Switch when joint configuration (half way up) is reached
+    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'EstimationMassMeasurement', controller='GoUpHTransform',
+                                               epsilon='0.01', goal_is_relative='1', reference_frame="world"))
+
+    # 9. Measure the mass again and estimate number of grasped objects (grasp success estimation)
+    control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
+
+    # 9b. Switches after estimation measurement was done
+    target_cm_okay = 'GoUp_2'
+
+    # 9b.1 No object was grasped => go to failure mode.
+    target_cm_estimation_no_object = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_NO_OBJECT,
+                                                          default=target_cm_okay)
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_estimation_no_object,
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([RESPONSES.ESTIMATION_RESULT_NO_OBJECT.value]),
+                                              ))
+
+    # 9b.2 More than one object was grasped => failure
+    target_cm_estimation_too_many = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_TOO_MANY, default=target_cm_okay)
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_estimation_too_many,
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([RESPONSES.ESTIMATION_RESULT_TOO_MANY.value]),
+                                              ))
+
+    # 9b.3 Exactly one object was grasped => success (continue lifting the object and go to drop off)
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_okay,
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([RESPONSES.ESTIMATION_RESULT_OKAY.value]),
+                                              ))
+
+    # 9b.4 The grasp success estimator module is inactive => directly continue lifting the object and go to drop off
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_okay,
+                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+                                              goal=np.array([RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE.value]),
+                                              ))
+
+    # 9b.5 Timeout (grasp success estimator module not started, an error occurred or it takes too long)
+    control_sequence.append(ha.TimeSwitch('EstimationMassMeasurement', target_cm_okay,
+                                          duration=GraspPlanner.success_estimator_timeout))
+
+    # 9b.6 There is no special switch for unknown error response (estimator signals ESTIMATION_RESULT_UNKNOWN_FAILURE)
+    #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
+
+    # 10. After estimation measurement control modes.
+    extra_failure_cms = set()
+    if target_cm_estimation_no_object != target_cm_okay:
+        extra_failure_cms.add(target_cm_estimation_no_object)
+    if target_cm_estimation_too_many != target_cm_okay:
+        extra_failure_cms.add(target_cm_estimation_too_many)
+
+    for cm in extra_failure_cms:
+        if cm.startswith('failure_rerun'):
+            # 10.1 Failure control mode representing grasping failure, which might be corrected by re-running the plan.
+            control_sequence.append(ha.GravityCompensationMode(name=cm))
+        if cm.startswith('failure_replan'):
+            # 10.2 Failure control mode representing grasping failure, which can't be corrected and requires to re-plan.
+            control_sequence.append(ha.GravityCompensationMode(name=cm))
+
+    # 10.3 Success control mode. Lift hand even further
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dir_up_2, controller_name='GoUpHTransform',
+                                                                 name=target_cm_okay, goal_is_relative='1',
+                                                                 reference_frame="world"))
+
+    # 10.3b Switch when joint configuration is reached
+    control_sequence.append(ha.FramePoseSwitch(target_cm_okay, 'GoDropOff', controller='GoUpHTransform', epsilon='0.01',
+                                               goal_is_relative='1', reference_frame="world"))
+
+    # 11. Go to drop off configuration
     control_sequence.append(
         ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
 
-    # 8.b  Switch when configuration is reached
+    # 11.b Switch when configuration is reached
     control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'finished', controller='GoToDropJointConfig',
                                                         epsilon=str(math.radians(7.))))
 
-    # 9. Block joints to finish motion and hold object in air
-    finishedMode = ha.ControlMode(name='finished')
-    finishedSet = ha.ControlSet()
-    finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
-                                  goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
-    finishedMode.set(finishedSet)
-    control_sequence.append(finishedMode)
+    # 12. Block joints to finish motion and hold object in air
+    control_sequence.append(ha.BlockJointControlMode(name='finished'))
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
-# ================================================================================================
-def transform_msg_to_homogenous_tf(msg):
-    return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]), tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
 
 # ================================================================================================
-def homogenous_tf_to_pose_msg(htf):
-    return Pose(position = Point(*tra.translation_from_matrix(htf).tolist()), orientation = Quaternion(*tra.quaternion_from_matrix(htf).tolist()))
+def transform_msg_to_homogeneous_tf(msg):
+    return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]),
+                  tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
+
+
+# ================================================================================================
+def homogeneous_tf_to_pose_msg(htf):
+    return Pose(position=Point(*tra.translation_from_matrix(htf).tolist()),
+                orientation=Quaternion(*tra.quaternion_from_matrix(htf).tolist()))
+
 
 # ================================================================================================
 def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
 
+
 # ================================================================================================
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params, object_type):
+def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params,
+                                          object_type, object_params):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
 
@@ -592,24 +846,27 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
 
     print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == 'EdgeGrasp':
-        raise "Edge grasp is not supported yet"
+        raise ValueError("Edge grasp is not supported yet")
         #support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
         #support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
         #edge_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         #edge_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(edge_frame_node.transform))
-        return create_edge_grasp(T_object_in_base, support_surface_frame, edge_frame, handarm_params)
+        return create_edge_grasp(T_object_in_base, support_surface_frame, edge_frame, handarm_params, object_type,
+                                 object_params)
     elif grasp_type == 'WallGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
-        support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
+        support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogeneous_tf(support_surface_frame_node.transform))
         wall_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
-        wall_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(wall_frame_node.transform))
-        return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame, handarm_params, object_type)
+        wall_frame = T_robot_base_frame.dot(transform_msg_to_homogeneous_tf(wall_frame_node.transform))
+        return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame, handarm_params, object_type,
+                                 object_params)
     elif grasp_type == 'SurfaceGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
-        support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
-        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type)
+        support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogeneous_tf(support_surface_frame_node.transform))
+        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type, object_params)
     else:
-        raise "Unknown grasp type: ", grasp_type
+        raise ValueError("Unknown grasp type: {}".format(grasp_type))
+
 
 # ================================================================================================
 def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_list, verbose = False):
@@ -698,6 +955,7 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_list,
 
     return plan
 
+
 # ================================================================================================
 def publish_rviz_markers(frames, frame_id, handarm_params):
 
@@ -722,7 +980,7 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
         msg.mesh_resource = handarm_params["mesh_file"]
         msg.scale.x = msg.scale.y = msg.scale.z = handarm_params["mesh_file_scale"]
         #msg.mesh_resource = mesh_resource
-        msg.pose = homogenous_tf_to_pose_msg(f)
+        msg.pose = homogeneous_tf_to_pose_msg(f)
 
         markers_rviz.markers.append(msg)
 
@@ -739,12 +997,14 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
         msg.color.r = msg.color.a = 1
         msg.scale.x = 0.01 # shaft diameter
         msg.scale.y = 0.03 # head diameter
-        msg.points.append(homogenous_tf_to_pose_msg(f1).position)
-        msg.points.append(homogenous_tf_to_pose_msg(f2).position)
+        msg.points.append(homogeneous_tf_to_pose_msg(f1).position)
+        msg.points.append(homogeneous_tf_to_pose_msg(f2).position)
 
         markers_rviz.markers.append(msg)
 
     frames_rviz = frames
+
+
 # ================================================================================================
 if __name__ == '__main__':
 
@@ -767,7 +1027,7 @@ if __name__ == '__main__':
     # parser.add_argument('--handarm', type=str, default = 'RBOHand2WAM',
     #                     help='Python class that contains configuration parameters for hand and arm-specific properties.')
     parser.add_argument('--object_params_file', type=str, default='object_param.yaml',
-                        help='Name of the file containing parameters for object-EC selection when multiple objects are present')
+                        help='Name of the file containing object specific parameters (e.g. for object-EC selection when multiple objects are present)')
 
     # args = parser.parse_args()
     args = parser.parse_args(rospy.myargv()[1:])
