@@ -45,9 +45,6 @@ class MassEstimator(object):
     # If confidence is lower than this threshold the estimator warns that confidence is low (will still report a result)
     CONFIDENCE_THRESHOLD = 0.3
 
-    # FT-Topic to use. Possible options are: /ft_notool and /ft_sensor_wrench
-    FT_TOPIC = "/ft_notool"
-
     # standard acceleration due to gravity
     GRAVITY = 9.806
 
@@ -80,7 +77,7 @@ class MassEstimator(object):
 
         return msg
 
-    def __init__(self, object_ros_param_path, path_to_object_parameters):
+    def __init__(self, ft_topic_name, ft_topic_type, object_ros_param_path, path_to_object_parameters):
         rospy.init_node('graspSuccessEstimatorMass', anonymous=True)
 
         self.tf_listener = tf.TransformListener()
@@ -98,21 +95,8 @@ class MassEstimator(object):
         # The name of the current object retrieved from ros parameters during reference acquisition and checked
         # during estimation. Used to access object information (e.g. mass probability distribution).
         self.current_object_name = rospy.get_param(self.object_ros_param_path, default=None)
-        # subscriber to the ft topic that is used to estimate the weight
-        if MassEstimator.FT_TOPIC == "/ft_sensor_wrench":
-            self.ft_sensor_subscriber = rospy.Subscriber(MassEstimator.FT_TOPIC, WrenchStamped, self.ft_sensor_callback,
-                                                         queue_size=10)
-        else:
-            # assume /ft_notool
-            self.ft_sensor_subscriber = rospy.Subscriber(MassEstimator.FT_TOPIC, Float64MultiArray,
-                                                         self.ft_sensor_no_tool_callback,
-                                                         queue_size=10)
 
-        # Stores the last active control mode to ensure we only start estimation once (the moment we enter the state)
-        self.active_cm = None
-        self.ham_state_subscriber = rospy.Subscriber("/ham_state", HAMState, self.ham_state_callback,
-                                                     queue_size=10)
-
+        # Create the publishers
         self.estimator_status_pub = rospy.Publisher('/graspSuccessEstimator/status', Float64, queue_size=10)
         self.estimator_number_pub = rospy.Publisher('/graspSuccessEstimator/num_objects', Float64, queue_size=10)
         self.estimator_confidence_pub = rospy.Publisher('/graspSuccessEstimator/confidence', Float64, queue_size=10)
@@ -120,12 +104,25 @@ class MassEstimator(object):
                                                             queue_size=10)
         self.estimator_mass_pub = rospy.Publisher('/graspSuccessEstimator/masses', Float64MultiArray, queue_size=10)
 
+        # Stores the last active control mode to ensure we only start estimation once (the moment we enter the state)
+        self.active_cm = None
+        self.ham_state_subscriber = rospy.Subscriber("/ham_state", HAMState, self.ham_state_callback)
+
+        # subscriber to the ft topic that is used to estimate the weight
+        if ft_topic_type == "Float64MultiArray":
+            self.ft_sensor_subscriber = rospy.Subscriber(ft_topic_name, Float64MultiArray,
+                                                         self.ft_sensor_float_array_callback)
+        elif ft_topic_type == "WrenchStamped":
+            self.ft_sensor_subscriber = rospy.Subscriber(ft_topic_name, WrenchStamped, self.ft_sensor_callback)
+        else:
+            raise ValueError("The given message type {} is not supported.".format(ft_topic_type))
+
     def ft_sensor_callback(self, data):
         # TODO add a filter that averages a sliding window until all FT measurements in that window have a smaller
         # variance than a predefined threshold value and the sliding window is completely filled up with messages.
         self.last_ft_measurement = data
 
-    def ft_sensor_no_tool_callback(self, data):
+    def ft_sensor_float_array_callback(self, data):
         last_ft_measurement = WrenchStamped()
         last_ft_measurement.wrench.force.x = data.data[0]
         last_ft_measurement.wrench.force.y = data.data[1]
@@ -172,7 +169,7 @@ class MassEstimator(object):
             # print("4", type(frame_transform), type(ft_measurement))
             return frame_transform.dot(ft_measurement)
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            print("Could not lookup transform from /ee to /base_link")
+            rospy.logerr("Could not lookup transform from /ee to /base_link")
             # TODO potentially add wait for transform (with timeout)
             return None
 
@@ -195,6 +192,7 @@ class MassEstimator(object):
 
         # In case we weren't able to calculate the reference mass, signal failure
         self.ft_measurement_reference = None
+        rospy.logerr("Reference measurement couldn't be done. Is FT-topic alive?")
         self.publish_status(RESPONSES.REFERENCE_MEASUREMENT_FAILURE)
 
     def estimate_number_of_objects(self):
@@ -269,16 +267,17 @@ class MassEstimator(object):
 
         # In case we weren't able to calculate the number of objects, signal failure
         self.ft_measurement_reference = None
+        rospy.logerr("Estimation measurement couldn't be done. Is FT-topic alive?")
         self.publish_status(RESPONSES.ESTIMATION_RESULT_UNKNOWN_FAILURE)
 
 
 if __name__ == '__main__':
 
     my_argv = rospy.myargv(argv=sys.argv)
-    if len(my_argv) < 3:
-        print("usage: grasp_success_estimator.py object_ros_param_path path_to_object_parameters")
+    if len(my_argv) < 5:
+        print("usage: grasp_success_estimator.py ft_topic_name ft_topic_type object_ros_param_path path_to_object_parameters")
     else:
-        we = MassEstimator(my_argv[1], my_argv[2])
+        we = MassEstimator(my_argv[1], my_argv[2], my_argv[3], my_argv[4])
         rospy.spin()
         # locking between the callbacks not required as long as we use only one spinner. See:
         # https://answers.ros.org/question/48429/should-i-use-a-lock-on-resources-in-a-listener-node-with-multiple-callbacks/
