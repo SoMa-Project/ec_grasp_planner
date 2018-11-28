@@ -152,9 +152,10 @@ class multi_object_params:
         q_val = 1
         q_val = q_val * \
                 self.pdf_object_strategy(object_params) * \
-                #self.pdf_object_ec(object_params, ec_frame, strategy) * \
-                # self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)* \
                 self.black_list_walls(current_ec_index, all_ec_frames, strategy)
+                #self.pdf_object_ec(object_params, ec_frame, strategy) *\
+                # self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)* \
+
 
 
         #print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))

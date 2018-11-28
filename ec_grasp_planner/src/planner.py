@@ -174,6 +174,13 @@ class GraspPlanner():
         self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
         graph_in_base_transform = self.tf_listener.asMatrix(robot_base_frame, graph.header)
 
+        # in disne usecase we use a generic table rather then ifco centroid
+        self.tf_listener.waitForTransform('table', robot_base_frame, time, rospy.Duration(2.0))
+        (ifco_in_base_translation, ifco_in_base_rot) = self.tf_listener.lookupTransform('table', robot_base_frame,
+                                                                                        rospy.Time(
+                                                                                            0))  # transform_msg_to_homogenous_tf()
+        tf_transformer = tf.TransformerROS()
+        ifco_in_base_transform = tf_transformer.fromTranslationRotation(ifco_in_base_translation, ifco_in_base_rot)
         object_heuristic_function = "Deterministic"
 
         # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
@@ -301,7 +308,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     dirUp = tra.translation_matrix([0, 0, up_speed])
 
     # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
-    mode_name_hand_closing = 'softhand_close_' + hand_synergy
+    mode_name_hand_closing = 'softhand_close_' + `hand_synergy`
 
     # Set the frames to visualize with RViz
     rviz_frames = []
@@ -513,7 +520,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     pre_approach_pose = ec_frame.dot(pre_approach_transform)
 
     # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
-    mode_name_hand_closing = 'softhand_close_'+hand_synergy
+    mode_name_hand_closing = 'softhand_close_'+`hand_synergy`
 
     # Rviz debug frames
     rviz_frames.append(wall_frame)
@@ -715,7 +722,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     pre_approach_pose = initial_slide_frame.dot(pre_approach_transform)
 
     # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
-    mode_name_hand_closing = 'softhand_close_'+hand_synergy
+    mode_name_hand_closing = 'softhand_close_'+`hand_synergy`
 
     # Rviz debug frames
     rviz_frames.append(edge_frame)
