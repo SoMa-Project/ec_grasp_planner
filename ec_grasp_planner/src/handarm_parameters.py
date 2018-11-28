@@ -69,6 +69,8 @@ class RBOHandP24WAM(RBOHand2):
         # does the robot support impedance control
         self['isForceControllerAvailable'] = True
 
+        # max waiting time to trigger hand over, otherwise drop off object
+        self['wait_handing_over_duration'] = 20
         # SURFACE GRASP
         # ---------------------------
         # Generic Object
@@ -131,6 +133,9 @@ class RBOHandP24WAM(RBOHand2):
 
         # the force with which the person pulls the object out of the hand
         self['surface_grasp']['object']['hand_over_force'] = 2.5
+
+        self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
+
 
         # SURFACE GRASP
         # ----------------------------------------------------------------------------

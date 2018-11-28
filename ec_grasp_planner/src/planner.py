@@ -269,6 +269,9 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     hand_over_config = params['hand_over_config']
     hand_over_force = params['hand_over_force']
     hand_synergy = params['hand_closing_synergy']
+    pre_grasp_velocity = params['pre_grasp_velocity']
+
+    wait_handing_over_duration=handarm_params['wait_handing_over_duration']
 
     # Set the initial pose above the object
 
@@ -681,6 +684,9 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     hand_closing_duration = params['hand_closing_duration']
     hand_synergy = params['hand_closing_synergy']
     palm_edge_offset = params['palm_edge_offset']
+    
+    wait_handing_over_duration = handarm_params['wait_handing_over_duration']
+
 
     # Get the pose above the object
     global rviz_frames
