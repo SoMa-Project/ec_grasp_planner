@@ -404,64 +404,81 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 6. Lift upwards
     control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name = 'GoUpHTransform', name = 'GoUp', goal_is_relative='1', reference_frame="world"))
 
-    # 6b. Switch when joint is reached
-    control_sequence.append(ha.FramePoseSwitch('GoUp', 'GoDropOff', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
-
     if handover:
-
-        print("hand over conf:{}".format(hand_over_config))
-        # 7. Go to handover cfg
-        control_sequence.append(
-            ha.JointControlMode(hand_over_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
-
-        # 8.b  Switch when configuration is reached
-        control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'wait_for_handover', controller='GoToDropJointConfig',
-                                                            epsilon=str(math.radians(7.))))
-
-
-        # 9. Block joints to hold object in air util human takes over
-        waitForHandoverMode = ha.ControlMode(name='wait_for_handover')
-        waitForHandoverSet = ha.ControlSet()
-        waitForHandoverSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
-                                      goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
-        waitForHandoverMode.set(waitForHandoverSet)
-        control_sequence.append(waitForHandoverMode)
-
-        # wait until force is exerted by human on EE while taking the object to release object
-        control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open', name='human_interaction_handover', goal=np.zeros(6),
-                                                       norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='0', goal_is_relative = '1',
-                                                       epsilon=hand_over_force, negate='1'))
-
-        # 10. open hand
-        control_sequence.append(ha.ControlMode(name='softhand_open'))
-
-        # 11. Block joints to hold object in air util human takes over
-        finishedMode = ha.ControlMode(name='finished')
-        finishedSet = ha.ControlSet()
-        finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
-                                             goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
-
-        finishedMode.set(finishedSet)
-
-        control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration=hand_closing_duration))
-
-        control_sequence.append(finishedMode)
+        # 6b. Switch when lifting motion is completed
+        control_sequence.append(ha.FramePoseSwitch('GoUp', 'HandOvere', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
     else:
-
-        # 7. Go to dropOFF
+        # 6b. Switchwhen lifting motion is completed
         control_sequence.append(
-            ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
+            ha.FramePoseSwitch('GoUp', 'GoDropOff', controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
+                               reference_frame="world"))
 
-        # 7.b  Switch when joint is reached
-        control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'finished', controller = 'GoToDropJointConfig', epsilon = str(math.radians(7.))))
+    print("hand over conf:{}".format(hand_over_config))
+    # 7h. Go to handover cfg
+    control_sequence.append(
+        ha.JointControlMode(hand_over_config, controller_name='GoToHandOvereJointConfig', name='HandOvere'))
 
-        # 8. Block joints to finish motion and hold object in air
-        finishedMode = ha.ControlMode(name  = 'finished')
-        finishedSet = ha.ControlSet()
-        finishedSet.add(ha.Controller( name = 'JointSpaceController', type = 'JointController', goal  = np.zeros(7),
-                                       goal_is_relative = 1, v_max = '[0,0]', a_max = '[0,0]'))
-        finishedMode.set(finishedSet)
-        control_sequence.append(finishedMode)
+    # 7h.b  Switch when configuration is reached
+    control_sequence.append(ha.JointConfigurationSwitch('HandOvere', 'wait_for_handover',
+                                                        controller='GoToHandOvereJointConfig',
+                                                        epsilon=str(math.radians(7.))))
+
+    # 8h. Block joints to hold object in air util human takes over
+    waitForHandoverMode = ha.ControlMode(name='wait_for_handover')
+    waitForHandoverSet = ha.ControlSet()
+    waitForHandoverSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
+                                  goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
+    waitForHandoverMode.set(waitForHandoverSet)
+    control_sequence.append(waitForHandoverMode)
+
+    #8h.b wait until force is exerted by human on EE while taking the object to release object
+    control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open', name='human_interaction_handover', goal=np.zeros(6),
+                                                   norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='0', goal_is_relative = '1',
+                                                   epsilon=hand_over_force, negate='1'))
+
+    # 9h. open hand
+    control_sequence.append(ha.ControlMode(name='softhand_open'))
+
+
+    # 9h.b
+    control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration=hand_closing_duration))
+
+
+    # 10/12 Block joints to hold object in air util human takes over
+    finishedMode = ha.ControlMode(name='finished')
+    finishedSet = ha.ControlSet()
+    finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
+                                  goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
+    finishedMode.set(finishedSet)
+    control_sequence.append(finishedMode)
+
+    # 8.1h. b Reaction if human is not taking the object in time, robot drops off the object
+    control_sequence.append(ha.TimeSwitch('wait_for_hadover', 'GoToDropJointConfig',
+                                          duration=wait_handing_over_duration))
+
+    # 9.1 Go to dropOFF
+    control_sequence.append(
+        ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
+
+    # 9.1 b  Switch when joint is reached
+    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'softhand_open_2',
+                                                        controller = 'GoToDropJointConfig',
+                                                        epsilon = str(math.radians(7.))))
+    # 10.1 open hand
+    control_sequence.append(ha.ControlMode(name='softhand_open_2'))
+
+    # 10.1 b
+    control_sequence.append(ha.TimeSwitch('softhand_open_2', 'GoUp_2', duration=hand_closing_duration))
+
+    # 11.1 Lift upwards
+    control_sequence.append(
+        ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform_2', name='GoUp_2', goal_is_relative='1',
+                                             reference_frame="world"))
+
+    # 11.1 b Switch when joint is reached
+    control_sequence.append(
+        ha.FramePoseSwitch('GoUp_2', 'finished', controller='GoUpHTransform_2', epsilon='0.01', goal_is_relative='1',
+                           reference_frame="world"))
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
@@ -850,68 +867,83 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
         ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform', name='GoUp', goal_is_relative='1',
                                              reference_frame="world"))
 
-    # 7b. Switch when lifting motion is completed
-    control_sequence.append(
-        ha.FramePoseSwitch('GoUp', 'GoDropOff', controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
-                           reference_frame="world"))
-
-
     if handover:
-        # 8. Go to hand over configuration configuration
+        # 7b. Switch when lifting motion is completed
+        control_sequence.append(ha.FramePoseSwitch('GoUp', 'HandOvere', controller = 'GoUpHTransform',
+                                                   epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
+    else:
+        # 7b. Switch when lifting motion is completed
         control_sequence.append(
-            ha.JointControlMode(hand_over_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
+            ha.FramePoseSwitch('GoUp', 'GoDropOff', controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
+                               reference_frame="world"))
 
-        # 8.b  Switch when configuration is reached
-        control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'wait_for_handover', controller='GoToDropJointConfig',
-                                                            epsilon=str(math.radians(7.))))
+    print("hand over conf:{}".format(hand_over_config))
+
+    # 8h. Go to handover cfg
+    control_sequence.append(
+        ha.JointControlMode(hand_over_config, controller_name='GoToHandOvereJointConfig', name='HandOvere'))
+
+    # 8h.b  Switch when configuration is reached
+    control_sequence.append(ha.JointConfigurationSwitch('HandOvere', 'wait_for_handover',
+                                                        controller='GoToHandOvereJointConfig',
+                                                        epsilon=str(math.radians(7.))))
+
+    # 9h. Block joints to hold object in air util human takes over
+    waitForHandoverMode = ha.ControlMode(name='wait_for_handover')
+    waitForHandoverSet = ha.ControlSet()
+    waitForHandoverSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
+                                  goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
+    waitForHandoverMode.set(waitForHandoverSet)
+    control_sequence.append(waitForHandoverMode)
+
+    #9h.b wait until force is exerted by human on EE while taking the object to release object
+    control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open', name='human_interaction_handover', goal=np.zeros(6),
+                                                   norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='0', goal_is_relative = '1',
+                                                   epsilon=hand_over_force, negate='1'))
+
+    # 10h. open hand
+    control_sequence.append(ha.ControlMode(name='softhand_open'))
 
 
-        # 9. Block joints to hold object in air util human takes over
-        waitForHandoverMode = ha.ControlMode(name='wait_for_handover')
-        waitForHandoverSet = ha.ControlSet()
-        waitForHandoverSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
-                                      goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
-        waitForHandoverMode.set(waitForHandoverSet)
-        control_sequence.append(waitForHandoverMode)
+    # 10h.b
+    control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration=hand_closing_duration))
 
-        # wait until force is exerted by human on EE while taking the object to release object
-        control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open', name='human_interaction_handover', goal=np.zeros(6),
-                                                       norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='0',
-                                                       epsilon=hand_over_force, negate='1'))
 
-        # 10. open hand
-        control_sequence.append(ha.ControlMode(name='softhand_open'))
+    # 11. Block joints to hold object in air util human takes over
+    finishedMode = ha.ControlMode(name='finished')
+    finishedSet = ha.ControlSet()
+    finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
+                                  goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
+    finishedMode.set(finishedSet)
+    control_sequence.append(finishedMode)
 
-        # 11. Block joints to hold object in air util human takes over
-        finishedMode = ha.ControlMode(name='finished')
-        finishedSet = ha.ControlSet()
-        finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
-                                             goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
+    # 9.1h. b Reaction if human is not taking the object in time, robot drops off the object
+    control_sequence.append(ha.TimeSwitch('wait_for_hadover', 'GoToDropJointConfig',
+                                          duration=wait_handing_over_duration))
 
-        finishedMode.set(finishedSet)
+    # 10.1 Go to dropOFF
+    control_sequence.append(
+        ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
 
-        control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration=hand_closing_duration))
+    # 10.1 b  Switch when joint is reached
+    control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'softhand_open_2',
+                                                        controller = 'GoToDropJointConfig',
+                                                        epsilon = str(math.radians(7.))))
+    # 11.1 open hand
+    control_sequence.append(ha.ControlMode(name='softhand_open_2'))
 
-        control_sequence.append(finishedMode)
+    # 11.1 b
+    control_sequence.append(ha.TimeSwitch('softhand_open_2', 'GoUp_2', duration=hand_closing_duration))
 
-    else: #no handover
+    # 12.1 Lift upwards
+    control_sequence.append(
+        ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform_2', name='GoUp_2', goal_is_relative='1',
+                                             reference_frame="world"))
 
-        # 8. Go to drop off configuration configuration
-        control_sequence.append(
-            ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
-
-        # 8.b  Switch when configuration is reached
-        control_sequence.append(
-            ha.JointConfigurationSwitch('GoDropOff', 'finished', controller='GoToDropJointConfig',
-                                        epsilon=str(math.radians(7.))))
-
-        # 9. Block joints to hold object in air util human takes over
-        finishedMode = ha.ControlMode(name='finished')
-        finishedSet = ha.ControlSet()
-        finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
-                                             goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
-        finishedMode.set(finishedSet)
-        control_sequence.append(finishedMode)
+    # 12.1 b Switch when joint is reached
+    control_sequence.append(
+        ha.FramePoseSwitch('GoUp_2', 'finished', controller='GoUpHTransform_2', epsilon='0.01', goal_is_relative='1',
+                           reference_frame="world"))
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
