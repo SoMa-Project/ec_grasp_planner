@@ -708,7 +708,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     hand_closing_duration = params['hand_closing_duration']
     hand_synergy = params['hand_closing_synergy']
     palm_edge_offset = params['palm_edge_offset']
-    
+
     wait_handing_over_duration = handarm_params['wait_handing_over_duration']
 
 
@@ -1172,8 +1172,8 @@ if __name__ == '__main__':
                         help='Whether to send marker messages that can be seen in RViz and represent the chosen grasping motion.')
     parser.add_argument('--robot_base_frame', type=str, default = 'base_link',
                         help='Name of the robot base frame.')
-    parser.add_argument('--frame_convention', type=str, default = 'new',
-                        help='Whether to use new or old frame convention of EC graph. Use old to run ec_graphs where z-axis is pointing down')
+    # parser.add_argument('--frame_convention', type=str, default = 'old',
+    #                     help='Whether to use new or old frame convention of EC graph. Use old to run ec_graphs where z-axis is pointing down')
     # parser.add_argument('--handarm', type=str, default = 'RBOHand2WAM',
     #                     help='Python class that contains configuration parameters for hand and arm-specific properties.')
     parser.add_argument('--object_params_file', type=str, default='object_param.yaml',
@@ -1191,6 +1191,10 @@ if __name__ == '__main__':
     #     tmp = [g + '_' + str(args.grasp_id) for g in args.grasp]
     #     args.grasp = tmp
 
+
+    frame_convention =rospy.get_param('/planner_gui/auto_loop/max_planner_attempts', default="old")
+
+    args.frame_convention = frame_convention
     robot_base_frame = args.robot_base_frame
 
     planner = GraspPlanner(args)
