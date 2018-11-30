@@ -23,14 +23,14 @@
       max: [0.14, 0.05]
       reactions: 
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: REPLAN
+        mass_estimation_too_many: CONTINUE
     WallGrasp: 
       success: 1.0
       min: [-1000.0, -0.075]
       max: [-0.05, 0.045]
       reactions: 
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: REPLAN
+        mass_estimation_too_many: CONTINUE
     EdgeGrasp: {'success': 0}
     mass: {'mean': 0.28052, 'stddev': 0.05958} # artificial values, since no fake mangos available. TODO get params as soon as we have the fake mangos again!
 
@@ -52,7 +52,8 @@
         mass_estimation_no_object: REEXECUTE
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': 0}
-    mass: {'mean': 0.07058, 'stddev': 0.00359} # values for fake cucumbers
+    #mass: {'mean': 0.07058, 'stddev': 0.00359} # values for fake cucumbers
+    mass: {'mean': 0.3781, 'stddev': 0.058248237} # values for real cucumbers
 
 
   netbag:
@@ -66,7 +67,7 @@
     WallGrasp:
       success: 1.0
       min: [-1000.0, -0.075]
-      max': [-0.05, 0.042]
+      max: [-0.05, 0.042]
       reactions: 
         mass_estimation_no_object: REEXECUTE
         mass_estimation_too_many: REPLAN
