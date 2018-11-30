@@ -359,6 +359,11 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # # 1b. Switch when hand reaches the goal pose
     # control_sequence.append(ha.FramePoseSwitch('Pre_preGrasp', 'PreGrasp', controller='GoAboveIFCO', epsilon='0.01'))
 
+    # 0. trigger pre-shaping the hand (if there is a synergy). The first 1 in the name represents a surface grasp.
+    control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_1_1'))
+    control_sequence.append(ha.TimeSwitch('softhand_preshape_1_1', 'PreGrasp',
+                                          duration=0.2))  # time to trigger pre-shape
+
     # 1. Go above the object - PreGrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose,
                                                                  controller_name='GoAboveObject',
@@ -406,7 +411,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # force threshold that if reached will trigger the closing of the hand
     force = np.array([0, 0, downward_force, 0, 0, 0])
     # the 1 in softhand_close_1 represents a surface grasp. This way the strategy is encoded in the HA.
-    mode_name_hand_closing = 'softhand_close_1'
+    mode_name_hand_closing = 'softhand_close_1_0'
 
     # 3b. Switch when goal is reached
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
@@ -607,8 +612,12 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
         ha.JointControlMode(initial_jointConf, name='InitialJointConfig', controller_name='initialJointCtrl'))
 
     # 0b. Joint config switch
-    control_sequence.append(ha.JointConfigurationSwitch('InitialJointConfig', 'PreGrasp', controller='initialJointCtrl',
-                                                        epsilon=str(math.radians(7.))))
+    control_sequence.append(ha.JointConfigurationSwitch('InitialJointConfig', 'softhand_preshape_2_1',
+                                                        controller='initialJointCtrl', epsilon=str(math.radians(7.))))
+
+    # 0.5 trigger pre-shaping the hand (if there is a synergy). The 2 in the name represents a wall grasp.
+    control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_2_1'))
+    control_sequence.append(ha.TimeSwitch('softhand_preshape_2_1', 'PreGrasp', duration=0.5))  # time for pre-shape
 
     # 1. Go above the object
     control_sequence.append(
@@ -690,8 +699,9 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     # 5b. Switch when the f/t sensor is triggered with normal force from wall
     # TODO arne: needs tuning
     force = np.array([0, 0, wall_force, 0, 0, 0])
-    # the 2 in softhand_close_2 represents a wall grasp. This way the strategy is encoded in the HA.
-    mode_name_hand_closing = 'softhand_close_2'
+    # The 2 in softhand_close_2 represents a wall grasp. This way the strategy is encoded in the HA.
+    # The 0 encodes the synergy id
+    mode_name_hand_closing = 'softhand_close_2_0'
 
     control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
@@ -729,10 +739,12 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                                epsilon='0.01', goal_is_relative='1', reference_frame='EE'))
 
     # 8. Lift upwards (+z in world frame)
-    # half the distance we want to achieve since we do two consecutive lifts
-    dir_up_2 = tra.translation_matrix([0, 0, up_dist / 2.0])
+    # split the distance we want to achieve since we do two consecutive lifts
+    scale_up = 0.7
+    dir_up1 = tra.translation_matrix([0, 0, scale_up * up_dist])
+    dir_up2 = tra.translation_matrix([0, 0, (1.0 - scale_up) * up_dist])
 
-    control_sequence.append(ha.InterpolatedHTransformControlMode(dir_up_2, controller_name='GoUpHTransform',
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dir_up1, controller_name='GoUpHTransform',
                                                                  name='GoUp_1', goal_is_relative='1',
                                                                  reference_frame="world"))
 
@@ -796,7 +808,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
             control_sequence.append(ha.GravityCompensationMode(name=cm))
 
     # 10.3 Success control mode. Lift hand even further
-    control_sequence.append(ha.InterpolatedHTransformControlMode(dir_up_2, controller_name='GoUpHTransform',
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dir_up2, controller_name='GoUpHTransform',
                                                                  name=target_cm_okay, goal_is_relative='1',
                                                                  reference_frame="world"))
 

@@ -146,7 +146,7 @@ class RBOHandP24WAM(RBOHand2):
         # - fingers pointing downwards
         # - palm facing the object and wall
         self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-                tra.translation_matrix([-0.23, 0, -0.18]), #23 cm above object, 15 cm behind
+                tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 15 cm behind
                 tra.concatenate_matrices(
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
@@ -159,7 +159,7 @@ class RBOHandP24WAM(RBOHand2):
         # first motion after grasp, in hand palm frame
         self['wall_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.05, 0.0, 0.0]), #nothing right now
-            tra.rotation_matrix(math.radians(-25.0),
+            tra.rotation_matrix(math.radians(-18.0),
                                 [0, 1, 0]))
 
         # drop configuration - this is system specific!
@@ -172,7 +172,7 @@ class RBOHandP24WAM(RBOHand2):
         self['wall_grasp']['object']['up_dist'] = 0.25
         self['wall_grasp']['object']['down_dist'] = 0.25
         self['wall_grasp']['object']['go_down_velocity'] = np.array([0.125, 0.09]) #first value: rotational, second translational
-        self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.12])
+        self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.30]) #np.array([0.125, 0.12])
         self['wall_grasp']['object']['wall_force'] = 12.0
 
 
@@ -285,4 +285,17 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         self['surface_grasp']['mango'] = self['surface_grasp']['object'].copy()
 
         self['surface_grasp']['mango']['pregrasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.03, 0.0, 0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
+            #tra.translation_matrix([-0.03, 0.0, 0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
+            tra.translation_matrix([-0.06, 0.0, 0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0]))  # <-- best so far
+
+        self['wall_grasp']['cucumber'] = self['wall_grasp']['object'].copy()
+        self['wall_grasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
+                tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 15 cm behind
+                tra.concatenate_matrices(
+                    tra.rotation_matrix(
+                        math.radians(0.), [1, 0, 0]),
+                    tra.rotation_matrix(
+                        math.radians(22.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
+                    tra.rotation_matrix(                #this makes the fingers point downwards
+                        math.radians(0.0), [0, 0, 1]),
+            ))
