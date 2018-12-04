@@ -52,7 +52,7 @@
         mass_estimation_no_object: REEXECUTE
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': 0}
-    mass: {'mean': 0.07058, 'stddev': 0.05575} # values for fake cucumbers
+    mass: {'mean': 0.07058, 'stddev': 0.0167} # values for fake cucumbers
     #mass: {'mean': 0.3781, 'stddev': 0.058248237} # values for real cucumbers
 
 
@@ -72,7 +72,7 @@
         mass_estimation_no_object: REEXECUTE
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': 0}
-    mass: {'mean': 0.1930, 'stddev': 0.05958} # values for fake lime netbags (with small EE/FT noise)
+    mass: {'mean': 0.1930, 'stddev':  0.0266} # values for fake lime netbags (with small EE/FT noise)
 
   punnet:
     SurfaceGrasp: 
