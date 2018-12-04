@@ -14,7 +14,7 @@
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': 0}
-    mass: {'mean': 0.28052, 'stddev': 0.05958} # values for fake apples (with small EE/FT noise)
+    mass: {'mean': 0.164, 'stddev': 0.06014} # values for fake apples (with small EE/FT noise)
 
   mango:
     SurfaceGrasp: 
@@ -32,7 +32,7 @@
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
     EdgeGrasp: {'success': 0}
-    mass: {'mean': 0.28052, 'stddev': 0.05958} # artificial values, since no fake mangos available. TODO get params as soon as we have the fake mangos again!
+    mass: {'mean': 0.3967, 'stddev': 0.0582} # artificial values, since no fake mangos available. TODO get params as soon as we have the fake mangos again!
 
   cucumber:
     SurfaceGrasp: 
@@ -52,8 +52,8 @@
         mass_estimation_no_object: REEXECUTE
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': 0}
-    #mass: {'mean': 0.07058, 'stddev': 0.00359} # values for fake cucumbers
-    mass: {'mean': 0.3781, 'stddev': 0.058248237} # values for real cucumbers
+    mass: {'mean': 0.07058, 'stddev': 0.05575} # values for fake cucumbers
+    #mass: {'mean': 0.3781, 'stddev': 0.058248237} # values for real cucumbers
 
 
   netbag:
@@ -72,7 +72,7 @@
         mass_estimation_no_object: REEXECUTE
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': 0}
-    mass: {'mean': 0.28051, 'stddev': 0.05958} # values for fake lime netbags (with small EE/FT noise)
+    mass: {'mean': 0.1930, 'stddev': 0.05958} # values for fake lime netbags (with small EE/FT noise)
 
   punnet:
     SurfaceGrasp: 
@@ -92,7 +92,7 @@
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': 1}
-    mass: {'mean': 0.23008, 'stddev': 0.00395} # values for fake new punnets
+    mass: {'mean': 0.23008, 'stddev': 0.05601} # values for fake new punnets
 
   lettuce:
     SurfaceGrasp:
@@ -110,7 +110,7 @@
         mass_estimation_no_object: REEXECUTE
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': 0.25}
-    mass: {'mean': 0.19341, 'stddev': 0.05560} # values for fake lettuce (with small EE/FT noise)
+    mass: {'mean': 0.1059, 'stddev': 0.0556} # values for fake lettuce (with small EE/FT noise)
 
   banana:
     SurfaceGrasp: {'success': 1,'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
