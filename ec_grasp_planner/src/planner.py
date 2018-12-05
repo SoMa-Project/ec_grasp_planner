@@ -308,7 +308,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     dirUp = tra.translation_matrix([0, 0, up_speed])
 
     # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
-    mode_name_hand_closing = 'softhand_close_' + `hand_synergy`
+    # the "1" encodes the grasp type 1 Surface, 2 wall, 3 edge
+    mode_name_hand_closing = 'softhand_close_1_' + `hand_synergy`
 
     # Set the frames to visualize with RViz
     rviz_frames = []
@@ -406,7 +407,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     if handover:
         # 6b. Switch when lifting motion is completed
-        control_sequence.append(ha.FramePoseSwitch('GoUp', 'HandOvere', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
+        control_sequence.append(ha.FramePoseSwitch('GoUp', 'Handover', controller = 'GoUpHTransform', epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
     else:
         # 6b. Switchwhen lifting motion is completed
         control_sequence.append(
@@ -416,11 +417,11 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     print("hand over conf:{}".format(hand_over_config))
     # 7h. Go to handover cfg
     control_sequence.append(
-        ha.JointControlMode(hand_over_config, controller_name='GoToHandOvereJointConfig', name='HandOvere'))
+        ha.JointControlMode(hand_over_config, controller_name='GoToHandoverJointConfig', name='Handover'))
 
     # 7h.b  Switch when configuration is reached
-    control_sequence.append(ha.JointConfigurationSwitch('HandOvere', 'wait_for_handover',
-                                                        controller='GoToHandOvereJointConfig',
+    control_sequence.append(ha.JointConfigurationSwitch('Handover', 'wait_for_handover',
+                                                        controller='GoToHandoverJointConfig',
                                                         epsilon=str(math.radians(7.))))
 
     # 8h. Block joints to hold object in air util human takes over
@@ -537,7 +538,8 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     pre_approach_pose = ec_frame.dot(pre_approach_transform)
 
     # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
-    mode_name_hand_closing = 'softhand_close_'+`hand_synergy`
+    # the "2" encodes the grasp type 1 Surface, 2 wall, 3 edge
+    mode_name_hand_closing = 'softhand_close_2_'+`hand_synergy`
 
     # Rviz debug frames
     rviz_frames.append(wall_frame)
@@ -739,7 +741,8 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     pre_approach_pose = initial_slide_frame.dot(pre_approach_transform)
 
     # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
-    mode_name_hand_closing = 'softhand_close_'+`hand_synergy`
+    # the "3" encodes the grasp type 1 Surface, 2 wall, 3 edge
+    mode_name_hand_closing = 'softhand_close_3_'+`hand_synergy`
 
     # Rviz debug frames
     rviz_frames.append(edge_frame)
@@ -869,7 +872,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     if handover:
         # 7b. Switch when lifting motion is completed
-        control_sequence.append(ha.FramePoseSwitch('GoUp', 'HandOvere', controller = 'GoUpHTransform',
+        control_sequence.append(ha.FramePoseSwitch('GoUp', 'Handover', controller = 'GoUpHTransform',
                                                    epsilon = '0.01', goal_is_relative='1', reference_frame="world"))
     else:
         # 7b. Switch when lifting motion is completed
@@ -881,11 +884,11 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     # 8h. Go to handover cfg
     control_sequence.append(
-        ha.JointControlMode(hand_over_config, controller_name='GoToHandOvereJointConfig', name='HandOvere'))
+        ha.JointControlMode(hand_over_config, controller_name='GoToHandoverJointConfig', name='Handover'))
 
     # 8h.b  Switch when configuration is reached
-    control_sequence.append(ha.JointConfigurationSwitch('HandOvere', 'wait_for_handover',
-                                                        controller='GoToHandOvereJointConfig',
+    control_sequence.append(ha.JointConfigurationSwitch('Handover', 'wait_for_handover',
+                                                        controller='GoToHandoverJointConfig',
                                                         epsilon=str(math.radians(7.))))
 
     # 9h. Block joints to hold object in air util human takes over
