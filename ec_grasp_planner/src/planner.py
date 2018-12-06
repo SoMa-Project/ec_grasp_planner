@@ -380,7 +380,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
     # the "1" encodes the grasp type 1 Surface, 2 wall, 3 edge
-    mode_name_hand_closing = 'softhand_close_1_' + `hand_synergy`
+    mode_name_hand_closing = 'softhand_close_1' #_' + `hand_synergy`
 
     # Set the frames to visualize with RViz
     rviz_frames = []
@@ -404,7 +404,9 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                                  controller_name = 'GoAboveObject',
                                                                  goal_is_relative='0',
                                                                  name = 'PreGrasp',
-                                                                 v_max = pre_grasp_velocity))
+                                                                 v_max = pre_grasp_velocity,
+                                                                 null_space_posture=True
+                                                                 ))
 
     # 2b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
@@ -618,8 +620,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(finishedMode)
 
     # 8.1h. b Reaction if human is not taking the object in time, robot drops off the object
-    control_sequence.append(ha.TimeSwitch('wait_for_hadover', 'GoToDropJointConfig',
-                                          duration=wait_handing_over_duration))
+    control_sequence.append(ha.TimeSwitch('wait_for_handover', 'GoDropOff',
+                                          duration=10))
 
     # 9.1 Go to dropOFF
     control_sequence.append(
