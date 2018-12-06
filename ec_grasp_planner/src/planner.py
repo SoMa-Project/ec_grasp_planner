@@ -287,7 +287,9 @@ class GraspPlanner:
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
         ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
-                                                                self.handarm_params, self.object_type, frame_convention, self.handover)
+                                                                     self.handarm_params, self.object_type,
+                                                                     frame_convention, self.handover,
+                                                                     self.multi_object_handler.get_object_params())
 
         # --------------------------------------------------------
         # Output the hybrid automaton
@@ -315,7 +317,7 @@ class GraspPlanner:
 
 
 # ================================================================================================
-def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type, handover):
+def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type, handover, object_params):
 
     # Get the relevant parameters for hand object combination
     if object_type in handarm_params['surface_grasp']:
@@ -843,8 +845,9 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
 # ================================================================================================
-def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_params, object_type, handover):
-    #TODO add mass estimation 
+def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_params, object_type, handover,
+                      object_params):
+    #TODO add mass estimation
     # Get the parameters from the handarm_parameters.py file
     if object_type in handarm_params['edge_grasp']:
         params = handarm_params['edge_grasp'][object_type]
@@ -1126,7 +1129,8 @@ def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
 
 # ================================================================================================
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params, object_type, frame_convention, handover):
+def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params,
+                                          object_type, frame_convention, handover, object_params):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
 
@@ -1152,7 +1156,8 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
             edge_frame = edge_frame.dot(x_flip_transform)
 
 
-        return create_edge_grasp(T_object_in_base, support_surface_frame, edge_frame, handarm_params, object_type, handover)
+        return create_edge_grasp(T_object_in_base, support_surface_frame, edge_frame, handarm_params, object_type,
+                                 handover, object_params)
     elif grasp_type == 'WallGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
@@ -1180,7 +1185,8 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
                 tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(180.0), [1, 0, 0]))
             support_surface_frame = support_surface_frame.dot(x_flip_transform)
 
-        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type, handover)
+        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type, handover,
+                                    object_params)
 
     else:
         raise "Unknown grasp type: ", grasp_type
@@ -1358,7 +1364,7 @@ if __name__ == '__main__':
     #     args.grasp = tmp
 
 
-    frame_convention =rospy.get_param('/planner_gui/auto_loop/max_planner_attempts', default="old")
+    frame_convention =rospy.get_param('/planner_gui/frame_convention', default="old")
 
     args.frame_convention = frame_convention
     robot_base_frame = args.robot_base_frame
