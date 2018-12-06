@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch> 
+
+    <node pkg="tf" type="static_transform_publisher" name="kinect_base_link5" args="0.119921199977 -0.00783250015229 0.789280951023 -0.663539171219 0.726180911064 -0.175170898438 -0.0411370396614 /base_link /object 100"/>
+    
+    <node pkg ="ec_grasp_planner" type = "blackbox_graph_publisher.py" name ="ECE_graphPub"/>
+    <node pkg ="ec_grasp_planner" type = "planner.py" name ="ecPlanner" args="--rviz"/>
+    
+</launch>
