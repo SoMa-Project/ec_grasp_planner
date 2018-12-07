@@ -27,7 +27,7 @@
       WallGrasp:
         success: 1.0
         min: [-1000.0, -0.075]
-        max: [-0.05, 0.045]}
+        max: [-0.05, 0.045]
       EdgeGrasp:
         success: 1.0
         reactions:
