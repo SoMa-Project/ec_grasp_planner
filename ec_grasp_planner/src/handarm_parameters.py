@@ -69,7 +69,7 @@ class RBOHandP24WAM(RBOHand2):
         self['isForceControllerAvailable'] = True
 
         # use null space controller to avoid joint limits during execution
-        self['useNullSpacePosture'] = True  # TODO Disney: implement this controller or set to False
+        self['use_null_space_posture'] = True  # TODO Disney: implement this controller or set to False
 
         # max waiting time to trigger hand over, otherwise drop off object
         self['wait_handing_over_duration'] = 8

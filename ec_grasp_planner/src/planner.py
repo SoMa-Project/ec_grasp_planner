@@ -331,7 +331,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     hand_transform = params['hand_transform']
     pregrasp_transform = params['pregrasp_transform']
-    post_grasp_transform= params['post_grasp_transform'] # TODO: USE THIS!!!
+    post_grasp_transform = params['post_grasp_transform'] # TODO: USE THIS!!!
 
     drop_off_config = params['drop_off_config']
     downward_force = params['downward_force']
@@ -346,7 +346,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     hand_synergy = params['hand_closing_synergy']
     pre_grasp_velocity = params['pre_grasp_velocity']
 
-    useNullSpacePosture = params['useNullSpacePosture']
+    use_null_space_posture = handarm_params['use_null_space_posture']
 
     wait_handing_over_duration=handarm_params['wait_handing_over_duration']
 
@@ -405,8 +405,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                                  goal_is_relative='0',
                                                                  name = 'PreGrasp',
                                                                  v_max = pre_grasp_velocity,
-                                                                 null_space_posture=useNullSpacePosture
-
+                                                                 null_space_posture=use_null_space_posture,
+                                                                 null_space_goal_is_relative='0',
                                                                  ))
 
     # 2b. Switch when hand reaches the goal pose
@@ -874,7 +874,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     hand_synergy = params['hand_closing_synergy']
     palm_edge_offset = params['palm_edge_offset']
 
-    useNullSpacePosture = params['useNullSpacePosture']
+    use_null_space_posture = handarm_params['use_null_space_posture']
     wait_handing_over_duration = handarm_params['wait_handing_over_duration']
 
 
@@ -906,7 +906,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
     # the "3" encodes the grasp type 1 Surface, 2 wall, 3 edge
-    mode_name_hand_closing = 'softhand_close_3_'+`hand_synergy`
+    mode_name_hand_closing = 'softhand_close_3' #+ '_' + str(hand_synergy)
 
     # Rviz debug frames
     rviz_frames.append(edge_frame)
@@ -930,7 +930,10 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     # TODO hand pose relative to object should depend on bounding box size and edge location
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(pre_approach_pose, controller_name='GoAboveObject', goal_is_relative='0',
-                                             name="PreGrasp", null_space_posture=useNullSpacePosture))
+                                             name="PreGrasp",
+                                             ))
+                                             # null_space_posture=False#use_null_space_posture,
+                                             # null_space_goal_is_relative='1',
 
     # 1b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
@@ -1158,7 +1161,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     control_sequence.append(finishedMode)
 
     # 9.1h. b Reaction if human is not taking the object in time, robot drops off the object
-    control_sequence.append(ha.TimeSwitch('wait_for_hadover', 'GoToDropJointConfig',
+    control_sequence.append(ha.TimeSwitch('wait_for_handover', 'GoDropOff',
                                           duration=wait_handing_over_duration))
 
     # 10.1 Go to dropOFF
