@@ -68,8 +68,11 @@ class RBOHandP24WAM(RBOHand2):
         # does the robot support impedance control
         self['isForceControllerAvailable'] = True
 
+        # use null space controller to avoid joint limits during execution
+        self['useNullSpacePosture'] = True  # TODO Disney: implement this controller or set to False
+
         # max waiting time to trigger hand over, otherwise drop off object
-        self['wait_handing_over_duration'] = 20
+        self['wait_handing_over_duration'] = 8
         # SURFACE GRASP
         # ---------------------------
         # Generic Object
@@ -119,14 +122,14 @@ class RBOHandP24WAM(RBOHand2):
 
 
         #synergy type for soft hand closing
-        self['surface_grasp']['object']['hand_closing_synergy'] = 1
+        self['surface_grasp']['object']['hand_closing_synergy'] = 0
 
         #time of soft hand closing
         self['surface_grasp']['object']['hand_closing_duration'] = 5
 
         # time of soft hand closing
-        self['surface_grasp']['object']['down_speed'] = 0.5
-        self['surface_grasp']['object']['up_speed'] = 0.25
+        self['surface_grasp']['object']['down_dist'] = 0.5
+        self['surface_grasp']['object']['up_dist'] = 0.25
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.06])  # first value: rotational, second translational
 
@@ -180,7 +183,7 @@ class RBOHandP24WAM(RBOHand2):
         # ----------------------------------------------------------------------------
 
         #synergy type for soft hand closing
-        self['edge_grasp']['object']['hand_closing_synergy'] = 3
+        self['edge_grasp']['object']['hand_closing_synergy'] = 0
         self['edge_grasp']['object']['hand_closing_duration'] = 5
         self['edge_grasp']['object']['initial_goal'] = np.array(
             [0.764798, 1.11152, -1.04516, 2.09602, -0.405398, -0.191906, 2.01431])
@@ -330,7 +333,7 @@ class RBOHandP24WAM(RBOHand2):
         #####################################################################################
         # WALL GRASP - not used in disney
         #####################################################################################
-        self['edge_grasp']['object']['hand_closing_synergy'] = 2
+        self['edge_grasp']['object']['hand_closing_synergy'] = 0
         self['wall_grasp']['object']['hand_closing_duration'] = 5
         self['wall_grasp']['object']['initial_goal'] = np.array(
             [0.439999, 0.624437, -0.218715, 1.71695, -0.735594, 0.197093, -0.920799])
@@ -431,8 +434,8 @@ class RBOHand2Kuka(RBOHand2):
         self['wall_grasp']['pregrasp_pose'] = tra.translation_matrix([0.05, 0, -0.2])
         self['wall_grasp']['table_force'] = 7.0
         self['wall_grasp']['sliding_speed'] = 0.1
-        self['wall_grasp']['up_speed'] = 0.1
-        self['wall_grasp']['down_speed'] = 0.1
+        self['wall_grasp']['up_dist'] = 0.1
+        self['wall_grasp']['down_dist'] = 0.1
         self['wall_grasp']['wall_force'] = 10.0
         self['wall_grasp']['angle_of_attack'] = 1.0 #radians
         self['wall_grasp']['object_lift_time'] = 4.5

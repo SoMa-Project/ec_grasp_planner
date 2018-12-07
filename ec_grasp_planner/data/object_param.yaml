@@ -14,7 +14,32 @@
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': 0.01}
-    mass: {'mean': 0.28052, 'stddev': 0.05958} # values for fake apples (with small EE/FT noise)
+    mass: {'mean': 0.16455, 'stddev': 0.02648} # values for fake apples (with small EE/FT noise)
+
+    plushtoy:
+      SurfaceGrasp:
+        success: 1.0
+        min: [-0.14, -0.1]
+        max: [0.14, 0.05]
+        reactions:
+          mass_estimation_no_object: REPLAN
+          mass_estimation_too_many: REPLAN
+      WallGrasp:
+        success: 1.0
+        min: [-1000.0, -0.075]
+        max: [-0.05, 0.045]}
+      EdgeGrasp:
+        success: 1.0
+        reactions:
+          mass_estimation_no_object: REPLAN
+          mass_estimation_too_many: REPLAN
+      mass: {'mean': 0.1327, 'stddev': 0.0166} # values for teddy (with small EE/FT noise)
+
+    banana:
+      SurfaceGrasp: {'success': 1,'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
+      WallGrasp: {'success': 1, 'min': [0, 0], 'max': [0, 0]}
+      EdgeGrasp: {'success': 0}
+      mass: {'mean': 0.0385, 'stddev': 0.01660} # values for fake banana (with small EE/FT noise)
 
   mango:
     SurfaceGrasp: {'success': 1,'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
@@ -36,10 +61,7 @@
     SurfaceGrasp: {'success': 1, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': 0.5, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
     EdgeGrasp: {'success': 0.25}
-  banana:
-    SurfaceGrasp: {'success': 1,'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
-    WallGrasp: {'success': 1, 'min': [0, 0], 'max': [0, 0]}
-    EdgeGrasp: {'success': 0}
+
   bottle:
     SurfaceGrasp: {'success': 1, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': [1, 0.8, 0.7, 0] , 'angle': [0, 180, 360], 'epsilon': 20, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
@@ -56,7 +78,4 @@
     SurfaceGrasp: {'success': 1, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': 0.5, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
     EdgeGrasp: {'success': 0.5}
-  plushtoy:
-    SurfaceGrasp: {'success': 1, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
-    WallGrasp: {'success': 1, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
-    EdgeGrasp: {'success': 1}
+
