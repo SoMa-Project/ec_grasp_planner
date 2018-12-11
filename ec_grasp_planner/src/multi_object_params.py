@@ -150,21 +150,119 @@ class multi_object_params:
 
 ## --------------------------------------------------------- ##
     # object-environment-hand based heuristic, q_value for grasping
-    def heuristic(self, object, current_ec_index, strategy, all_ec_frames, ifco_in_base_transform):
+    def heuristic(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames, ifco_in_base_transform, handarm_params):
+
+        object = objects[current_object_idx]
 
         ec_frame = all_ec_frames[current_ec_index]
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
-        q_val = 1
-        q_val = q_val * \
-                self.pdf_object_strategy(object_params) * \
-                self.pdf_object_ec(object_params, ec_frame, strategy) * \
-                self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)* \
-                self.black_list_walls(current_ec_index, all_ec_frames, strategy)
+
+        # ##### NEW CODE BELOW
+        use_kinematic_checks = True  # TODO move this to a (ros) parameter
+        if use_kinematic_checks:
+
+            # TODO maybe move the kinematic stuff to seprate function / file
+            from kinematics_check import srv as kin_check_srv  # TODO move to top of the file
+            import yaml  # TODO move to top of the file
+
+            if strategy == 'SurfaceGrasp':
+                # use kinematic checks
+                # TODO create proxy; make it a persistent connection?
+
+                # Code duplication from planner.py TODO put at a shared location
+
+                if object['type'] in handarm_params['surface_grasp']:
+                    params = handarm_params['surface_grasp'][object['type']]
+                else:
+                    params = handarm_params['surface_grasp']['object']
+                # Set the initial pose above the object
+                goal_ = np.copy(object_params['frame'])  # TODO: this should be support_surface_frame
+                goal_[:3, 3] = tra.translation_from_matrix(object_params['frame'])
+                goal_ = goal_.dot(params['hand_transform'])
+
+                # the grasp frame is symmetrical - check which side is nicer to reach
+                # this is a hacky first version for our WAM
+                zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
+                if goal_[0][0] < 0:
+                    goal_ = goal_.dot(zflip_transform)
+
+                # hand pose above object
+                pre_grasp_pose = goal_.dot(params['pregrasp_transform'])
+
+                print(pre_grasp_pose) # TODO bring that pose into a suitable format for the service call
+
+                # convert 4x4 matrix to trans + rot TODO maybe change interface? or get it directly from tf.
+                scale, shear, angles, ifco_trans, persp = tra.decompose_matrix(ifco_in_base_transform)
+                ifco_rot = tra.quaternion_from_euler(angles[0], angles[1], angles[2])
+
+                args = {
+                    # gotoview joint config (copied from gui.py)
+                    # TODO read this from a central point (sames parameter in gui and here)
+                    'initial_configuration': [0.457929, 0.295013, -0.232804, 2.59226, 1.25715, 1.50907, -0.616263],
+                    'goal_pose': {
+                        'position': {'x': 0.4, 'y': -0.02, 'z': 0.25},  # TODO actual position
+                        'orientation': {'x': 0.997, 'y': 0, 'z': 0.071, 'w': 0}
+                    },
+                    'ifco_pose': {
+                        'position': {'x': ifco_trans.x, 'y': ifco_trans.y, 'z': ifco_trans.z},  # TODO probably use indexing or x() instead...
+                        'orientation': {'x': ifco_rot.x, 'y': ifco_rot.y, 'z': ifco_rot.z, 'w': ifco_rot.w}
+                    },
+                    'bounding_boxes_with_poses': [{  # TODO add all real boxes not just a fake one
+                        'box': {
+                            'type': 0,
+                            'dimensions': [0.08, 0.08, 0.08]  # TODO get correct dimensions
+                        },
+                        'pose': {
+                            'position': {'x': 0.4, 'y': -0.02, 'z': 0.25},  # TODO get pos
+                            'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0}  # TODO get rot
+                        }
+                    }],
+                    'min_position_deltas': params['min_position_deltas'],
+                    'max_position_deltas': params['max_position_deltas'],
+                    'min_orientation_deltas': params['min_orientation_deltas'],
+                    'max_orientation_deltas': params['max_orientation_deltas'],
+                    # TODO currently we only allow to touch the object to be grasped during a surface grasp, is that really desired? (what about a really crowded ifco)
+                    'allowed_collisions': [{'type': 1, 'box_id': current_object_idx, 'terminate_on_collision': True}]
+
+                }
+
+                # TODO do this not only for pregrasp, but for all relevant control modes
+                check_kinematics = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
+                print("Call check kinematics. Arguments: \n" + yaml.safe_dump(args))
+                res = check_kinematics(yaml.safe_dump(args))
+
+                if res.status == 0:
+                    # trajectory is not feasible and no alternative was found
+                    return 0
+
+                if res.status == 2:
+                    # original trajectory is not feasible, but alternative was found
+                    # TODO adapt HA generation, in case this trajectory is selected
+                    return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,
+                                                                                        strategy)
+
+                if res.status == 1:
+                    # original trajectory is feasible # TODO make sure HA is not touched
+                    return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,
+                                                                                        strategy)
+
+                raise ValueError("check_kinematics: No handler for result status of {} implemented".format(res.status))
+
+        # ##### NEW CODE ABOVE
+
+        else:
+            # kinematic checks are disabled, use old fallback solution (black list regions etc.)
+            q_val = 1
+            q_val = q_val * \
+                    self.pdf_object_strategy(object_params) * \
+                    self.pdf_object_ec(object_params, ec_frame, strategy) * \
+                    self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)* \
+                    self.black_list_walls(current_ec_index, all_ec_frames, strategy)
 
 
-        #print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
-        return q_val
+            #print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
+            return q_val
 
 ## --------------------------------------------------------- ##
     # find the max probability and if there are more than one return one randomly
@@ -229,7 +327,8 @@ class multi_object_params:
     # assumption1: all objects are the same type
     # objects is a dictionary with obilagorty keys: type, frame (in robot base frame)
     # ecs is a list of graph nodes (see geometry_graph)
-    def process_objects_ecs(self, objects, ecs, graph_in_base, ifco_in_base_transform, h_process_type="Deterministic"):
+    def process_objects_ecs(self, objects, ecs, graph_in_base, ifco_in_base_transform, h_process_type="Deterministic",
+                            handarm_parameters=None): # TODO replace default
 
         # print("object: {}, \n ecs: {} \n graphTF: {}, h_process: {}".format(objects, ecs, graph_in_base, h_process_type))
         # print("ec type: {}".format(type(ecs[0])))
@@ -239,7 +338,7 @@ class multi_object_params:
         Q_matrix = np.zeros((len(objects),len(ecs)))
 
         # iterate through all objects
-        for i,o in enumerate(objects):
+        for i, o in enumerate(objects):
 
             # check if the given hand type for this object is set in the yaml
             # print ("object type: {}".format(o["type"]))
@@ -253,10 +352,11 @@ class multi_object_params:
                 all_ec_frames.append(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform)))
                 print("ecs:{}".format(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))))
 
-            for j,ec in enumerate(ecs):
+            for j, ec in enumerate(ecs):
                 # the ec frame must be in the same reference frame as the object
                 ec_frame_in_base = graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))
-                Q_matrix[i,j] = self.heuristic(o, j, ec.label, all_ec_frames, ifco_in_base_transform)
+                Q_matrix[i,j] = self.heuristic(i, objects, j, ec.label, all_ec_frames, ifco_in_base_transform,
+                                               handarm_parameters)
 
         # print (" ** h_mx = {}".format(Q_matrix))
 

@@ -240,7 +240,8 @@ class GraspPlanner:
                                                                                      node_list,
                                                                                      graph_in_base_transform,
                                                                                      ifco_in_base_transform,
-                                                                                     req.object_heuristic_function
+                                                                                     req.object_heuristic_function,
+                                                                                     self.handarm_params
                                                                                      )
 
         chosen_object = object_list[chosen_object_idx]
