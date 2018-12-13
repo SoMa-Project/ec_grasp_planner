@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import math
+import copy
 import itertools
 import numpy as np
 from tf import transformations as tra
@@ -10,43 +11,77 @@ from tf import transformations as tra
 # python ec_grasps.py --anglesliding -10.0 --inflation 0.02 --speed 0.04 --force 4.0 --grasp edge_grasp --edgedistance -0.007 edge_chewinggum/
 # python ec_grasps.py --anglesliding 0.0 --inflation 0.33 --force 7.0 --grasp surface_grasp test_folder
 
+class Manifold(dict):
+    def __init__(self, initializer_dict=None):
+        super(dict, self).__init__()
+        if initializer_dict:
+            for k in initializer_dict.keys():
+                self[k] = initializer_dict[k].copy()
+
+    def check_if_valid(self):
+
+        if not len(self) == 4:
+            AssertionError("Manifold: Illegal Number of attributes. Expected 4, but was {}".format(len(self)))
+
+        required_keys = ['min_position_deltas', 'max_position_deltas', 'min_orientation_deltas',
+                         'min_orientation_deltas']
+        for k in required_keys:
+            if k not in self:
+                AssertionError("Manifold: Required key {} missing".format(k))
+
+            if len(self[k]) != 3:
+                AssertionError("Manifold: Key {0} has wrong number of coordinates. Expected 3, but was {1}".format(
+                    k, len(self[k])))
+
+        return True
+
+    def __copy__(self):
+        # ensures that every copy is automatically also a deep copy
+        return copy.deepcopy(self)
+
+
 class BaseHandArm(dict):
     def __init__(self):
+        super(dict, self).__init__()
+
         self['mesh_file'] = "Unknown"
         self['mesh_file_scale'] = 1.
 
-        # strategy types
-        self['wall_grasp'] = {}
-        self['edge_grasp'] = {}
-        self['surface_grasp'] = {}
+        # The name of the supported strategies
+        self.__strategy_names = ['wall_grasp', 'edge_grasp', 'surface_grasp']
 
-        # surface grasp parameters for different objects
-        # 'object' is the default parameter set
-        self['surface_grasp']['object'] = {}
-
-        # wall grasp parameters for differnt objects
-        self['wall_grasp']['object'] = {}
-
-        # wall grasp parameters for differnt objects
-        self['edge_grasp']['object'] = {}
+        for strategy in self.__strategy_names:
+            # every strategy defines a default parameter set called 'object'
+            self[strategy] = {'object': {}}
 
         self['isForceControllerAvailable'] = False
+
+    def __copy__(self):
+        # ensures that every copy is automatically also a deep copy
+        return copy.deepcopy(self)
 
     def checkValidity(self):
         # This function should always be called after the constructor of any class inherited from BaseHandArm
         # This convenience function allows to combine multiple sanity checks to ensure the handarm_parameters are as intended.
         self.assertNoCopyMissing()
+        self.assert_manifolds_valid()
 
     def assertNoCopyMissing(self):
-        strategies = ['wall_grasp', 'edge_grasp', 'surface_grasp']
-        for s, s_other in itertools.product(strategies, repeat=2):
-            for k in self[s]:
-                for k_other in self[s_other]:
-                    if not k_other == k and self[s][k] is self[s_other][k_other]:
-                        # unitended reference copy of dictionary.
+        for s, s_other in itertools.product(self.__strategy_names, repeat=2):
+            for obj in self[s]:
+                for obj_other in self[s_other]:
+                    if not obj_other == obj and self[s][obj] is self[s_other][obj_other]:
+                        # unintended reference copy of dictionary.
                         # This probably means that some previously defined parameters were overwritten.
                         raise AssertionError("You probably forgot to call copy(): {0} and {1} are equal for {2}".format(
-                            k, k_other, s))
+                            obj, obj_other, s))
+
+    def assert_manifolds_valid(self):
+        for strategy in self.__strategy_names:
+            for obj in self[strategy]:
+                for param in self[strategy][obj]:
+                    if param.endswith("manifold"):
+                        self[strategy][obj][param].check_if_valid()
 
 
 class RBOHand2(BaseHandArm):
@@ -120,11 +155,18 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
 
         # defines the manifold in which alternative goal poses are sampled during kinematic checks
-        self['surface_grasp']['object']['pre_grasp_manifold'] = {'min_position_deltas': [-0.01, -0.01, -0.01]}
-        # TODO change this to a class to ensure every item is set? also make sure the copies are deep copies and the sanity check is done recursively...!
-        self['surface_grasp']['object']['max_position_deltas'] = [0.01, 0.01, 0.01]
-        self['surface_grasp']['object']['min_orientation_deltas'] = [0, 0, -1.5]
-        self['surface_grasp']['object']['max_orientation_deltas'] = [0, 0, 1.5]
+        self['surface_grasp']['object']['pre_grasp_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
+                                                                          'max_position_deltas': [0.01, 0.01, 0.01],
+                                                                          'min_orientation_deltas': [0, 0, -1.5],
+                                                                          'max_orientation_deltas': [0, 0, 1.5]
+                                                                         })
+
+        self['surface_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
+                                                                        'max_position_deltas': [0.01, 0.01, 0.01],
+                                                                        'min_orientation_deltas': [0, 0, -1.5],
+                                                                        'max_orientation_deltas': [0, 0, 1.5]
+                                                                       })
+        # TODO add more Manifolds
 
         #####################################################################################
         # below are parameters for wall grasp with P24 fingers (standard RBO hand)
