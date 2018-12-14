@@ -17,6 +17,7 @@ class BaseHandArm(dict):
         # strategy types
         self['wall_grasp'] = {}        
         self['surface_grasp'] = {}
+        self['edge_grasp'] = {}
 
         # surface grasp parameters for different objects
         # 'object' is the default parameter set
@@ -35,6 +36,9 @@ class BaseHandArm(dict):
         self['wall_grasp']['mango'] = {}
         self['wall_grasp']['cucumber'] = {}
 
+        # edge grasp parameters for different objects
+        self['edge_grasp']['object'] = {}
+
         # object parameters uncorrelated to grasp type
         self['object'] = {}
         self['punnet'] = {}
@@ -46,6 +50,24 @@ class BaseHandArm(dict):
         #default success rate
         self['surface_grasp']['object']['success_rate'] = 1. 
         self['wall_grasp']['object']['success_rate'] = 1. 
+
+        self['isForceControllerAvailable'] = False
+
+    def checkValidity(self):
+        # This function should always be called after the constructor of any class inherited from BaseHandArm
+        # This convenience function allows to combine multiple sanity checks to ensure the handarm_parameters are as intended.
+        self.assertNoCopyMissing()
+
+    def assertNoCopyMissing(self):
+        strategies = ['wall_grasp', 'edge_grasp', 'surface_grasp']
+        for s, s_other in itertools.product(strategies, repeat=2):
+            for k in self[s]:
+                for k_other in self[s_other]:
+                    if not k_other == k and self[s][k] is self[s_other][k_other]:
+                        # unitended reference copy of dictionary.
+                        # This probably means that some previously defined parameters were overwritten.
+                        raise AssertionError("You probably forgot to call copy(): {0} and {1} are equal for {2}".format(
+                            k,k_other,s))
 
 class KUKA(BaseHandArm):
     def __init__(self, **kwargs):
