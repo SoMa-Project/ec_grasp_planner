@@ -174,7 +174,7 @@ class multi_object_params:
         indeces_of_max = np.argwhere(Q_matrix == Q_matrix.max())
         print("indeces_of_max  = {}".format(indeces_of_max ))
 
-        print Q_matrix
+        print ("Q={}".format(Q_matrix))
         if Q_matrix.max() == 0.0:
             rospy.logwarn("No Suitable Grasp Found - PLEASE REPLAN!!!")
 
