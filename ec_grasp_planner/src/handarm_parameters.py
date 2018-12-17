@@ -69,6 +69,16 @@ class RBOHandP24WAM(RBOHand2):
         # does the robot support impedance control
         self['isForceControllerAvailable'] = True
 
+        # use null space controller to avoid joint limits during execution
+        self['use_null_space_posture'] = True  # TODO Disney: implement this controller or set to False
+
+        # max waiting time to trigger hand over, otherwise drop off object
+        self['wait_handing_over_duration'] = 8
+        # SURFACE GRASP
+        # ---------------------------
+        # Generic Object
+        # ---------------------------
+
         # you can define a default strategy for all objects by setting the second field to  'object'
         # for object-specific strategies set it to the object label
 

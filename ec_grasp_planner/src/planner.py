@@ -325,6 +325,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     up_speed = params['up_speed']
     go_down_velocity = params['go_down_velocity']
     pre_grasp_velocity = params['pre_grasp_velocity']
+    use_null_space_posture = handarm_params['use_null_space_posture']
 
     # Set the initial pose above the object
     goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
@@ -366,10 +367,12 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     # 1. Go above the object - PreGrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose,
-                                                                 controller_name='GoAboveObject',
+                                                                 controller_name = 'GoAboveObject',
                                                                  goal_is_relative='0',
-                                                                 name='PreGrasp',
-                                                                 v_max=pre_grasp_velocity))
+                                                                 name = 'PreGrasp',
+                                                                 v_max = pre_grasp_velocity,
+                                                                 null_space_posture=use_null_space_posture,
+                                                                 null_space_goal_is_relative='0',))
 
     # 1b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
