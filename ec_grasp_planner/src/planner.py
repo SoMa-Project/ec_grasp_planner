@@ -206,10 +206,11 @@ class GraspPlanner:
 
         pre_grasp_pose_in_base = None  
 
+        self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
+        ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
+
         if use_ocado_heuristic:
             #call target_selection_node
-            self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
-            ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
 
             # Get the object frame in robot base frame
             self.tf_listener.waitForTransform(robot_base_frame, object_frame.header.frame_id, time, rospy.Duration(2.0))
