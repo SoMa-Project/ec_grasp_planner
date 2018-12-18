@@ -148,8 +148,8 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['hand_closing_duration'] = 5
 
         # time of soft hand closing
-        self['surface_grasp']['object']['down_speed'] = 0.35
-        self['surface_grasp']['object']['up_speed'] = 0.409
+        self['surface_grasp']['object']['down_dist'] = 0.35
+        self['surface_grasp']['object']['up_dist'] = 0.409
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.09])  # first value: rotational, second translational
         self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
@@ -272,9 +272,9 @@ class RBOHand2Kuka(RBOHand2):
 
         self['wall_grasp']['pregrasp_pose'] = tra.translation_matrix([0.05, 0, -0.2])
         self['wall_grasp']['table_force'] = 7.0
-        self['wall_grasp']['sliding_speed'] = 0.1
-        self['wall_grasp']['up_speed'] = 0.1
-        self['wall_grasp']['down_speed'] = 0.1
+        self['wall_grasp']['sliding_dist'] = 0.1
+        self['wall_grasp']['up_dist'] = 0.1
+        self['wall_grasp']['down_dist'] = 0.1
         self['wall_grasp']['wall_force'] = 10.0
         self['wall_grasp']['angle_of_attack'] = 1.0  # radians
         self['wall_grasp']['object_lift_time'] = 4.5
@@ -292,7 +292,7 @@ class RBOHand2Kuka(RBOHand2):
                                                                     tra.euler_matrix(0, 0, -math.pi / 2.))
         self['edge_grasp']['postgrasp_pose'] = tra.translation_matrix([0, 0, -0.1])
         self['edge_grasp']['downward_force'] = 4.0
-        self['edge_grasp']['sliding_speed'] = 0.04
+        self['edge_grasp']['sliding_dist'] = 0.04
         self['edge_grasp']['valve_pattern'] = (
         np.array([[0, 0], [0, 0], [1, 0], [1, 0], [1, 0], [1, 0]]), np.array([[0, 3.0]] * 6))
 
@@ -302,7 +302,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         RBOHandP24WAM.__init__(self, **kwargs)
 
         # Define generic object parameters for surface grasp
-        self['surface_grasp']['object']['up_speed'] = 0.30
+        self['surface_grasp']['object']['up_dist'] = 0.30
 
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.09, 0, 0.0]), tra.rotation_matrix(math.radians(20.0), [0, 1, 0]))

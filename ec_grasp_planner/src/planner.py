@@ -276,7 +276,9 @@ class GraspPlanner:
         # Turn grasp into hybrid automaton
         ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
                                                                      self.handarm_params, self.object_type,
-                                                                     self.multi_object_handler.get_object_params())
+                                                                     self.multi_object_handler.get_object_params(),
+                                                                     self.multi_object_handler.get_alternative_behavior(
+                                                                         chosen_object_idx, chosen_node_idx))
 
         # --------------------------------------------------------
         # Output the hybrid automaton
@@ -304,7 +306,8 @@ class GraspPlanner:
 
 
 # ================================================================================================
-def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type, object_params):
+def create_surface_grasp(object_frame, support_surface_frame, handarm_params, object_type, object_params,
+                         alternative_behavior):
 
     # Get the relevant parameters for hand object combination
     if object_type in handarm_params['surface_grasp']:
@@ -322,8 +325,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     downward_force = params['downward_force']
     hand_closing_time = params['hand_closing_duration']
     hand_synergy = params['hand_closing_synergy']
-    down_speed = params['down_speed']
-    up_speed = params['up_speed']
+    down_dist = params['down_dist']
+    up_dist = params['up_dist']
     go_down_velocity = params['go_down_velocity']
     pre_grasp_velocity = params['pre_grasp_velocity']
 
@@ -342,9 +345,14 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     pre_grasp_pose = goal_.dot(pregrasp_transform)
 
     # Set the directions to use TRIK controller with
-    dirDown = tra.translation_matrix([0, 0, -down_speed])
+    dirDown = tra.translation_matrix([0, 0, -down_dist])
     # half the distance we want to achieve since we do two consecutive lifts
-    dirUp_2 = tra.translation_matrix([0, 0, up_speed/2.0])
+    dirUp_2 = tra.translation_matrix([0, 0, up_dist/2.0])
+
+    # force threshold that if reached will trigger the closing of the hand
+    force = np.array([0, 0, downward_force, 0, 0, 0])
+    # the 1 in softhand_close_1 represents a surface grasp. This way the strategy is encoded in the HA.
+    mode_name_hand_closing = 'softhand_close_1_0'
 
     # Set the frames to visualize with RViz
     rviz_frames = [object_frame, goal_, pre_grasp_pose]
@@ -366,11 +374,18 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                           duration=0.2))  # time to trigger pre-shape
 
     # 1. Go above the object - PreGrasp
-    control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose,
-                                                                 controller_name='GoAboveObject',
-                                                                 goal_is_relative='0',
-                                                                 name='PreGrasp',
-                                                                 v_max=pre_grasp_velocity))
+    if alternative_behavior is not None:
+        # we can not use the initially generated plan, but have to include the result of the feasibility checks
+        goal_traj = np.array(alternative_behavior['pre_grasp'].trajectory_steps)
+        print(goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
+        control_sequence.append(ha.InterpolatedJointController(goal_traj, name='PreGrasp', v_max=pre_grasp_velocity))
+    else:
+        # we can use the original motion
+        control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose,
+                                                                     controller_name='GoAboveObject',
+                                                                     goal_is_relative='0',
+                                                                     name='PreGrasp',
+                                                                     v_max=pre_grasp_velocity))
 
     # 1b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
@@ -400,19 +415,42 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 2b.4 There is no special switch for unknown error response (estimator signals REFERENCE_MEASUREMENT_FAILURE)
     #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
 
-    # 3. Go down onto the object (relative in world frame) - Godown
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirDown,
-                                             controller_name='GoDown',
-                                             goal_is_relative='1',
-                                             name="GoDown",
-                                             reference_frame="world",
-                                             v_max=go_down_velocity))
+    # 3. Go down onto the object - Godown
+    if alternative_behavior is not None:
+        # we can not use the initially generated plan, but have to include the result of the feasibility checks
+        # Go down onto the object (joint controller + relative world frame motion)
+        goal_traj = np.array(alternative_behavior['go_down'].trajectory_steps)
+        print(goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
+        control_sequence.append(ha.InterpolatedJointController(goal_traj, name='GoDown', v_max=go_down_velocity))
 
-    # force threshold that if reached will trigger the closing of the hand
-    force = np.array([0, 0, downward_force, 0, 0, 0])
-    # the 1 in softhand_close_1 represents a surface grasp. This way the strategy is encoded in the HA.
-    mode_name_hand_closing = 'softhand_close_1_0'
+        # Relative motion that ensures that the actual force/torque threshold is reached
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, -10]),
+                                                 controller_name='GoDownFurther',
+                                                 goal_is_relative='1',
+                                                 name="GoDownFurther",
+                                                 reference_frame="world",
+                                                 v_max=go_down_velocity))
+
+        # Force/Torque switch for the additional relative go down
+        control_sequence.append(ha.ForceTorqueSwitch('GoDownFurther',
+                                                     mode_name_hand_closing,
+                                                     goal=force,
+                                                     norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                     jump_criterion="THRESH_UPPER_BOUND",
+                                                     goal_is_relative='1',
+                                                     frame_id='world',
+                                                     port='2'))
+
+    else:
+        # Go down onto the object (relative in world frame)
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(dirDown,
+                                                 controller_name='GoDown',
+                                                 goal_is_relative='1',
+                                                 name="GoDown",
+                                                 reference_frame="world",
+                                                 v_max=go_down_velocity))
 
     # 3b. Switch when goal is reached
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
@@ -850,7 +888,7 @@ def get_node_from_actions(actions, action_name, graph):
 
 # ================================================================================================
 def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params,
-                                          object_type, object_params):
+                                          object_type, object_params, alternative_behavior=None):
     assert(len(motion_sequence) > 1)
     assert(motion_sequence[-1].name.startswith('grasp'))
 
@@ -865,18 +903,19 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
         #edge_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         #edge_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(edge_frame_node.transform))
         return create_edge_grasp(T_object_in_base, support_surface_frame, edge_frame, handarm_params, object_type,
-                                 object_params)
+                                 object_params, alternative_behavior)
     elif grasp_type == 'WallGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogeneous_tf(support_surface_frame_node.transform))
         wall_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         wall_frame = T_robot_base_frame.dot(transform_msg_to_homogeneous_tf(wall_frame_node.transform))
         return create_wall_grasp(T_object_in_base, support_surface_frame, wall_frame, handarm_params, object_type,
-                                 object_params)
+                                 object_params, alternative_behavior)
     elif grasp_type == 'SurfaceGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogeneous_tf(support_surface_frame_node.transform))
-        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type, object_params)
+        return create_surface_grasp(T_object_in_base, support_surface_frame, handarm_params, object_type, object_params,
+                                    alternative_behavior)
     else:
         raise ValueError("Unknown grasp type: {}".format(grasp_type))
 

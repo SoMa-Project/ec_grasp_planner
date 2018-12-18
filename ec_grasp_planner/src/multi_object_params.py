@@ -8,6 +8,7 @@ import tf
 from tf import transformations as tra
 from geometry_graph_msgs.msg import Node, geometry_msgs
 import rospy
+from functools import partial
 
 
 import rospkg
@@ -16,9 +17,11 @@ from tornado.concurrent import return_future
 rospack = rospkg.RosPack()
 pkg_path = rospack.get_path('ec_grasp_planner')
 
+
 def unit_vector(vector):
     # Returns the unit vector of the vector.
     return vector / np.linalg.norm(vector)
+
 
 def angle_between(v1, v2):
     # Returns the angle in radians between vectors 'v1' and 'v2'::
@@ -27,15 +30,31 @@ def angle_between(v1, v2):
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 
+class AlternativeBehavior:
+    # TODO this class should be adapted if return value of the feasibility check changes (e.g. switch conditions)
+    def __init__(self, feasibility_check_result):
+        self.number_of_joints = len(feasibility_check_result.final_configuration)
+        self.trajectory_steps = []
+        for i in range(0, len(feasibility_check_result.trajectory), step=self.number_of_joints):
+            self.trajectory_steps.append(feasibility_check_result.trajectory[i:i+self.number_of_joints])
+
+
 class multi_object_params:
     def __init__(self, file_name="object_param.yaml"):
         self.file_name = file_name
         self.data = None
+        self.stored_trajectories = {}
 
     def get_object_params(self):
         if self.data is None:
             self.load_object_params()
         return self.data
+
+    # This function will return a dictionary, mapping every motion name (e.g. pre_grasp) to an alternative behavior
+    # (e.g. a sequence of joint states) to the default hard-coded motion in the planner.py
+    # If no such alternative behavior is defined the function returns None
+    def get_alternative_behavior(self, object_idx, ec_index):
+        return self.stored_trajectories[(object_idx, ec_index)]
 
     # ================================================================================================
     def transform_msg_to_homogenous_tf(self, msg):
@@ -148,6 +167,159 @@ class multi_object_params:
         else:
             return 0
 
+    def check_kinematic_feasibility(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames,
+                                    ifco_in_base_transform, handarm_params):
+
+        object = objects[current_object_idx]
+        ec_frame = all_ec_frames[current_ec_index]
+        object_params = self.data[object['type']][strategy]
+        object_params['frame'] = object['frame']
+
+        # TODO maybe move the kinematic stuff to seprate function / file
+        from kinematics_check import srv as kin_check_srv  # TODO move to top of the file
+        import yaml  # TODO move to top of the file
+
+        if strategy == 'SurfaceGrasp':
+            # use kinematic checks
+            # TODO create proxy; make it a persistent connection?
+
+            # Code duplication from planner.py TODO put at a shared location
+
+            if object['type'] in handarm_params['surface_grasp']:
+                params = handarm_params['surface_grasp'][object['type']]
+            else:
+                params = handarm_params['surface_grasp']['object']
+            # Set the initial pose above the object
+            goal_ = np.copy(object_params['frame'])  # TODO: this should be support_surface_frame
+            goal_[:3, 3] = tra.translation_from_matrix(object_params['frame'])
+            goal_ = goal_.dot(params['hand_transform'])
+
+            # the grasp frame is symmetrical - check which side is nicer to reach
+            # this is a hacky first version for our WAM
+            zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
+            if goal_[0][0] < 0:
+                goal_ = goal_.dot(zflip_transform)
+
+            # hand pose above object
+            pre_grasp_pose = goal_.dot(params['pregrasp_transform'])
+
+            print(pre_grasp_pose)  # TODO bring that pose into a suitable format for the service call
+
+            go_down_pose = pre_grasp_pose.dot(tra.translation_matrix([0, 0, -params['down_dist']])) # TODO multiplication order?
+
+            # This list includes the checked motions in order (They have to be sequential!)
+            checked_motions = ["pre_grasp", "go_down"]
+            # The goal poses of the respective motions in op-space (index has to match index of checked_motions)
+            goals = [pre_grasp_pose, go_down_pose]
+            # gotoview joint config (copied from gui.py)
+            # TODO read this from a central point (to ensure it is always the same parameter in gui and here)
+            curr_start_config = [0.457929, 0.295013, -0.232804, 2.59226, 1.25715, 1.50907, -0.616263]
+            # This variable is used to determine if all returned status flags are 1 (original trajectory feasible)
+            status_sum = 0
+            # initialize stored trajectories for the given object
+            self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
+
+            for motion, curr_goal in zip(checked_motions, goals):
+
+                manifold_name = motion +'_manifold'
+
+                ifco_trans, ifco_rot = multi_object_params.transform_to_pose(ifco_in_base_transform)
+
+                bounding_boxes = []
+                for obj in objects:
+
+                    obj_trans, obj_rot = multi_object_params.transform_to_pose(obj['frame'])
+                    bounding_boxes.append({
+                        'box': {
+                            'type': 0,
+                            'dimensions': [obj['bounding_box'].x, obj['bounding_box'].y, obj['bounding_box'].z]  # TODO probably use indexing or x() instead...
+                        },
+                        'pose': {
+                            'position': {'x': obj_trans.x, 'y': obj_trans.y, 'z': obj_trans.z},
+                            'orientation': {'x': obj_rot.x, 'y': obj_rot.y, 'z': obj_rot.z, 'w': obj_rot.w}
+                        }
+                    })
+
+                goal_trans, goal_rot = multi_object_params.transform_to_pose(curr_goal)
+
+                args = {
+                    'initial_configuration': curr_start_config,
+                    'goal_pose': {
+                        'position': {'x': goal_trans.x, 'y': goal_trans.y, 'z': goal_trans.z},
+                        'orientation': {'x': goal_rot.x, 'y': goal_rot.y, 'z': goal_rot.z, 'w': goal_rot.w}
+                    },
+                    'ifco_pose': {
+                        'position': {'x': ifco_trans.x, 'y': ifco_trans.y, 'z': ifco_trans.z},  # TODO probably use indexing or x() instead...
+                        'orientation': {'x': ifco_rot.x, 'y': ifco_rot.y, 'z': ifco_rot.z, 'w': ifco_rot.w}
+                    },
+                    'bounding_boxes_with_poses': bounding_boxes,
+                    'min_position_deltas': params[manifold_name]['min_position_deltas'],
+                    'max_position_deltas': params[manifold_name]['max_position_deltas'],
+                    'min_orientation_deltas': params[manifold_name]['min_orientation_deltas'],
+                    'max_orientation_deltas': params[manifold_name]['max_orientation_deltas'],
+                    # TODO currently we only allow to touch the object to be grasped during a surface grasp, is that really desired? (what about a really crowded ifco)
+                    'allowed_collisions': [{'type': 1, 'box_id': current_object_idx, 'terminate_on_collision': True},
+                                           {'type': 2, 'constraint_name': 'bottom', 'terminate_on_collision': False}]
+                }
+
+                check_kinematics = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
+                print("Call check kinematics. Arguments: \n" + yaml.safe_dump(args))
+                res = check_kinematics(yaml.safe_dump(args))
+
+                if res.status == 0:
+                    # trajectory is not feasible and no alternative was found, directly return 0
+                    return 0
+
+                elif res.status == 2:
+                    # original trajectory is not feasible, but alternative was found => save it
+                    self.stored_trajectories[(current_object_idx, current_ec_index)][motion] = AlternativeBehavior(res)
+                    curr_start_config = res.final_configuration
+
+                elif res.status == 1:
+                    # original trajectory is feasible. If all checked motions remain feasible, status_sum will be used
+                    # to signal that the original HA should not be touched.
+                    status_sum += 1
+
+                else:
+                    raise ValueError(
+                        "check_kinematics: No handler for result status of {} implemented".format(res.status))
+
+            if status_sum == len(checked_motions):
+                # all results had status 1, this means we can generate a HA without adding any special joint controllers
+                # In order to signal that we throw away all generated alternative trajectories.
+                self.stored_trajectories[(current_object_idx, current_ec_index)] = None
+
+        else:
+            # TODO implement other strategies
+            raise ValueError("Kinematics check are currently only supported for surface grasps")
+
+        return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,
+                                                                            strategy)
+
+
+
+    def black_list_risk_regions(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames,
+                                ifco_in_base_transform):
+
+        object = objects[current_object_idx]
+        object_params = self.data[object['type']][strategy]
+        object_params['frame'] = object['frame']
+
+        zone_fac = self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)
+        wall_fac = self.black_list_walls(current_ec_index, all_ec_frames, strategy)
+
+        return zone_fac * wall_fac
+
+    @staticmethod
+    def transform_to_pose(in_transform):
+        # convert 4x4 matrix to trans + rot
+        scale, shear, angles, translation, persp = tra.decompose_matrix(in_transform)
+        orientation_quat = tra.quaternion_from_euler(angles[0], angles[1], angles[2])
+        return translation, orientation_quat
+
+    def reset_kinematic_checks_information(self):
+        self.stored_trajectories = {}
+
 ## --------------------------------------------------------- ##
     # object-environment-hand based heuristic, q_value for grasping
     def heuristic(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames, ifco_in_base_transform, handarm_params):
@@ -158,111 +330,22 @@ class multi_object_params:
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
 
-        # ##### NEW CODE BELOW
         use_kinematic_checks = True  # TODO move this to a (ros) parameter
         if use_kinematic_checks:
-
-            # TODO maybe move the kinematic stuff to seprate function / file
-            from kinematics_check import srv as kin_check_srv  # TODO move to top of the file
-            import yaml  # TODO move to top of the file
-
-            if strategy == 'SurfaceGrasp':
-                # use kinematic checks
-                # TODO create proxy; make it a persistent connection?
-
-                # Code duplication from planner.py TODO put at a shared location
-
-                if object['type'] in handarm_params['surface_grasp']:
-                    params = handarm_params['surface_grasp'][object['type']]
-                else:
-                    params = handarm_params['surface_grasp']['object']
-                # Set the initial pose above the object
-                goal_ = np.copy(object_params['frame'])  # TODO: this should be support_surface_frame
-                goal_[:3, 3] = tra.translation_from_matrix(object_params['frame'])
-                goal_ = goal_.dot(params['hand_transform'])
-
-                # the grasp frame is symmetrical - check which side is nicer to reach
-                # this is a hacky first version for our WAM
-                zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
-                if goal_[0][0] < 0:
-                    goal_ = goal_.dot(zflip_transform)
-
-                # hand pose above object
-                pre_grasp_pose = goal_.dot(params['pregrasp_transform'])
-
-                print(pre_grasp_pose) # TODO bring that pose into a suitable format for the service call
-
-                # convert 4x4 matrix to trans + rot TODO maybe change interface? or get it directly from tf.
-                scale, shear, angles, ifco_trans, persp = tra.decompose_matrix(ifco_in_base_transform)
-                ifco_rot = tra.quaternion_from_euler(angles[0], angles[1], angles[2])
-
-                args = {
-                    # gotoview joint config (copied from gui.py)
-                    # TODO read this from a central point (sames parameter in gui and here)
-                    'initial_configuration': [0.457929, 0.295013, -0.232804, 2.59226, 1.25715, 1.50907, -0.616263],
-                    'goal_pose': {
-                        'position': {'x': 0.4, 'y': -0.02, 'z': 0.25},  # TODO actual position
-                        'orientation': {'x': 0.997, 'y': 0, 'z': 0.071, 'w': 0}
-                    },
-                    'ifco_pose': {
-                        'position': {'x': ifco_trans.x, 'y': ifco_trans.y, 'z': ifco_trans.z},  # TODO probably use indexing or x() instead...
-                        'orientation': {'x': ifco_rot.x, 'y': ifco_rot.y, 'z': ifco_rot.z, 'w': ifco_rot.w}
-                    },
-                    'bounding_boxes_with_poses': [{  # TODO add all real boxes not just a fake one
-                        'box': {
-                            'type': 0,
-                            'dimensions': [0.08, 0.08, 0.08]  # TODO get correct dimensions
-                        },
-                        'pose': {
-                            'position': {'x': 0.4, 'y': -0.02, 'z': 0.25},  # TODO get pos
-                            'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0}  # TODO get rot
-                        }
-                    }],
-                    'min_position_deltas': params['min_position_deltas'],
-                    'max_position_deltas': params['max_position_deltas'],
-                    'min_orientation_deltas': params['min_orientation_deltas'],
-                    'max_orientation_deltas': params['max_orientation_deltas'],
-                    # TODO currently we only allow to touch the object to be grasped during a surface grasp, is that really desired? (what about a really crowded ifco)
-                    'allowed_collisions': [{'type': 1, 'box_id': current_object_idx, 'terminate_on_collision': True}]
-
-                }
-
-                # TODO do this not only for pregrasp, but for all relevant control modes
-                check_kinematics = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
-                print("Call check kinematics. Arguments: \n" + yaml.safe_dump(args))
-                res = check_kinematics(yaml.safe_dump(args))
-
-                if res.status == 0:
-                    # trajectory is not feasible and no alternative was found
-                    return 0
-
-                if res.status == 2:
-                    # original trajectory is not feasible, but alternative was found
-                    # TODO adapt HA generation, in case this trajectory is selected
-                    return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,
-                                                                                        strategy)
-
-                if res.status == 1:
-                    # original trajectory is feasible # TODO make sure HA is not touched
-                    return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,
-                                                                                        strategy)
-
-                raise ValueError("check_kinematics: No handler for result status of {} implemented".format(res.status))
-
-        # ##### NEW CODE ABOVE
-
+            feasibility_fun = partial(self.check_kinematic_feasibility, current_object_idx, objects, current_ec_index,
+                                      strategy, all_ec_frames, ifco_in_base_transform, handarm_params)
         else:
-            # kinematic checks are disabled, use old fallback solution (black list regions etc.)
-            q_val = 1
-            q_val = q_val * \
-                    self.pdf_object_strategy(object_params) * \
-                    self.pdf_object_ec(object_params, ec_frame, strategy) * \
-                    self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)* \
-                    self.black_list_walls(current_ec_index, all_ec_frames, strategy)
+            feasibility_fun = partial(self.black_list_risk_regions, current_object_idx, objects, current_ec_index,
+                                      strategy, all_ec_frames, ifco_in_base_transform)
 
+        q_val = 1
+        q_val = q_val * \
+            self.pdf_object_strategy(object_params) * \
+            self.pdf_object_ec(object_params, ec_frame, strategy) * \
+            feasibility_fun()
 
-            #print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
-            return q_val
+        #print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
+        return q_val
 
 ## --------------------------------------------------------- ##
     # find the max probability and if there are more than one return one randomly
@@ -334,8 +417,9 @@ class multi_object_params:
         # print("ec type: {}".format(type(ecs[0])))
         # load parameter file
         self.load_object_params()
+        self.reset_kinematic_checks_information()
 
-        Q_matrix = np.zeros((len(objects),len(ecs)))
+        Q_matrix = np.zeros((len(objects), len(ecs)))
 
         # iterate through all objects
         for i, o in enumerate(objects):
