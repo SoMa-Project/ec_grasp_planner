@@ -184,7 +184,7 @@ class GraspPlanner:
             res = call_vision(self.object_type)
             graph = res.graph
             objects = res.objects.objects
-            objectList = res.objects
+            objectList = res.objects # TODO: unify this with the object list used below
         except rospy.ServiceException as e:
             raise rospy.ServiceException("Vision service call failed: %s" % e)
 
@@ -197,55 +197,66 @@ class GraspPlanner:
         time = rospy.Time(0)
         graph.header.stamp = time
         
+        # this will only be set if the Ocado heuristic + kinematic feasibility check is used
         pre_grasp_pose_in_base = None  
 
         self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
-        ifco_in_base_transform = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
-        print ifco_in_base_transform
+        ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
+        print ifco_in_base
+
+        # Naming of camera frame is a convention established by the vision nodes so no reason to pretend otherwise
+        self.tf_listener.waitForTransform(robot_base_frame, "/camera", time, rospy.Duration(2.0))
+        camera_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "camera")) 
+
+        # selecting list of goal nodes based on requested strategy type
+        if self.grasp_type == "Any":
+            goal_node_labels = ['SurfaceGrasp', 'WallGrasp', 'EdgeGrasp']
+        else:
+            goal_node_labels = [self.grasp_type]
+
+        # print(" *** goal node lables: {} ".format(goal_node_labels))
+
+        node_list = [n for i, n in enumerate(graph.nodes) if n.label in goal_node_labels]
 
         if use_ocado_heuristic:
             # call target_selection_node
 
-            self.tf_listener.waitForTransform(robot_base_frame, "/camera", time, rospy.Duration(2.0))
-            camera_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "camera")) 
-            camera_in_ifco = inv(ifco_in_base_transform).dot(camera_in_base)
+            camera_in_ifco = inv(ifco_in_base).dot(camera_in_base)
             camera_in_ifco_msg = pm.toMsg(pm.fromMatrix(camera_in_ifco))
 
-            #get pre grasp transforms in object frame for both grasp type 
+            # get pre grasp transforms in object frame for both grasp types 
             SG_pre_grasp_transform, WG_pre_grasp_transform = get_pre_grasp_transforms(self.handarm_params, self.object_type)
 
             SG_success_rate, WG_success_rate = get_success_rate(self.handarm_params, self.object_type)
 
             SG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(SG_pre_grasp_transform))
             WG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(WG_pre_grasp_transform))
-            ifco_in_base_msg = pm.toMsg(pm.fromMatrix(ifco_in_base_transform))
+            ifco_in_base_msg = pm.toMsg(pm.fromMatrix(ifco_in_base))
 
             graspable_with_any_hand_orientation = self.handarm_params[self.object_type]['graspable_with_any_hand_orientation']
 
             call_heuristic = rospy.ServiceProxy('target_selection', target_selection_srv.TargetSelection)
+
+            # TODO: Make the heuristic respect the ["Any", "WallGrasp", "SurfaceGrasp", "EdgeGrasp"] selection
             res = call_heuristic(objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate)
 
             if res.grasp_type == 'no_grasp':
-                print "GRASP HEURISTICS: NO SUITABLE TARGET FOUND EXECUTING SURFACE GRASP ON RANDOM OBJECT"
-                #TODO: implement a better way for the planner to handle this case
-                self.grasp_type = 'SurfaceGrasp'
-                wall_id = 'NoWall'
+                print "GRASP HEURISTICS: NO SUITABLE TARGET FOUND!!"
+                print "EXECUTING SURFACE GRASP OR WALL GRASP ON WALL 1 (IF ONLY WALL GRASP WAS SELECTED) ON RANDOM OBJECT"
+                #TODO: implement a better way for the planner to handle this case?
+                chosen_node_idx = 0
             else:
                 pre_grasp_pose_in_base = pm.toMatrix(pm.fromMsg(res.pre_grasp_pose_in_base_frame))
                 object_in_base = pm.toMatrix(pm.fromMsg(res.target_pose_in_base_frame))
 
                 if res.grasp_type == 's':
-                    self.grasp_type = 'SurfaceGrasp'
                     chosen_node_idx = 0 
-                    wall_id = 'NoWall'
                 else:
-                    self.grasp_type = 'WallGrasp'
-                    chosen_node_idx = res.gras_type[1] 
-                    wall_id = 'wall' + res.grasp_type[1]
-                print("GRASP HEURISTICS " + self.grasp_type + " " + wall_id)               
+                    chosen_node_idx = int(res.grasp_type[1]) - (self.grasp_type == 'WallGrasp') # the node list will only contain wall grasps if the grasp type is a wall grasp
 
-            goal_node_labels = [self.grasp_type]
-            node_list = [n for i, n in enumerate(graph.nodes) if n.label in goal_node_labels]
+                print "GRASP HEURISTICS " + self.grasp_type
+                if res.grasp_type[0] == 'w':
+                    print "CHOSEN WALL IS WALL " + res.grasp_type[1]            
             
             chosen_object_idx = res.chosen_object_idx 
 
@@ -254,8 +265,6 @@ class GraspPlanner:
 
             # the TF must be in the same reference frame as the EC frames
             # Get the object frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, objects[chosen_object_idx].transform.header.frame_id, time,
-                                            rospy.Duration(2.0))
             object_in_camera = pm.toMatrix(pm.fromMsg(objects[chosen_object_idx].transform.pose))
             object_in_base = camera_in_base.dot(object_in_camera)
             chosen_object['frame'] = object_in_base
@@ -270,35 +279,22 @@ class GraspPlanner:
 
                 # the TF must be in the same reference frame as the EC frames
                 # Get the object frame in robot base frame
-                self.tf_listener.waitForTransform(robot_base_frame, o.transform.header.frame_id, time,
-                                                rospy.Duration(2.0))
-                camera_in_base = self.tf_listener.asMatrix(robot_base_frame, o.transform.header)
                 object_in_camera = pm.toMatrix(pm.fromMsg(o.transform.pose))
                 object_in_base = camera_in_base.dot(object_in_camera)
                 obj_tmp['frame'] = object_in_base
                 obj_tmp['bounding_box'] = o.boundingbox
                 object_list.append(obj_tmp)
 
-            # selecting list of goal nodes based on requested strategy type
-            if self.grasp_type == "Any":
-                goal_node_labels = ['SurfaceGrasp', 'WallGrasp', 'EdgeGrasp']
-            else:
-                goal_node_labels = [self.grasp_type]
-
-            # print(" *** goal node lables: {} ".format(goal_node_labels))
-
-            node_list = [n for i, n in enumerate(graph.nodes) if n.label in goal_node_labels]
-
             # Get the geometry graph frame in robot base frame
             self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
-            graph_in_base_transform = self.tf_listener.asMatrix(robot_base_frame, graph.header)
+            graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
             
 
             # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
             (chosen_object_idx, chosen_node_idx) = self.multi_object_handler.process_objects_ecs(object_list,
                                                                                         node_list,
-                                                                                        graph_in_base_transform,
-                                                                                        ifco_in_base_transform,
+                                                                                        graph_in_base,
+                                                                                        ifco_in_base,
                                                                                         req.object_heuristic_function
                                                                                         )
             chosen_object = object_list[chosen_object_idx]
