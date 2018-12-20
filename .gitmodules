@@ -2,5 +2,5 @@
 	path = hybrid-automaton-tools-py
 	url = https://github.com/SoMa-Project/hybrid-automaton-tools-py.git
 [submodule "contact-motion-planning"]
-	path = contact-motion-planning
+	path = kinematics_check_tub
 	url = https://gitlab.tubit.tu-berlin.de/rbo-lab/contact-motion-planning.git
