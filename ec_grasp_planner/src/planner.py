@@ -476,7 +476,14 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
     elif grasp_type == 'SurfaceGrasp':
         grasping_recipe, rviz_frames = get_hand_recipes(handarm_type).create_surface_grasp(T_object_in_base, bounding_box, handarm_params, object_type, pre_grasp_pose_in_base)
 
-    return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + get_transport_recipe(handarm_params, handarm_type)), rviz_frames
+    robot_name = rospy.get_param('/planner_gui/robot')
+    if robot_name == 'WAM':
+        return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + get_transport_recipe(handarm_params, handarm_type)), rviz_frames
+    elif robot_name == 'KUKA':
+        return cookbook.sequence_of_modes_and_switches(grasping_recipe + get_transport_recipe(handarm_params, handarm_type)), rviz_frames
+    else:
+        raise ValueError("No robot named {}".format(robot_name))
+
 
 def get_transport_recipe(handarm_params, handarm_type):
 
