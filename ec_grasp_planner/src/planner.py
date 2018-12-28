@@ -22,8 +22,6 @@ from tf import transformations as tra
 import numpy as np
 from numpy.linalg import inv
 
-from grasp_success_estimator import RESPONSES
-
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
@@ -46,7 +44,6 @@ from visualization_msgs.msg import Marker
 
 from pregrasp_msgs import srv as vision_srv
 
-from target_selection_in_ifco import srv as target_selection_srv
 from enum import Enum
 
 import pyddl
@@ -62,16 +59,17 @@ import tf_conversions.posemath as pm
 import handarm_parameters
 
 import PISAHandRecipes
-import RBOHandRecipes
+import RBOHandRecipesKUKA
+import RBOHandRecipesWAM
 import PISAGripperRecipes
 import ClashHandRecipes
-import TransportRecipes
+import TransportRecipesWAM
+import TransportRecipesKUKA
+import PlacementRecipes
 import multi_object_params as mop
 
 markers_rviz = MarkerArray()
 frames_rviz = []
-
-use_ocado_heuristic = True
 
 class FailureCases(Enum):
     MASS_ESTIMATION_NO_OBJECT = 3
@@ -185,7 +183,6 @@ class GraspPlanner:
             res = call_vision(self.object_type)
             graph = res.graph
             objects = res.objects.objects
-            objectList = res.objects # TODO: unify this with the object list used below
         except rospy.ServiceException as e:
             raise rospy.ServiceException("Vision service call failed: %s" % e)
 
@@ -198,9 +195,6 @@ class GraspPlanner:
         time = rospy.Time(0)
         graph.header.stamp = time
         
-        # this will only be set if the Ocado heuristic + kinematic feasibility check is used
-        pre_grasp_pose_in_base = None  
-
         self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
         ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
         print ifco_in_base
@@ -218,125 +212,44 @@ class GraspPlanner:
         # print(" *** goal node lables: {} ".format(goal_node_labels))
 
         node_list = [n for i, n in enumerate(graph.nodes) if n.label in goal_node_labels]
-
-        if use_ocado_heuristic:
-            # call target_selection_node
-
-            camera_in_ifco = inv(ifco_in_base).dot(camera_in_base)
-            camera_in_ifco_msg = pm.toMsg(pm.fromMatrix(camera_in_ifco))
-
-            # get pre grasp transforms in object frame for both grasp types 
-            SG_pre_grasp_transform, WG_pre_grasp_transform = get_pre_grasp_transforms(self.handarm_params, self.object_type)
-
-            SG_success_rate, WG_success_rate = get_success_rate(self.handarm_params, self.object_type)
-
-            SG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(SG_pre_grasp_transform))
-            WG_pre_grasp_in_object_frame_msg = pm.toMsg(pm.fromMatrix(WG_pre_grasp_transform))
-            ifco_in_base_msg = pm.toMsg(pm.fromMatrix(ifco_in_base))
-
-            graspable_with_any_hand_orientation = self.handarm_params[self.object_type]['graspable_with_any_hand_orientation']
-
-            call_heuristic = rospy.ServiceProxy('target_selection', target_selection_srv.TargetSelection)
-
-            # TODO: Make the heuristic respect the ["Any", "WallGrasp", "SurfaceGrasp", "EdgeGrasp"] selection
-            res = call_heuristic(objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate)
-
-            if res.grasp_type == 'no_grasp':
-                print "GRASP HEURISTICS: NO SUITABLE TARGET FOUND!!"
-                print "EXECUTING SURFACE GRASP OR WALL GRASP ON WALL 1 (IF ONLY WALL GRASP WAS SELECTED) ON RANDOM OBJECT"
-                #TODO: implement a better way for the planner to handle this case?
-                chosen_node_idx = 0
-            else:
-                pre_grasp_pose_in_base = pm.toMatrix(pm.fromMsg(res.pre_grasp_pose_in_base_frame))
-                object_in_base = pm.toMatrix(pm.fromMsg(res.target_pose_in_base_frame))
-
-                if res.grasp_type == 's':
-                    chosen_node_idx = 0 
-                else:
-                    chosen_node_idx = int(res.grasp_type[1]) - (self.grasp_type == 'WallGrasp') # the node list will only contain wall grasps if the grasp type is a wall grasp
-
-                print "GRASP HEURISTICS " + self.grasp_type
-                if res.grasp_type[0] == 'w':
-                    print "CHOSEN WALL IS WALL " + res.grasp_type[1]            
-            
-            chosen_object_idx = res.chosen_object_idx 
-
-            chosen_object = {}
-            chosen_object['type'] = self.object_type
+  
+        # build list of objects
+        object_list = []
+        for o in objects:
+            obj_tmp = {}
+            obj_tmp['type'] = self.object_type
 
             # the TF must be in the same reference frame as the EC frames
             # Get the object frame in robot base frame
-            object_in_camera = pm.toMatrix(pm.fromMsg(objects[chosen_object_idx].transform.pose))
+            object_in_camera = pm.toMatrix(pm.fromMsg(o.transform.pose))
             object_in_base = camera_in_base.dot(object_in_camera)
-            chosen_object['frame'] = object_in_base
-            chosen_object['bounding_box'] = objects[chosen_object_idx].boundingbox
-        else:
-            # use TUB code
-            # build list of objects
-            object_list = []
-            for o in objects:
-                obj_tmp = {}
-                obj_tmp['type'] = self.object_type
+            obj_tmp['frame'] = object_in_base
+            obj_tmp['bounding_box'] = o.boundingbox
+            object_list.append(obj_tmp)
 
-                # the TF must be in the same reference frame as the EC frames
-                # Get the object frame in robot base frame
-                object_in_camera = pm.toMatrix(pm.fromMsg(o.transform.pose))
-                object_in_base = camera_in_base.dot(object_in_camera)
-                obj_tmp['frame'] = object_in_base
-                obj_tmp['bounding_box'] = o.boundingbox
-                object_list.append(obj_tmp)
-
-            # Get the geometry graph frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
-            graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
-            
-
-            # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
-            (chosen_object_idx, chosen_node_idx) = self.multi_object_handler.process_objects_ecs(object_list,
-                                                                                        node_list,
-                                                                                        graph_in_base,
-                                                                                        ifco_in_base,
-                                                                                        req.object_heuristic_function
-                                                                                        )
-            chosen_object = object_list[chosen_object_idx]
+        # Get the geometry graph frame in robot base frame
+        self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
+        graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
         
+
+        # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
+        (chosen_object_idx, chosen_node_idx) = self.multi_object_handler.process_objects_ecs(object_list,
+                                                                                    node_list,
+                                                                                    graph_in_base,
+                                                                                    ifco_in_base,
+                                                                                    req.object_heuristic_function
+                                                                                    )
+        chosen_object = object_list[chosen_object_idx]
         chosen_node = node_list[chosen_node_idx]
 
-        # --------------------------------------------------------
-        # Get grasp from graph representation
-        grasp_path = None
-        while grasp_path is None:
-            # Get the geometry graph frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
-            graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
-
-            # Get the object frame in robot base frame
-            if not use_ocado_heuristic:
-                object_in_base = chosen_object['frame']
-
-            # Find a path in the ECE graph
-            hand_node_id = [n.label for n in graph.nodes].index("Positioning")
-            object_node_id = [n.label for n in graph.nodes].index("Slide")
-
-            #strategy selection based on grasp type
-            # grasp_path = find_a_path(hand_node_id, object_node_id, graph, self.grasp_type, verbose=True)
-
-            #strategy selection based on object-ec-hand heuristic
-            grasp_path = find_a_path(hand_node_id, object_node_id, graph, [chosen_node], verbose=True)
-
-            rospy.sleep(0.3)
-    
-
+        # This is left here for future compatibility reasons 
+        # In the future the reachability node will have already given the pre-grasp pose at this point
+        pre_grasp_pose_in_base = get_pre_grasp_transform(self.handarm_params, chosen_object, chosen_node, graph_in_base)
+        
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
-
-        
-        wall_frame_node = get_node_from_actions(grasp_path, 'grasp_object', graph)
-        wall_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(wall_frame_node.transform))
-
-
-        ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base, chosen_object['bounding_box'],
-                                                                self.handarm_params, self.object_type, wall_frame, req.handarm_type, self.multi_object_handler.get_object_params(), pre_grasp_pose_in_base)
+        ha, self.rviz_frames = hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_pose_in_base, graph_in_base,
+                                                                self.handarm_params, req.handarm_type, self.multi_object_handler.get_object_params())
                                                 
         # --------------------------------------------------------
         # Output the hybrid automaton
@@ -371,238 +284,88 @@ def transform_msg_to_homogeneous_tf(msg):
                   tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
 
 # ================================================================================================
-def getParam(obj_type_params, obj_params, paramKey):
-    param = obj_type_params.get(paramKey)
-    if param is None:
-        param = obj_params.get(paramKey)
-    if param is None:
-         raise Exception("Param: " + paramKey + " does not exist for this object and there is no generic value defined")
-    return param
-
-# ================================================================================================
-def get_hand_recipes(handarm_type):
-    if handarm_type == "PISAHandKUKA":
+def get_hand_recipes(handarm_type, robot_name):
+    if "PISAHand" in handarm_type:
         return PISAHandRecipes
-    elif handarm_type == "PISAGripperKUKA":
+    elif "PISAGripper" in handarm_type:
         return PISAGripperRecipes
-    elif handarm_type == "RBOHandO2KUKA":
-        return RBOHandRecipes
-    elif handarm_type == "ClashHandKUKA":
+    elif "RBOHand" in handarm_type:
+        if robot_name == "WAM":
+            return RBOHandRecipesWAM
+        elif robot_name == "KUKA":
+            return RBOHandRecipesKUKA
+        else:
+            raise Exception("Unknown robot_name: " + robot_name)
+    elif "ClashHand" in handarm_type:
         return ClashHandRecipes
     else:
         raise Exception("Unknown handarm_type: " + handarm_type)
 
 # ================================================================================================
-def get_pre_grasp_transforms(handarm_params, object_type):
-    #returns the initial pre_grasp transforms for wall grasp and surface grasp depending on the object type and the hand
+def get_pre_grasp_transform(handarm_params, chosen_object, chosen_node, graph_in_base):
+    # returns the initial pre_grasp transform for the grasp depending on the object type and the hand
     
-    #surface grasp pre_grasp transform SG_pre_grasp_transform
-    obj_type_params = {}
-    obj_params = {}
-    if (object_type in handarm_params['surface_grasp']):            
-        obj_type_params = handarm_params['surface_grasp'][object_type]
-    if 'object' in handarm_params['surface_grasp']:
-        obj_params = handarm_params['surface_grasp']['object']
+    object_type = chosen_object['type']
+    object_pose = chosen_object['frame']
+    grasp_type = chosen_node.label
 
-    hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')    
-    ee_in_goal_frame = getParam(obj_type_params, obj_params, 'ee_in_goal_frame')
+    # Get the parameters from the handarm_parameters.py file
+    if (object_type in handarm_params[grasp_type]):
+        params = handarm_params[grasp_type][object_type]
+    else:
+        params = handarm_params[grasp_type]['object']
 
-    SG_pre_grasp_transform = hand_transform.dot(ee_in_goal_frame)
 
-    #wall grasp pre_grasp transform WG_pre_grasp_transform
-    obj_type_params = {}
-    obj_params = {}
-    if (object_type in handarm_params['wall_grasp']):            
-        obj_type_params = handarm_params['wall_grasp'][object_type]
-    if 'object' in handarm_params['wall_grasp']:
-        obj_params = handarm_params['wall_grasp']['object']
-
-    hand_transform = getParam(obj_type_params, obj_params, 'hand_transform')    
-    pre_approach_transform = getParam(obj_type_params, obj_params, 'pre_approach_transform')
-
-    WG_pre_grasp_transform = hand_transform.dot(pre_approach_transform)
-
-    return SG_pre_grasp_transform, WG_pre_grasp_transform
+    if grasp_type == 'EdgeGrasp':
+        raise ValueError("Edge grasp is not supported yet")
+    elif grasp_type == 'SurfaceGrasp':
+        return (object_pose.dot(params['hand_transform'])).dot(params['ee_in_goal_frame'])
+    elif grasp_type == 'WallGrasp':
+        wall_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform)) 
+        wall_frame[:3,3] = tra.translation_from_matrix(object_pose)
+        return (wall_frame.dot(params['hand_transform'])).dot(params['pre_approach_transform'])
+    else:
+        raise ValueError("Unknown grasp type: {}".format(grasp_type))
 
 # ================================================================================================
-def get_success_rate(handarm_params, object_type):
-    #returns the success rate for the surface and wall grasp for the specific object type
-    
-    #surface grasp success rate
-    obj_type_params = {}
-    obj_params = {}
-    if (object_type in handarm_params['surface_grasp']):            
-        obj_type_params = handarm_params['surface_grasp'][object_type]
-    if 'object' in handarm_params['surface_grasp']:
-        obj_params = handarm_params['surface_grasp']['object']
-
-    SG_success_rate = getParam(obj_type_params, obj_params, 'success_rate')        
-
-    #wall grasp success rate
-    obj_type_params = {}
-    obj_params = {}
-    if (object_type in handarm_params['wall_grasp']):            
-        obj_type_params = handarm_params['wall_grasp'][object_type]
-    if 'object' in handarm_params['wall_grasp']:
-        obj_params = handarm_params['wall_grasp']['object']
-
-    WG_success_rate = getParam(obj_type_params, obj_params, 'success_rate')        
-
-    return SG_success_rate, WG_success_rate
-
-# ================================================================================================
-def transform_msg_to_homogenous_tf(msg):
-    return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]), 
-        tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
+def transform_msg_to_homogeneous_tf(msg):
+    return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]),
+                  tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
 
 # ================================================================================================
 def homogenous_tf_to_pose_msg(htf):
     return Pose(position = Point(*tra.translation_from_matrix(htf).tolist()), orientation = Quaternion(*tra.quaternion_from_matrix(htf).tolist()))
 
 # ================================================================================================
-def get_node_from_actions(actions, action_name, graph):
-    return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
+def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_pose, graph_in_base, handarm_params, handarm_type, object_params):
 
-# ================================================================================================
-def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, bounding_box, handarm_params, object_type, wall_frame, handarm_type, object_params, pre_grasp_pose_in_base = None):
-    assert(len(motion_sequence) > 1)
-    assert(motion_sequence[-1].name.startswith('grasp'))
+    print("Creating hybrid automaton for object {} and grasp type {}.".format(chosen_object['type'], chosen_node.label))
 
-    grasp_type = graph.nodes[int(motion_sequence[-1].sig[1][1:])].label
+    # Set the frames to visualize with RViz
+    rviz_frames = [chosen_object['frame'], pre_grasp_pose]
+    grasp_type = chosen_node.label
+    robot_name = rospy.get_param('/planner_gui/robot')
 
-    print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == 'EdgeGrasp':
         raise ValueError("Edge grasp is not supported yet")
-    elif grasp_type == 'WallGrasp':        
-        grasping_recipe, rviz_frames = get_hand_recipes(handarm_type).create_wall_grasp(T_object_in_base, bounding_box, wall_frame, handarm_params, object_type, object_params, pre_grasp_pose_in_base)        
+    elif grasp_type == 'WallGrasp':  
+        wall_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))      
+        grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_wall_grasp(chosen_object, wall_frame, handarm_params, pre_grasp_pose)
+        rviz_frames.append(wall_frame)       
     elif grasp_type == 'SurfaceGrasp':
-        grasping_recipe, rviz_frames = get_hand_recipes(handarm_type).create_surface_grasp(T_object_in_base, bounding_box, handarm_params, object_type, object_params, pre_grasp_pose_in_base)
+        grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_surface_grasp(chosen_object, handarm_params, pre_grasp_pose)
     else:
         raise ValueError("Unknown grasp type: {}".format(grasp_type))
 
-    transport_recipe = TransportRecipes.get_transport_recipe(handarm_params)
-
-    robot_name = rospy.get_param('/planner_gui/robot')
     if robot_name == 'WAM':
+        transport_recipe = TransportRecipesWAM.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
         return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + transport_recipe), rviz_frames
     elif robot_name == 'KUKA':
-        return cookbook.sequence_of_modes_and_switches(grasping_recipe + transport_recipe), rviz_frames
+        transport_recipe = TransportRecipesKUKA.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
+        placement_recipe = PlacementRecipes.get_placement_recipe(chosen_object, handarm_params, grasp_type)
+        return cookbook.sequence_of_modes_and_switches(grasping_recipe + transport_recipe + placement_recipe), rviz_frames
     else:
         raise ValueError("No robot named {}".format(robot_name))
-
-# ================================================================================================
-def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_list, verbose = False):
-    locations = ['l'+str(i) for i in range(len(graph.nodes))]
-
-    connections = [('connected', 'l'+str(e.node_id_start), 'l'+str(e.node_id_end)) for e in graph.edges]
-
-    # strategy selectio based on grasp type without heuristic
-    # grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n.label in goal_node_labels or n.label+'_'+str(i) in goal_node_labels]
-
-    # strategy selection based on heuristics
-    grasping_locations = [('is_grasping_location', 'l'+str(i)) for i, n in enumerate(graph.nodes) if n in goal_node_list or n.label+'_'+str(i) in goal_node_list]
-
-    # define possible actions
-    domain = pyddl.Domain((
-        pyddl.Action(
-            'move_hand',
-            parameters=(
-                ('location', 'from'),
-                ('location', 'to'),
-            ),
-            preconditions=(
-                ('hand_at', 'from'),
-                ('connected', 'from', 'to'),
-            ),
-            effects=(
-                pyddl.neg(('hand_at', 'from')),
-                ('hand_at', 'to'),
-            ),
-        ),
-        pyddl.Action(
-            'move_object',
-            parameters=(
-                ('location', 'from'),
-                ('location', 'to'),
-            ),
-            preconditions=(
-                ('hand_at', 'from'),
-                ('object_at', 'from'),
-                ('connected', 'from', 'to'),
-            ),
-            effects=(
-                pyddl.neg(('hand_at', 'from')),
-                pyddl.neg(('object_at', 'from')),
-                ('hand_at', 'to'),
-                ('object_at', 'to'),
-            ),
-        ),
-        pyddl.Action(
-            'grasp_object',
-            parameters=(
-                ('location', 'l'),
-            ),
-            preconditions=(
-                ('hand_at', 'l'),
-                ('object_at', 'l'),
-                ('is_grasping_location', 'l')
-            ),
-            effects=(
-                ('grasped', 'object'),
-            ),
-        ),
-    ))
-
-    # each node in the graph is a location
-    problem = pyddl.Problem(
-        domain,
-        {
-            'location': locations,
-        },
-        init=[
-            ('hand_at', 'l'+str(hand_start_node_id)),
-            ('object_at', 'l'+str(object_start_node_id)),
-        ] + connections + grasping_locations,
-        goal=(
-            ('grasped', 'object'),
-        )
-    )
-
-    plan = pyddl.planner(problem, verbose=verbose)
-    if plan is None:
-        print('No Plan!')
-    else:
-        for action in plan:
-            print(action)
-
-    return plan
-
-# ================================================================================================
-def get_wall_tf(ifco_tf, wall_id):
-    # rotate the tf following the wall id
-    #     
-    #                      ROBOT
-    #                      wall4         
-    #                 ================
-    #                 |     ^ y       |
-    #                 |     |         |
-    #          wall3  |     |--->x    |  wall1
-    #                 |               |
-    #                 ================
-    #                      wall2         
-    wall4_tf = ifco_tf.dot(tra.rotation_matrix(
-                    math.radians(90), [1, 0, 0]))
-    rotation_angle = 0
-    if wall_id == 'wall1':
-        rotation_angle = -90
-    elif wall_id == 'wall2':
-        rotation_angle = 180
-    elif wall_id == 'wall3':
-        rotation_angle = 90
-    elif wall_id == 'wall4':
-        return wall4_tf
-    return tra.concatenate_matrices(wall4_tf, tra.rotation_matrix(
-                    math.radians(rotation_angle), [0, 1, 0]))
 
 # ================================================================================================
 def publish_rviz_markers(frames, frame_id, handarm_params):
