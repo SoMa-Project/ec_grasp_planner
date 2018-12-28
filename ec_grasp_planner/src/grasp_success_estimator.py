@@ -77,7 +77,7 @@ class MassEstimator(object):
 
         return msg
 
-    def __init__(self, ft_topic_name, ft_topic_type, object_ros_param_path, path_to_object_parameters):
+    def __init__(self, ft_topic_name, ft_topic_type, object_ros_param_path, path_to_object_parameters, ee_frame):
         rospy.init_node('graspSuccessEstimatorMass', anonymous=True)
 
         self.tf_listener = tf.TransformListener()
@@ -95,6 +95,8 @@ class MassEstimator(object):
         # The name of the current object retrieved from ros parameters during reference acquisition and checked
         # during estimation. Used to access object information (e.g. mass probability distribution).
         self.current_object_name = rospy.get_param(self.object_ros_param_path, default=None)
+
+        self.ee_frame = ee_frame
 
         # Create the publishers
         self.estimator_status_pub = rospy.Publisher('/graspSuccessEstimator/status', Float64, queue_size=10)
@@ -157,7 +159,7 @@ class MassEstimator(object):
         try:
             # transform ft sensor frame to world frame which makes it easy to identify the gravity component of
             # the ft sensor values as the z-axis (ft_sensor_wrench is in ee frame)
-            (trans, rot) = self.tf_listener.lookupTransform('/base_link', '/ee', rospy.Time(0))
+            (trans, rot) = self.tf_listener.lookupTransform('/base_link', self.ee_frame, rospy.Time(0))
 
             R = tf.transformations.quaternion_matrix(rot)
             T = tf.transformations.translation_matrix(trans)
@@ -275,9 +277,9 @@ if __name__ == '__main__':
 
     my_argv = rospy.myargv(argv=sys.argv)
     if len(my_argv) < 5:
-        print("usage: grasp_success_estimator.py ft_topic_name ft_topic_type object_ros_param_path path_to_object_parameters")
+        print("usage: grasp_success_estimator.py ft_topic_name ft_topic_type object_ros_param_path path_to_object_parameters ee_frame")
     else:
-        we = MassEstimator(my_argv[1], my_argv[2], my_argv[3], my_argv[4])
+        we = MassEstimator(my_argv[1], my_argv[2], my_argv[3], my_argv[4], my_argv[5])
         rospy.spin()
         # locking between the callbacks not required as long as we use only one spinner. See:
         # https://answers.ros.org/question/48429/should-i-use-a-lock-on-resources-in-a-listener-node-with-multiple-callbacks/
