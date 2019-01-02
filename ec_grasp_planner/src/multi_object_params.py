@@ -37,6 +37,16 @@ def convert_msg_to_homogenous_tf(msg):
 def convert_homogenous_tf_to_msg(htf):
     return pm.toMsg(pm.fromMatrix(htf))
 
+if USE_OCADO_HEURISTIC:
+    def get_ec_index_in_node_list(heuristic_ec_index, grasp_type):
+        # The q_mat return by the service call has always 5 columns
+        if grasp_type == 'Any':
+            return heuristic_ec_index
+        elif grasp_type == 'WallGrasp':
+            return heuristic_ec_index - 1
+        elif grasp_type == 'SurfaceGrasp':
+            return 0 
+
 class multi_object_params:
     def __init__(self, file_name="object_param.yaml"):
         self.file_name = file_name
@@ -233,7 +243,7 @@ class multi_object_params:
     # assumption1: all objects are the same type
     # objects is a dictionary with obilagorty keys: type, frame (in robot base frame)
     # ecs is a list of graph nodes (see geometry_graph)
-    def process_objects_ecs(self, objects, ecs, graph_in_base, ifco_in_base_transform, h_process_type = "Deterministic", grasp_type = "Any", SG_pre_grasp_in_object_frame, WG_pre_grasp_in_object_frame, object_list_msg = []):
+    def process_objects_ecs(self, objects, ecs, graph_in_base, ifco_in_base_transform,  SG_pre_grasp_in_object_frame, WG_pre_grasp_in_object_frame, h_process_type = "Deterministic", grasp_type = "Any", object_list_msg = []):
 
         # print("object: {}, \n ecs: {} \n graphTF: {}, h_process: {}".format(objects, ecs, graph_in_base, h_process_type))
         # print("ec type: {}".format(type(ecs[0])))
@@ -247,14 +257,14 @@ class multi_object_params:
             WG_success_rate = 1.0
 
             # currently camera_in_base = graph_in_base
-            camera_in_ifco = inv(ifco_in_base_transform).dot(graph_in_base) 
+            camera_in_ifco = np.inv(ifco_in_base_transform).dot(graph_in_base) 
             camera_in_ifco_msg = convert_homogenous_tf_to_msg(camera_in_ifco)
 
             SG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_msg(SG_pre_grasp_in_object_frame)
             WG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_msg(WG_pre_grasp_in_object_frame)
             ifco_in_base_msg = convert_homogenous_tf_to_msg(ifco_in_base_transform)
 
-            res = srv(grasp_type, objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate)
+            res = srv(grasp_type, object_list_msg, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate)
             Q_list = res.Q_mat.data
             number_of_columns = 5 #the service always returns a matrix with 5 ecs, but compute heuristic for the desired grasp only (0 otherwise)
             Q_matrix = np.matrix(Q_list).reshape((len(objects), number_of_columns))
@@ -288,22 +298,32 @@ class multi_object_params:
         if h_process_type == "Deterministic":
             object_index,  ec_index = self.argmax_h(Q_matrix)
             print(" ** h_mx[{}, {}]".format(object_index, ec_index))
-            print(" ** h_mx[{}, {}]".format(object_index, ecs[ec_index]))
-            return object_index, ec_index
+            print(" ** h_mx[{}, {}]".format(object_index, ecs[ec_index]))            
         # samples from [H(obj, ec)] list
         elif h_process_type == "Probabilistic":
-            object_index, ec_index = self.sample_from_pdf(Q_matrix)
-            return object_index, ec_index
+            object_index, ec_index = self.sample_from_pdf(Q_matrix)            
         elif h_process_type == "Random":
-            object_index, ec_index = self.random_from_Qmatrix(Q_matrix)
-            return object_index, ec_index
+            object_index, ec_index = self.random_from_Qmatrix(Q_matrix)        
+        
+        ## Compute pre_grasp_pose
+        if USE_OCADO_HEURISTIC:
+            srv = rospy.ServiceProxy('get_pregrasp_pose_q_row_col', target_selection_srv.GetPreGraspPoseForQRowCol)
+            res = srv(object_index, ec_index)
+            pre_grasp_pose_in_base_frame = convert_msg_to_homogenous_tf(res.pre_grasp_pose_in_base_frame)
+            ec_index = get_ec_index_in_node_list(ec_index, grasp_type)        
+        else:
+            object_pose = objects[object_index]['frame']
+            chosen_node = ecs[ec_index]            
+            if chosen_node.label == 'SurfaceGrasp':
+                pre_grasp_pose_in_base_frame = object_pose.dot(SG_pre_grasp_in_object_frame)
+            elif chosen_node.label == 'WallGrasp':
+                object_pos_with_ec_orientation = graph_in_base.dot(convert_msg_to_homogenous_tf(chosen_node.transform))
+                object_pos_with_ec_orientation[:3,3] = tra.translation_from_matrix(object_pose)
+                pre_grasp_pose_in_base_frame = object_pos_with_ec_orientation.dot(WG_pre_grasp_in_object_frame)
+            else:
+                raise ValueError("Unknown grasp type: {}".format(chosen_node.label))
 
-        # worst case just return the first object and ec
-
-        #TODO: Hussein get the pre_grasp_pose
-
-
-        return 0, 0
+        return object_index, ec_index, pre_grasp_pose_in_base_frame
 
 
 def test(ece_list = []):

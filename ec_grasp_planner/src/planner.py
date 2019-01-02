@@ -212,22 +212,18 @@ class GraspPlanner:
         SG_pre_grasp_in_object_frame, WG_pre_grasp_in_object_frame = get_pre_grasp_transforms(self.handarm_params, self.object_type)
 
         # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
-        (chosen_object_idx, chosen_node_idx) = self.multi_object_handler.process_objects_ecs(object_list,
+        (chosen_object_idx, chosen_node_idx, pre_grasp_pose_in_base) = self.multi_object_handler.process_objects_ecs(object_list,
                                                                                     node_list,
                                                                                     graph_in_base,
                                                                                     ifco_in_base,
-                                                                                    req.object_heuristic_function,
-                                                                                    self.grasp_type,
                                                                                     SG_pre_grasp_in_object_frame,
                                                                                     WG_pre_grasp_in_object_frame,
+                                                                                    req.object_heuristic_function,
+                                                                                    self.grasp_type,                                                                                    
                                                                                     object_list_msg
                                                                                     )
         chosen_object = object_list[chosen_object_idx]
-        chosen_node = node_list[chosen_node_idx]
-
-        # This is left here for future compatibility reasons 
-        # In the future the reachability node will have already given the pre-grasp pose at this point
-        pre_grasp_pose_in_base = get_pre_grasp_transform(self.handarm_params, chosen_object, chosen_node, graph_in_base)
+        chosen_node = node_list[chosen_node_idx]        
         
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
@@ -278,31 +274,6 @@ def get_hand_recipes(handarm_type, robot_name):
         return ClashHandRecipes
     else:
         raise Exception("Unknown handarm_type: " + handarm_type)
-
-# ================================================================================================
-def get_pre_grasp_transform(handarm_params, chosen_object, chosen_node, graph_in_base):
-    # returns the initial pre_grasp transform for the grasp depending on the object type and the hand
-    
-    object_type = chosen_object['type']
-    object_pose = chosen_object['frame']
-    grasp_type = chosen_node.label
-
-    # Get the parameters from the handarm_parameters.py file
-    if (object_type in handarm_params[grasp_type]):
-        params = handarm_params[grasp_type][object_type]
-    else:
-        params = handarm_params[grasp_type]['object']
-
-    if grasp_type == 'EdgeGrasp':
-        raise ValueError("Edge grasp is not supported yet")
-    elif grasp_type == 'SurfaceGrasp':
-        return ((object_pose.dot(params['hand_transform'])).dot(params['pre_approach_transform'])).dot(params['ee_in_goal_frame'])
-    elif grasp_type == 'WallGrasp':
-        wall_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform)) 
-        wall_frame[:3,3] = tra.translation_from_matrix(object_pose)
-        return (wall_frame.dot(params['hand_transform'])).dot(params['pre_approach_transform'])
-    else:
-        raise ValueError("Unknown grasp type: {}".format(grasp_type))
 
 # ================================================================================================
 def get_pre_grasp_transforms(handarm_params, object_type):
