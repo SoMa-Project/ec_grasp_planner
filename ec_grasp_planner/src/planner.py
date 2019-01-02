@@ -209,7 +209,7 @@ class GraspPlanner:
         graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
         
         # get pre grasp transforms in object frame for both grasp types 
-        SG_pre_grasp_transform, WG_pre_grasp_transform = get_pre_grasp_transforms(self.handarm_params, self.object_type)
+        SG_pre_grasp_in_object_frame, WG_pre_grasp_in_object_frame = get_pre_grasp_transforms(self.handarm_params, self.object_type)
 
         # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
         (chosen_object_idx, chosen_node_idx) = self.multi_object_handler.process_objects_ecs(object_list,
@@ -260,11 +260,6 @@ class GraspPlanner:
         ha_as_xml = ha.xml()
         return plan_srv.RunGraspPlannerResponse(ha_as_xml, chosen_object_idx if ha_as_xml != "" else -1, chosen_node)
 
-
-# ================================================================================================
-def transform_msg_to_homogeneous_tf(msg):
-    return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]),
-                  tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
 
 # ================================================================================================
 def get_hand_recipes(handarm_type, robot_name):
@@ -347,7 +342,7 @@ def transform_msg_to_homogeneous_tf(msg):
 
 # ================================================================================================
 def homogenous_tf_to_pose_msg(htf):
-    retsurn Pose(position = Point(*tra.translation_from_matrix(htf).tolist()), orientation = Quaternion(*tra.quaternion_from_matrix(htf).tolist()))
+    return Pose(position = Point(*tra.translation_from_matrix(htf).tolist()), orientation = Quaternion(*tra.quaternion_from_matrix(htf).tolist()))
 
 # ================================================================================================
 def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_pose, graph_in_base, handarm_params, handarm_type, object_params):
