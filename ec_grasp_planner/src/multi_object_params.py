@@ -31,11 +31,15 @@ def angle_between(v1, v2):
     v2_u = unit_vector(v2)
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
-def convert_msg_to_homogenous_tf(msg):
+def convert_pose_msg_to_homogenous_tf(msg):
     return pm.toMatrix(pm.fromMsg(msg))
 
-def convert_homogenous_tf_to_msg(htf):
+def convert_homogenous_tf_to_pose_msg(htf):
     return pm.toMsg(pm.fromMatrix(htf))
+
+def convert_transform_msg_to_homogenous_tf(msg):
+    return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]),
+                      tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
 
 if USE_OCADO_HEURISTIC:
     def get_ec_index_in_node_list(heuristic_ec_index, grasp_type):
@@ -257,12 +261,12 @@ class multi_object_params:
             WG_success_rate = 1.0
 
             # currently camera_in_base = graph_in_base
-            camera_in_ifco = np.inv(ifco_in_base_transform).dot(graph_in_base) 
-            camera_in_ifco_msg = convert_homogenous_tf_to_msg(camera_in_ifco)
+            camera_in_ifco = np.linalg.inv(ifco_in_base_transform).dot(graph_in_base) 
+            camera_in_ifco_msg = convert_homogenous_tf_to_pose_msg(camera_in_ifco)
 
-            SG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_msg(SG_pre_grasp_in_object_frame)
-            WG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_msg(WG_pre_grasp_in_object_frame)
-            ifco_in_base_msg = convert_homogenous_tf_to_msg(ifco_in_base_transform)
+            SG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(SG_pre_grasp_in_object_frame)
+            WG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(WG_pre_grasp_in_object_frame)
+            ifco_in_base_msg = convert_homogenous_tf_to_pose_msg(ifco_in_base_transform)
 
             res = srv(grasp_type, object_list_msg, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate)
             Q_list = res.Q_mat.data
@@ -283,12 +287,12 @@ class multi_object_params:
 
                 all_ec_frames = []
                 for j, ec in enumerate(ecs):
-                    all_ec_frames.append(graph_in_base.dot(convert_msg_to_homogenous_tf(ec.transform)))
-                    print("ecs:{}".format(graph_in_base.dot(convert_msg_to_homogenous_tf(ec.transform))))
+                    all_ec_frames.append(graph_in_base.dot(convert_transform_msg_to_homogenous_tf(ec.transform)))
+                    print("ecs:{}".format(graph_in_base.dot(convert_transform_msg_to_homogenous_tf(ec.transform))))
 
                 for j,ec in enumerate(ecs):
                     # the ec frame must be in the same reference frame as the object
-                    ec_frame_in_base = graph_in_base.dot(convert_msg_to_homogenous_tf(ec.transform))
+                    ec_frame_in_base = graph_in_base.dot(convert_transform_msg_to_homogenous_tf(ec.transform))
                     Q_matrix[i,j] = self.heuristic(o, j, ec.label, all_ec_frames, ifco_in_base_transform)
 
         # print (" ** h_mx = {}".format(Q_matrix))
@@ -309,7 +313,7 @@ class multi_object_params:
         if USE_OCADO_HEURISTIC:
             srv = rospy.ServiceProxy('get_pregrasp_pose_q_row_col', target_selection_srv.GetPreGraspPoseForQRowCol)
             res = srv(object_index, ec_index)
-            pre_grasp_pose_in_base_frame = convert_msg_to_homogenous_tf(res.pre_grasp_pose_in_base_frame)
+            pre_grasp_pose_in_base_frame = convert_pose_msg_to_homogenous_tf(res.pre_grasp_pose_in_base_frame)
             ec_index = get_ec_index_in_node_list(ec_index, grasp_type)        
         else:
             object_pose = objects[object_index]['frame']
@@ -317,7 +321,7 @@ class multi_object_params:
             if chosen_node.label == 'SurfaceGrasp':
                 pre_grasp_pose_in_base_frame = object_pose.dot(SG_pre_grasp_in_object_frame)
             elif chosen_node.label == 'WallGrasp':
-                object_pos_with_ec_orientation = graph_in_base.dot(convert_msg_to_homogenous_tf(chosen_node.transform))
+                object_pos_with_ec_orientation = graph_in_base.dot(convert_transform_msg_to_homogenous_tf(chosen_node.transform))
                 object_pos_with_ec_orientation[:3,3] = tra.translation_from_matrix(object_pose)
                 pre_grasp_pose_in_base_frame = object_pos_with_ec_orientation.dot(WG_pre_grasp_in_object_frame)
             else:
