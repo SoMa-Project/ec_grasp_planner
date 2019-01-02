@@ -159,6 +159,7 @@ class GraspPlanner:
             res = call_vision(self.object_type)
             graph = res.graph
             objects = res.objects.objects
+            object_list_msg = res.objects
         except rospy.ServiceException as e:
             raise rospy.ServiceException("Vision service call failed: %s" % e)
 
@@ -207,13 +208,19 @@ class GraspPlanner:
         self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
         graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
         
+        # get pre grasp transforms in object frame for both grasp types 
+        SG_pre_grasp_transform, WG_pre_grasp_transform = get_pre_grasp_transforms(self.handarm_params, self.object_type)
 
         # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
         (chosen_object_idx, chosen_node_idx) = self.multi_object_handler.process_objects_ecs(object_list,
                                                                                     node_list,
                                                                                     graph_in_base,
                                                                                     ifco_in_base,
-                                                                                    req.object_heuristic_function
+                                                                                    req.object_heuristic_function,
+                                                                                    self.grasp_type,
+                                                                                    SG_pre_grasp_in_object_frame,
+                                                                                    WG_pre_grasp_in_object_frame,
+                                                                                    object_list_msg
                                                                                     )
         chosen_object = object_list[chosen_object_idx]
         chosen_node = node_list[chosen_node_idx]
@@ -304,6 +311,11 @@ def get_pre_grasp_transform(handarm_params, chosen_object, chosen_node, graph_in
         raise ValueError("Unknown grasp type: {}".format(grasp_type))
 
 # ================================================================================================
+
+def get_pre_grasp_transforms(handarm_params, object_type):
+    #TODO Hussein
+    pass
+
 def transform_msg_to_homogeneous_tf(msg):
     return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]),
                   tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))

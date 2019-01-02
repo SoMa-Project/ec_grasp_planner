@@ -1,17 +1,22 @@
 #!/usr/bin/env python
 
 import yaml
-# import rospy
 import math
 import numpy as np
 import tf
 from tf import transformations as tra
 from geometry_graph_msgs.msg import Node, geometry_msgs
 import rospy
+import tf_conversions.posemath as pm
 
 
 import rospkg
 from tornado.concurrent import return_future
+
+USE_OCADO_HEURISTIC = True
+
+if USE_OCADO_HEURISTIC:
+    from target_selection_in_ifco import srv as target_selection_srv
 
 rospack = rospkg.RosPack()
 pkg_path = rospack.get_path('ec_grasp_planner')
@@ -26,22 +31,21 @@ def angle_between(v1, v2):
     v2_u = unit_vector(v2)
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
+def convert_msg_to_homogenous_tf(msg):
+    return pm.toMatrix(pm.fromMsg(msg))
+
+def convert_homogenous_tf_to_msg(htf):
+    return pm.toMsg(pm.fromMatrix(htf))
 
 class multi_object_params:
     def __init__(self, file_name="object_param.yaml"):
         self.file_name = file_name
-        self.data = None
+        self.data = None        
 
     def get_object_params(self):
         if self.data is None:
             self.load_object_params()
         return self.data
-
-    # ================================================================================================
-    def transform_msg_to_homogenous_tf(self, msg):
-        return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]),
-                      tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
-
     ## --------------------------------------------------------- ##
     #load parameters for hand-object-strategy
     def load_object_params(self):
@@ -229,34 +233,53 @@ class multi_object_params:
     # assumption1: all objects are the same type
     # objects is a dictionary with obilagorty keys: type, frame (in robot base frame)
     # ecs is a list of graph nodes (see geometry_graph)
-    def process_objects_ecs(self, objects, ecs, graph_in_base, ifco_in_base_transform, h_process_type="Deterministic"):
+    def process_objects_ecs(self, objects, ecs, graph_in_base, ifco_in_base_transform, h_process_type = "Deterministic", grasp_type = "Any", SG_pre_grasp_in_object_frame, WG_pre_grasp_in_object_frame, object_list_msg = []):
 
         # print("object: {}, \n ecs: {} \n graphTF: {}, h_process: {}".format(objects, ecs, graph_in_base, h_process_type))
         # print("ec type: {}".format(type(ecs[0])))
         # load parameter file
-        self.load_object_params()
+        self.load_object_params()       
 
-        Q_matrix = np.zeros((len(objects),len(ecs)))
+        if USE_OCADO_HEURISTIC:
+            srv = rospy.ServiceProxy('generate_q_matrix', target_selection_srv.GenerateQmatrix)
+            graspable_with_any_hand_orientation = False
+            SG_success_rate = 1.0
+            WG_success_rate = 1.0
 
-        # iterate through all objects
-        for i,o in enumerate(objects):
+            # currently camera_in_base = graph_in_base
+            camera_in_ifco = inv(ifco_in_base_transform).dot(graph_in_base) 
+            camera_in_ifco_msg = convert_homogenous_tf_to_msg(camera_in_ifco)
 
-            # check if the given hand type for this object is set in the yaml
-            # print ("object type: {}".format(o["type"]))
+            SG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_msg(SG_pre_grasp_in_object_frame)
+            WG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_msg(WG_pre_grasp_in_object_frame)
+            ifco_in_base_msg = convert_homogenous_tf_to_msg(ifco_in_base_transform)
 
-            if not self.data[o["type"]]:
-                print("The given object {} has no parameters set in the yaml {}".format(o["type"], self.file_name))
-                return -1
+            res = srv(grasp_type, objectList, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate)
+            Q_list = res.Q_mat.data
+            number_of_columns = 5 #the service always returns a matrix with 5 ecs, but compute heuristic for the desired grasp only (0 otherwise)
+            Q_matrix = np.matrix(Q_list).reshape((len(objects), number_of_columns))
 
-            all_ec_frames = []
-            for j, ec in enumerate(ecs):
-                all_ec_frames.append(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform)))
-                print("ecs:{}".format(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))))
+        else:
+            Q_matrix = np.zeros((len(objects),len(ecs)))
+            # iterate through all objects
+            for i,o in enumerate(objects):
 
-            for j,ec in enumerate(ecs):
-                # the ec frame must be in the same reference frame as the object
-                ec_frame_in_base = graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))
-                Q_matrix[i,j] = self.heuristic(o, j, ec.label, all_ec_frames, ifco_in_base_transform)
+                # check if the given hand type for this object is set in the yaml
+                # print ("object type: {}".format(o["type"]))
+
+                if not self.data[o["type"]]:
+                    print("The given object {} has no parameters set in the yaml {}".format(o["type"], self.file_name))
+                    return -1
+
+                all_ec_frames = []
+                for j, ec in enumerate(ecs):
+                    all_ec_frames.append(graph_in_base.dot(convert_msg_to_homogenous_tf(ec.transform)))
+                    print("ecs:{}".format(graph_in_base.dot(convert_msg_to_homogenous_tf(ec.transform))))
+
+                for j,ec in enumerate(ecs):
+                    # the ec frame must be in the same reference frame as the object
+                    ec_frame_in_base = graph_in_base.dot(convert_msg_to_homogenous_tf(ec.transform))
+                    Q_matrix[i,j] = self.heuristic(o, j, ec.label, all_ec_frames, ifco_in_base_transform)
 
         # print (" ** h_mx = {}".format(Q_matrix))
 
@@ -276,6 +299,10 @@ class multi_object_params:
             return object_index, ec_index
 
         # worst case just return the first object and ec
+
+        #TODO: Hussein get the pre_grasp_pose
+
+
         return 0, 0
 
 
