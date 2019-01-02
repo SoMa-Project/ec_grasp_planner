@@ -298,7 +298,6 @@ def get_pre_grasp_transform(handarm_params, chosen_object, chosen_node, graph_in
     else:
         params = handarm_params[grasp_type]['object']
 
-
     if grasp_type == 'EdgeGrasp':
         raise ValueError("Edge grasp is not supported yet")
     elif grasp_type == 'SurfaceGrasp':
@@ -311,10 +310,36 @@ def get_pre_grasp_transform(handarm_params, chosen_object, chosen_node, graph_in
         raise ValueError("Unknown grasp type: {}".format(grasp_type))
 
 # ================================================================================================
-
 def get_pre_grasp_transforms(handarm_params, object_type):
-    #TODO Hussein
-    pass
+    # Returns the initial pre_grasp transforms for wall grasp and surface grasp depending on the object type and the hand
+    
+    # Surface grasp pre_grasp transform SG_pre_grasp_transform
+    grasp_type = "SurfaceGrasp"
+    # Get the parameters from the handarm_parameters.py file
+    if (object_type in handarm_params[grasp_type]):
+        params = handarm_params[grasp_type][object_type]
+    else:
+        params = handarm_params[grasp_type]['object']
+
+    hand_transform = params['hand_transform']
+    ee_in_goal_frame = params['ee_in_goal_frame']
+
+    SG_pre_grasp_transform = hand_transform.dot(ee_in_goal_frame)
+
+    # Wall grasp pre_grasp transform WG_pre_grasp_transform
+    grasp_type = "WallGrasp"
+    # Get the parameters from the handarm_parameters.py file
+    if (object_type in handarm_params[grasp_type]):
+        params = handarm_params[grasp_type][object_type]
+    else:
+        params = handarm_params[grasp_type]['object']
+
+    hand_transform = params['hand_transform']
+    pre_approach_transform = params['pre_approach_transform']
+
+    WG_pre_grasp_transform = hand_transform.dot(pre_approach_transform)
+
+    return SG_pre_grasp_transform, WG_pre_grasp_transform
 
 def transform_msg_to_homogeneous_tf(msg):
     return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]),
@@ -322,7 +347,7 @@ def transform_msg_to_homogeneous_tf(msg):
 
 # ================================================================================================
 def homogenous_tf_to_pose_msg(htf):
-    return Pose(position = Point(*tra.translation_from_matrix(htf).tolist()), orientation = Quaternion(*tra.quaternion_from_matrix(htf).tolist()))
+    retsurn Pose(position = Point(*tra.translation_from_matrix(htf).tolist()), orientation = Quaternion(*tra.quaternion_from_matrix(htf).tolist()))
 
 # ================================================================================================
 def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_pose, graph_in_base, handarm_params, handarm_type, object_params):
