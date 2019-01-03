@@ -271,7 +271,7 @@ class multi_object_params:
             res = srv(grasp_type, object_list_msg, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate)
             Q_list = res.Q_mat.data
             number_of_columns = 5 #the service always returns a matrix with 5 ecs, but compute heuristic for the desired grasp only (0 otherwise)
-            Q_matrix = np.matrix(Q_list).reshape((len(objects), number_of_columns))
+            Q_matrix = np.array(Q_list).reshape((len(objects), number_of_columns))
 
         else:
             Q_matrix = np.zeros((len(objects),len(ecs)))
