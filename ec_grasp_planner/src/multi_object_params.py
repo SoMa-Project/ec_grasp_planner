@@ -44,12 +44,21 @@ def convert_transform_msg_to_homogenous_tf(msg):
                       tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
 
 if USE_OCADO_HEURISTIC:
-    def get_ec_index_in_node_list(heuristic_ec_index, grasp_type):
+    def reshape_Q_for_grasp_type(Q_mat, grasp_type):
+        # The q_mat return by the service call has always 5 columns
+        if grasp_type == 'Any':
+            return Q_mat
+        elif grasp_type == 'WallGrasp':
+            return Q_mat[:, [1,2,3,4]]
+        elif grasp_type == 'SurfaceGrasp':
+            return Q_mat[:, [0]]
+
+    def get_ec_index_in_ocado_heuristic(heuristic_ec_index, grasp_type):
         # The q_mat return by the service call has always 5 columns
         if grasp_type == 'Any':
             return heuristic_ec_index
         elif grasp_type == 'WallGrasp':
-            return heuristic_ec_index - 1
+            return heuristic_ec_index + 1
         elif grasp_type == 'SurfaceGrasp':
             return 0 
 
@@ -274,6 +283,7 @@ class multi_object_params:
             Q_list = res.Q_mat.data
             number_of_columns = 5 #the service always returns a matrix with 5 ecs, but compute heuristic for the desired grasp only (0 otherwise)
             Q_matrix = np.array(Q_list).reshape((len(objects), number_of_columns))
+            Q_matrix = reshape_Q_for_grasp_type(Q_matrix, grasp_type)
 
         else:
             Q_matrix = np.zeros((len(objects),len(ecs)))
@@ -314,7 +324,8 @@ class multi_object_params:
         ## Compute pre_grasp_pose
         if USE_OCADO_HEURISTIC:
             srv = rospy.ServiceProxy('get_pregrasp_pose_q_row_col', target_selection_srv.GetPreGraspPoseForQRowCol)
-            res = srv(object_index, ec_index)
+            heuristic_node_ec_index = get_ec_index_in_ocado_heuristic(ec_index, grasp_type) #Q_mat was reshaped here and in the heuristic
+            res = srv(object_index, heuristic_node_ec_index)
             pre_grasp_pose_in_base_frame = convert_pose_msg_to_homogenous_tf(res.pre_grasp_pose_in_base_frame)
             ec_index = get_ec_index_in_node_list(ec_index, grasp_type)        
         else:
