@@ -13,7 +13,9 @@ import tf_conversions.posemath as pm
 import rospkg
 from tornado.concurrent import return_future
 
-USE_OCADO_HEURISTIC = True
+heuristic_type = rospy.get_param('/planner_gui/heuristic_type', default = 'tub')
+
+USE_OCADO_HEURISTIC = heuristic_type == 'ocado'
 
 if USE_OCADO_HEURISTIC:
     from target_selection_in_ifco import srv as target_selection_srv
