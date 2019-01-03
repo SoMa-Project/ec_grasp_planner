@@ -38,7 +38,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     control_sequence.append(ha.BlockJointControlMode(name = 'softhand_preshape_1_1'))
     
     # 0b. Time to trigger pre-shape
-    control_sequence.append(ha.TimeSwitch('softhand_preshape_1_1', 'PreGrasp', duration = 0.5))
+    control_sequence.append(ha.TimeSwitch('softhand_preshape_1_1', 'PreGrasp', duration = hand_closing_time))
 
     # 1. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pregrasp_transform, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'PreGrasp'))
@@ -161,7 +161,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_2_1'))
     
     # 0b. Time for pre-shape
-    control_sequence.append(ha.TimeSwitch('softhand_preshape_2_1', 'PreGrasp', duration=0.5)) 
+    control_sequence.append(ha.TimeSwitch('softhand_preshape_2_1', 'PreGrasp', duration=hand_closing_time)) 
 
     # 1. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pregrasp_transform, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'PreGrasp'))
