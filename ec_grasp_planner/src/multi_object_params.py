@@ -67,16 +67,16 @@ class multi_object_params:
     # return 0 or 1 if strategy is applicable on the object
     # if there is a list of possible outcomes thant the strategy is applicable
     def pdf_object_strategy(self, object):
-        if isinstance(object['success'], list):
+        if isinstance(object['success'][self.hand_name], list):
             return 1
         else:
-            return object['success']
+            return object['success'][self.hand_name]
 
 ## --------------------------------------------------------- ##
     # return probability based on object and ec features
     def pdf_object_ec(self, object, ec_frame, strategy):
         q_val = -1
-        success = object['success']
+        success = object['success'][self.hand_name]
         object_frame = object['frame']
 
         # if object-ec angle is given, get h_val for this feature
@@ -244,13 +244,15 @@ class multi_object_params:
         # print("object: {}, \n ecs: {} \n graphTF: {}, h_process: {}".format(objects, ecs, graph_in_base, h_process_type))
         # print("ec type: {}".format(type(ecs[0])))
         # load parameter file
-        self.load_object_params()       
+        self.load_object_params()
+        self.hand_name = rospy.get_param('/planner_gui/hand', default = 'RBOHandP24_pulpy')
 
         if USE_OCADO_HEURISTIC:
             srv = rospy.ServiceProxy('generate_q_matrix', target_selection_srv.GenerateQmatrix)
-            graspable_with_any_hand_orientation = False
-            SG_success_rate = 1.0
-            WG_success_rate = 1.0
+            object_data = self.data[objects[0]['type']] #using the first object, in theory in the ocado use case we work with the same objects
+            SG_success_rate = object_data['SurfaceGrasp']['success'][self.hand_name]
+            WG_success_rate = object_data['WallGrasp']['success'][self.hand_name]
+            graspable_with_any_hand_orientation = object_data['graspable_with_any_hand_orientation']
 
             # currently camera_in_base = graph_in_base
             camera_in_ifco = np.linalg.inv(ifco_in_base_transform).dot(graph_in_base) 
