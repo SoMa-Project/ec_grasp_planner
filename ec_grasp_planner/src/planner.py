@@ -1,41 +1,19 @@
 #!/usr/bin/env python
 import rospy
-import roslib
-import actionlib
 import numpy as np
-import subprocess
-import os
-import signal
-import time
 import sys
 import argparse
-import math
-import yaml
-import datetime
-
-import smach
-import smach_ros
 
 import tf
-from numpy.random.mtrand import choice
 from tf import transformations as tra
-import numpy as np
-from numpy.linalg import inv
 
-from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
-from subprocess import call
+
 from hybrid_automaton_msgs import srv as ha_srv
-from hybrid_automaton_msgs.msg import HAMState
 
 from std_msgs.msg import Header
-
-from pregrasp_msgs.msg import GraspStrategyArray
-from pregrasp_msgs.msg import GraspStrategy
-
-from geometry_graph_msgs.msg import Graph
 
 from ec_grasp_planner import srv as plan_srv
 
@@ -45,8 +23,6 @@ from visualization_msgs.msg import Marker
 from pregrasp_msgs import srv as vision_srv
 
 from enum import Enum
-
-import pyddl
 
 import rospkg
 rospack = rospkg.RosPack()
