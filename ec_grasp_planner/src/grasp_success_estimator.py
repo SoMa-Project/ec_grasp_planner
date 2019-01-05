@@ -276,7 +276,7 @@ class MassEstimator(object):
 if __name__ == '__main__':
 
     my_argv = rospy.myargv(argv=sys.argv)
-    if len(my_argv) < 5:
+    if len(my_argv) < 6:
         print("usage: grasp_success_estimator.py ft_topic_name ft_topic_type object_ros_param_path path_to_object_parameters ee_frame")
     else:
         we = MassEstimator(my_argv[1], my_argv[2], my_argv[3], my_argv[4], my_argv[5])
