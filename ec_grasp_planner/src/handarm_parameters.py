@@ -220,6 +220,12 @@ class RBOHandO2KUKA(KUKA):
 
         self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
         
+        # duration of placing the object
+        self['place_duration'] = 5
+
+        self['place_down_speed'] = 0.05
+
+
         self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
                                                                                 tra.concatenate_matrices(
                                                                                     tra.rotation_matrix(
@@ -249,9 +255,6 @@ class RBOHandO2KUKA(KUKA):
 
         # duration of lifting the object
         self['SurfaceGrasp']['object']['lift_duration'] = 8
-
-        # duration of placing the object
-        self['SurfaceGrasp']['object']['place_duration'] = 5
 
 
         #####################################################################################
@@ -313,136 +316,134 @@ class RBOHandO2KUKA(KUKA):
         self['WallGrasp']['object']['post_grasp_rotation_duration'] = 2    
 
         # duration of lifting the object
+        self['WallGrasp']['object']['lift_duration'] = 8
+        
+             
+        
+class PISAHandKUKA(KUKA):
+    def __init__(self, **kwargs):
+        super(PISAHandKUKA, self).__init__()
+
+        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+        
+        # duration of placing the object
+        self['place_duration'] = 5
+
+        self['place_down_speed'] = 0.05
+
+        ####################################################################################
+        # Params that define the grasping controller
+        ####################################################################################
+
+        self['SimplePositionControl'] = True
+
+        self['ImpedanceControl'] = False
+        self['hand_max_aperture'] = 0.15
+        self['SurfaceGrasp']['object']['kp'] = 0.03
+
+        self['IMUGrasp'] = False
+        self['compensation_duration'] = 2
+
+        ####################################################################################
+        # PISAHand specific params
+        ####################################################################################
+
+        self['SurfaceGrasp']['object']['hand_preshape_goal'] = 0.3
+
+        self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
+                                                                                tra.concatenate_matrices(
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(-90.), [0, 0, 1]),
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(180.), [1, 0, 0])))
+
+        # transformation between the control frame of the hand and the frame in which the hand transform is defined
+        # this is needed for the PISA hand to enforce the grasping signature
+        # TODO: Change this to reflect the hand signature
+        self['SurfaceGrasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.0, 0.0])
+
+        # the maximum allowed force for pushing down
+        self['SurfaceGrasp']['object']['downward_force'] = 4
+
+        # speed of approaching the object
+        self['SurfaceGrasp']['object']['down_speed'] = 0.05
+
+        self['SurfaceGrasp']['object']['up_speed'] = 0.05
+
+        # synergy type for soft hand closing
+        self['SurfaceGrasp']['object']['hand_closing_goal'] = 0.8
+
+        # time of soft hand closing
+        self['SurfaceGrasp']['object']['hand_closing_duration'] = 5
+
+        # duration of lifting the object
+        self['SurfaceGrasp']['object']['lift_duration'] = 8
+
+
+        #####################################################################################
+        # below are parameters for wall grasp 
+        #####################################################################################
+        self['WallGrasp']['object']['hand_preshape_goal'] = 0.3
+
+        # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
+        # the convention at our lab is: x along the fingers and z normal on the palm.
+        # please follow the same convention
+        self['WallGrasp']['object']['hand_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, 0.0]),
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(180.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 1, 0]),
+                tra.rotation_matrix(
+                    math.radians(90.0), [0, 0, 1]),
+            ))
+
+        # the pre-approach pose should be:
+        # - floating above and behind the object,
+        # - fingers pointing downwards
+        # - palm facing the object and wall
+        self['WallGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
+                tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 15 cm behind
+                tra.concatenate_matrices(
+                    tra.rotation_matrix(
+                        math.radians(0.), [1, 0, 0]),
+                    tra.rotation_matrix(
+                        math.radians(0.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
+                    tra.rotation_matrix(                #this makes the fingers point downwards
+                        math.radians(0.0), [0, 0, 1]),
+            ))
+
+        self['WallGrasp']['object']['downward_force'] = 1.8
+
+        self['WallGrasp']['object']['down_speed'] = 0.05
+
+        self['WallGrasp']['object']['corrective_lift_duration'] = 1.5
+
+        self['WallGrasp']['object']['up_speed'] = 0.05
+
+        self['WallGrasp']['object']['wall_force'] = 12.0
+
+        self['WallGrasp']['object']['slide_speed'] = 0.05 #sliding speed
+
+        self['WallGrasp']['object']['pre_grasp_twist'] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+        self['WallGrasp']['object']['pre_grasp_rotation_duration'] = 0
+
+        self['WallGrasp']['object']['hand_closing_duration'] = 1.0
+        
+        self['WallGrasp']['object']['hand_closing_goal'] = 0.8
+
+        # first motion after grasp, in hand palm frame
+        self['WallGrasp']['object']['post_grasp_twist'] = np.array([-0.05, 0.0, 0.0, 0.0, math.radians(-18.0), 0.0])
+
+        self['WallGrasp']['object']['post_grasp_rotation_duration'] = 2    
+
+        # duration of lifting the object
         self['WallGrasp']['object']['lift_duration'] = 8   
 
         # duration of placing the object
         self['WallGrasp']['object']['place_duration'] = 5 
-
-        
-             
-        
-# class PISAHandKUKA(KUKA):
-#     def __init__(self, **kwargs):
-#         super(PISAHandKUKA, self).__init__()
-
-#         # Placement pose reachable for the PISA hand
-#         self['pre_placement_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
-        
-#         ####################################################################################
-#         # Params that define the grasping controller
-#         ####################################################################################
-
-#         self['SimplePositionControl'] = True
-
-#         self['ImpedanceControl'] = False
-
-#         self['IMUGrasp'] = False
-
-#         ####################################################################################
-#         # PISAHand specific params irrespective of grasp type and/or object type
-#         ####################################################################################
-
-#         # Controller timeouts
-#         self['hand_closing_duration'] = 1
-
-#         self['hand_opening_duration'] = 2
-
-#         self['compensation_duration'] = 10
-
-#         self['lift_duration'] = 7
-
-#         self['place_duration'] = 4
-
-#         # Hand properties
-#         self['hand_max_aperture'] = 0.25
-
-#         # TRIK controller speeds
-#         self['down_IFCO_speed'] = 0.03
-
-#         self['up_IFCO_speed'] = 0.03
-
-#         self['down_tote_speed'] = 0.05
-
-
-#         ####################################################################################
-#         # PISA Hand specific params for surface grasp
-#         ####################################################################################
-
-#         self['SurfaceGrasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.15])
-
-#         self['SurfaceGrasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
-
-#         self['SurfaceGrasp']['cucumber']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
-
-#         self['SurfaceGrasp']['punnet']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.035, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
-
-#         self['SurfaceGrasp']['netbag']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([0.015, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
-
-#         self['SurfaceGrasp']['object']['downward_force'] = 4.
-
-#         self['SurfaceGrasp']['object']['kp'] = 6
-
-#         #real WRONG VALUES
-#         # self['SurfaceGrasp']['cucumber']['success_rate'] = 1.0
-#         # self['SurfaceGrasp']['punnet']['success_rate'] = 0.
-#         # self['SurfaceGrasp']['netbag']['success_rate'] = 1.
-#         # self['SurfaceGrasp']['mango']['success_rate'] = 1.
-#         # self['SurfaceGrasp']['salad']['success_rate'] = 1.
-
-#         #fake
-#         self['SurfaceGrasp']['cucumber']['success_rate'] = 1.
-#         self['SurfaceGrasp']['punnet']['success_rate'] = 0.8
-#         self['SurfaceGrasp']['netbag']['success_rate'] = 0.9
-#         self['SurfaceGrasp']['mango']['success_rate'] = 0.9
-#         self['SurfaceGrasp']['salad']['success_rate'] = 1.
-
-#         ####################################################################################
-#         # IIT specific params for wall grasp
-#         ####################################################################################        
-
-#         self['WallGrasp']['object']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.025, -0.12])
-
-#         self['WallGrasp']['netbag']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.05, -0.13])
-
-#         self['WallGrasp']['mango']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.05, -0.12])
-
-#         self['WallGrasp']['punnet']['pre_approach_transform'] = tra.translation_matrix([-0.20, -0.06, -0.14])
-
-#         self['WallGrasp']['object']['downward_force'] = 2.
-
-#         self['WallGrasp']['object']['slide_speed'] = 0.03
-
-#         self['WallGrasp']['object']['wall_force'] = 3.5
-
-#         self['WallGrasp']['mango']['wall_force'] = 4
-
-#         self['WallGrasp']['salad']['wall_force'] = 4.5
-
-#         self['WallGrasp']['punnet']['wall_force'] = 6
-
-#         self['rotate_duration'] = 4
-        
-#         # self['WallGrasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.005, 0, -0.01]),
-#         #                                                          tra.rotation_matrix(math.radians(-5.), [0, 1, 0]))
-        
-#         #self['WallGrasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, -0.09, 0])
-#         self['WallGrasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, 0, 0])
-
-#         self['WallGrasp']['object']['kp'] = 6
-
-#         #real WRONG VALUES
-#         # self['WallGrasp']['cucumber']['success_rate'] = 1.0
-#         # self['WallGrasp']['punnet']['success_rate'] = 0.
-#         # self['WallGrasp']['netbag']['success_rate'] = 1.
-#         # self['WallGrasp']['mango']['success_rate'] = 1.
-#         # self['WallGrasp']['salad']['success_rate'] = 1.
-
-#         #fake
-#         self['WallGrasp']['cucumber']['success_rate'] = 0.8
-#         self['WallGrasp']['punnet']['success_rate'] = 0.6
-#         self['WallGrasp']['netbag']['success_rate'] = 0.8
-#         self['WallGrasp']['mango']['success_rate'] = 0.5
-#         self['WallGrasp']['salad']['success_rate'] = 0.6
         
 
 # class PISAGripperKUKA(KUKA):

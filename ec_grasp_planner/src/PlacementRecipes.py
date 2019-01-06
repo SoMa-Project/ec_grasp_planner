@@ -3,15 +3,8 @@ import hatools.components as ha
 
 def get_placement_recipe(chosen_object, handarm_params, grasp_type):
 
-    object_type = chosen_object['type']
-    # Get the relevant parameters for hand object combination
-    if object_type in handarm_params[grasp_type]:
-        params = handarm_params[grasp_type][object_type]
-    else:
-        params = handarm_params[grasp_type]['object']
-
-    place_time = params['place_duration']
-    down_speed = params['down_speed']
+    place_time = handarm_params['place_duration']
+    down_speed = handarm_params['place_down_speed']
 
     # The twists are defined on the world frame
     down_twist = np.array([0, 0, -down_speed, 0, 0, 0]);  
