@@ -106,7 +106,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
         raise Exception("No grasping controller selected for PISA/IIT hand")
 
     # 6b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'GoUp_1', duration = hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp_1', duration = hand_closing_time))
 
 
     return control_sequence
@@ -251,7 +251,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     
 
     # 8b. Switch when hand closing duration ends
-    control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration=hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=hand_closing_time))
 
     # 9. Rotate a bit to roll the object in the hand
     control_sequence.append(
