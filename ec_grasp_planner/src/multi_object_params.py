@@ -82,7 +82,7 @@ class multi_object_params:
         # if object-ec angle is given, get h_val for this feature
         # h_angle(relative object orientation to EC):
         # the optimal orientation values +/- epsilon = x probability - given in the object_param.yaml
-        if object.get('angle',0):
+        if object.get('angle',0) and isinstance(success, list):
             obj_x_axis = object_frame[0:3, 0]
 
             for idx, val in enumerate(object['angle']):
