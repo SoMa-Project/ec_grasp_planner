@@ -208,6 +208,10 @@ class GraspPlanner:
                                                                                     object_list_msg
                                                                                     )           
         
+        if pre_grasp_pose_in_base == None:
+            #No grasp found
+            return plan_srv.RunGraspPlannerResponse("", -1, node_list[0])
+        
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
         ha, self.rviz_frames = hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_pose_in_base, graph_in_base,

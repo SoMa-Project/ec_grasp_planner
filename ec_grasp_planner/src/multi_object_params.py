@@ -316,6 +316,11 @@ class multi_object_params:
 
         # print (" ** h_mx = {}".format(Q_matrix))
 
+        # Check if there is a grasp candidate
+        if Q_matrix.max() == 0.0:
+            rospy.logwarn("No Grasp Found! Qmat = {}".format(Q_matrix))
+            return None, None, None
+
         # select heuristic function for choosing object and EC
         #argmax samples from the [max (H(obj, ec)] list
         if h_process_type == "Deterministic":
