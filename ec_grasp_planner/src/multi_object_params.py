@@ -233,13 +233,35 @@ class multi_object_params:
 
         return sampled_item // pdf_matrix.shape[1], sampled_item % pdf_matrix.shape[1]
 
+    def object_from_object_list_msg(self, object_type, object_list_msg, camera_in_base):
+        obj_tmp = {} # object is a dictionary with obilagorty keys: type, frame (in robot base frame)
+        obj_tmp['type'] = object_type
+        # the TF must be in the same reference frame as the EC frames
+        # Get the object frame in robot base frame
+        object_in_camera = convert_pose_msg_to_homogenous_tf(object_list_msg.transform.pose)
+        object_in_base = camera_in_base.dot(object_in_camera)
+        obj_tmp['frame'] = object_in_base
+        obj_tmp['bounding_box'] = object_list_msg.boundingbox
+        return obj_tmp
 
 ## --------------------------------------------------------- ##
     # function called to process all objects and ECs
     # assumption1: all objects are the same type
-    # objects is a dictionary with obilagorty keys: type, frame (in robot base frame)
-    # ecs is a list of graph nodes (see geometry_graph)
-    def process_objects_ecs(self, objects, ecs, graph_in_base, ifco_in_base_transform,  SG_pre_grasp_in_object_frame, WG_pre_grasp_in_object_frame, h_process_type = "Deterministic", grasp_type = "Any", object_list_msg = []):
+    # parameters:
+    #   object_type currently set in the gui
+    #   ecs is a list of graph nodes (see geometry_graph)
+    #   graph_in_base transform of the camera in the robot base
+    #   ifco_in_base_transform
+    #   SG_pre_grasp_in_object_frame the initial pre-grasp pose in the object frame for SurfaceGrasp
+    #   WG_pre_grasp_in_object_frame the initial pre-grasp pose in the object frame for WallGrasp towards the first wall
+    #   h_process_type = ['Random', 'Deterministic', 'Probabilistic'] set in the gui
+    #   grasp_type = ['Any', 'SurfaceGrasp', 'WallGrasp'] set in the gui
+    #   object_list_msg is the object list returned by the vision service node (see geometry_graph)
+    # returns:    
+    #   chosen_object (dict with key 'frame', 'bounding_box', 'type', 'index')
+    #   chosen_node the chosen ec node from the geometry graph
+    #   pre_grasp_pose_in_base_frame the initial pre-grasp pose in the robot frame for the chosen grasp
+    def process_objects_ecs(self, object_type, ecs, graph_in_base, ifco_in_base_transform,  SG_pre_grasp_in_object_frame = tra.identity_matrix(), WG_pre_grasp_in_object_frame = tra.identity_matrix(), h_process_type = "Deterministic", grasp_type = "Any", object_list_msg = []):
 
         # print("object: {}, \n ecs: {} \n graphTF: {}, h_process: {}".format(objects, ecs, graph_in_base, h_process_type))
         # print("ec type: {}".format(type(ecs[0])))
@@ -249,7 +271,7 @@ class multi_object_params:
 
         if USE_OCADO_HEURISTIC:
             srv = rospy.ServiceProxy('generate_q_matrix', target_selection_srv.GenerateQmatrix)
-            object_data = self.data[objects[0]['type']] #using the first object, in theory in the ocado use case we work with the same objects
+            object_data = self.data[object_type] #using the first object, in theory in the ocado use case we work with the same objects
             SG_success_rate = object_data['SurfaceGrasp']['success'][self.hand_name]
             WG_success_rate = object_data['WallGrasp']['success'][self.hand_name]
             graspable_with_any_hand_orientation = object_data['graspable_with_any_hand_orientation']
@@ -265,9 +287,12 @@ class multi_object_params:
             res = srv(grasp_type, object_list_msg, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate)
             Q_list = res.Q_mat.data
             number_of_columns = len(ecs)
-            Q_matrix = np.array(Q_list).reshape((len(objects), number_of_columns))
+            Q_matrix = np.array(Q_list).reshape((len(object_list_msg.objects), number_of_columns))
             
         else:
+            # build list of objects
+            objects = [self.object_from_object_list_msg(object_type, o, graph_in_base) for o in object_list_msg.objects]            
+
             Q_matrix = np.zeros((len(objects),len(ecs)))
             # iterate through all objects
             for i,o in enumerate(objects):
@@ -305,11 +330,14 @@ class multi_object_params:
         
         ## Compute pre_grasp_pose
         if USE_OCADO_HEURISTIC:
+            chosen_object = self.object_from_object_list_msg(object_type, object_list_msg.objects[object_index], graph_in_base)
+            chosen_node = ecs[ec_index]
             srv = rospy.ServiceProxy('get_pregrasp_pose_q_row_col', target_selection_srv.GetPreGraspPoseForQRowCol)            
             res = srv(object_index, ec_index)
-            pre_grasp_pose_in_base_frame = convert_pose_msg_to_homogenous_tf(res.pre_grasp_pose_in_base_frame)        
+            pre_grasp_pose_in_base_frame = convert_pose_msg_to_homogenous_tf(res.pre_grasp_pose_in_base_frame)            
         else:
-            object_pose = objects[object_index]['frame']
+            chosen_object = objects[object_index]
+            object_pose = chosen_object['frame']
             chosen_node = ecs[ec_index]            
             if chosen_node.label == 'SurfaceGrasp':
                 pre_grasp_pose_in_base_frame = object_pose.dot(SG_pre_grasp_in_object_frame)
@@ -318,9 +346,11 @@ class multi_object_params:
                 object_pos_with_ec_orientation[:3,3] = tra.translation_from_matrix(object_pose)
                 pre_grasp_pose_in_base_frame = object_pos_with_ec_orientation.dot(WG_pre_grasp_in_object_frame)
             else:
-                raise ValueError("Unknown grasp type: {}".format(chosen_node.label))
+                raise ValueError("Unknown grasp type: {}".format(chosen_node.label))       
+        
+        chosen_object['index'] = object_index
 
-        return object_index, ec_index, pre_grasp_pose_in_base_frame
+        return chosen_object, chosen_node, pre_grasp_pose_in_base_frame
 
 
 def test(ece_list = []):

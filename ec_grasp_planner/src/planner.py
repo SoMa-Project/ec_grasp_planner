@@ -157,13 +157,12 @@ class GraspPlanner:
             print('Call vision service now...!')
             call_vision = rospy.ServiceProxy('compute_ec_graph', vision_srv.ComputeECGraph)
             res = call_vision(self.object_type)
-            graph = res.graph
-            objects = res.objects.objects
+            graph = res.graph            
             object_list_msg = res.objects
         except rospy.ServiceException as e:
             raise rospy.ServiceException("Vision service call failed: %s" % e)
 
-        if not objects:
+        if not object_list_msg.objects:
             print("No object was detected")
             return plan_srv.RunGraspPlannerResponse("", -1)
 
@@ -188,21 +187,7 @@ class GraspPlanner:
 
         # print(" *** goal node lables: {} ".format(goal_node_labels))
 
-        node_list = [n for i, n in enumerate(graph.nodes) if n.label in goal_node_labels]
-  
-        # build list of objects
-        object_list = []
-        for o in objects:
-            obj_tmp = {}
-            obj_tmp['type'] = self.object_type
-
-            # the TF must be in the same reference frame as the EC frames
-            # Get the object frame in robot base frame
-            object_in_camera = pm.toMatrix(pm.fromMsg(o.transform.pose))
-            object_in_base = camera_in_base.dot(object_in_camera)
-            obj_tmp['frame'] = object_in_base
-            obj_tmp['bounding_box'] = o.boundingbox
-            object_list.append(obj_tmp)
+        node_list = [n for i, n in enumerate(graph.nodes) if n.label in goal_node_labels] 
 
         # Get the geometry graph frame in robot base frame
         self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
@@ -212,7 +197,7 @@ class GraspPlanner:
         SG_pre_grasp_in_object_frame, WG_pre_grasp_in_object_frame = get_pre_grasp_transforms(self.handarm_params, self.object_type)
 
         # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
-        (chosen_object_idx, chosen_node_idx, pre_grasp_pose_in_base) = self.multi_object_handler.process_objects_ecs(object_list,
+        (chosen_object, chosen_node, pre_grasp_pose_in_base) = self.multi_object_handler.process_objects_ecs(self.object_type,
                                                                                     node_list,
                                                                                     graph_in_base,
                                                                                     ifco_in_base,
@@ -221,9 +206,7 @@ class GraspPlanner:
                                                                                     req.object_heuristic_function,
                                                                                     self.grasp_type,                                                                                    
                                                                                     object_list_msg
-                                                                                    )
-        chosen_object = object_list[chosen_object_idx]
-        chosen_node = node_list[chosen_node_idx]        
+                                                                                    )           
         
         # --------------------------------------------------------
         # Turn grasp into hybrid automaton
@@ -254,7 +237,7 @@ class GraspPlanner:
 
 
         ha_as_xml = ha.xml()
-        return plan_srv.RunGraspPlannerResponse(ha_as_xml, chosen_object_idx if ha_as_xml != "" else -1, chosen_node)
+        return plan_srv.RunGraspPlannerResponse(ha_as_xml, chosen_object['index'] if ha_as_xml != "" else -1, chosen_node)
 
 
 # ================================================================================================
@@ -277,7 +260,7 @@ def get_hand_recipes(handarm_type, robot_name):
 
 # ================================================================================================
 def get_pre_grasp_transforms(handarm_params, object_type):
-    # Returns the initial pre_grasp transforms for wall grasp and surface grasp depending on the object type and the hand
+    # Returns the initial pre_grasp transforms for wall grasp and surface grasp depending on the object type and the hand in the object frame
     
     # Surface grasp pre_grasp transform SG_pre_grasp_transform
     grasp_type = "SurfaceGrasp"
