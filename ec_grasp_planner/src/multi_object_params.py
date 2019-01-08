@@ -1,18 +1,15 @@
 #!/usr/bin/env python
 
 import yaml
-# import rospy
 import math
 import numpy as np
-import tf
 from tf import transformations as tra
 from geometry_graph_msgs.msg import Node, geometry_msgs
+from kinematics_check import srv as kin_check_srv
 import rospy
 from functools import partial
 
-
 import rospkg
-from tornado.concurrent import return_future
 
 rospack = rospkg.RosPack()
 pkg_path = rospack.get_path('ec_grasp_planner')
@@ -175,9 +172,7 @@ class multi_object_params:
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
 
-        # TODO maybe move the kinematic stuff to seprate function / file
-        from kinematics_check import srv as kin_check_srv  # TODO move to top of the file
-        import yaml  # TODO move to top of the file
+        # TODO maybe move the kinematic stuff to separate file
 
         if strategy == 'SurfaceGrasp':
             # use kinematic checks
@@ -291,7 +286,7 @@ class multi_object_params:
 
         else:
             # TODO implement other strategies
-            raise ValueError("Kinematics check are currently only supported for surface grasps")
+            raise ValueError("Kinematics checks are currently only supported for surface grasps")
 
         return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,
                                                                             strategy)
