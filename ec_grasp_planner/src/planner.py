@@ -208,7 +208,7 @@ class GraspPlanner:
                                                                                     object_list_msg
                                                                                     )           
         
-        if pre_grasp_pose_in_base == None:
+        if pre_grasp_pose_in_base is None:
             #No grasp found
             return plan_srv.RunGraspPlannerResponse("", -1, node_list[0])
         
