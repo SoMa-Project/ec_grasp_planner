@@ -295,7 +295,7 @@ def get_pre_grasp_transform(handarm_params, chosen_object, chosen_node, graph_in
     if grasp_type == 'EdgeGrasp':
         raise ValueError("Edge grasp is not supported yet")
     elif grasp_type == 'SurfaceGrasp':
-        return (object_pose.dot(params['hand_transform'])).dot(params['ee_in_goal_frame'])
+        return ((object_pose.dot(params['hand_transform'])).dot(params['pre_approach_transform'])).dot(params['ee_in_goal_frame'])
     elif grasp_type == 'WallGrasp':
         wall_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform)) 
         wall_frame[:3,3] = tra.translation_from_matrix(object_pose)
