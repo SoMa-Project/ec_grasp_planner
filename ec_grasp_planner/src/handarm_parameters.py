@@ -374,18 +374,12 @@ class PISAHandKUKA(KUKA):
         self['SurfaceGrasp']['object']['hand_preshape_goal'] = 0.3
 
         # This should be the same for all objects
-        self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
-                                                                                tra.concatenate_matrices(
-                                                                                    tra.rotation_matrix(
-                                                                                        math.radians(-90.), [0, 0, 1]),
-                                                                                    tra.rotation_matrix(
-                                                                                        math.radians(180.), [1, 0, 0])))
+        self['SurfaceGrasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.2])
 
         # transformation between the control frame of the hand and the frame in which the hand transform is defined
         # this is needed for the PISA hand to enforce the grasping signature
         # This should be the same for all objects
-        # TODO: Change this to reflect the hand signature
-        self['SurfaceGrasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.0, 0.0])
+        self['SurfaceGrasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
 
         # This is what should be changed per object if needed...
         self['SurfaceGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.0]),
