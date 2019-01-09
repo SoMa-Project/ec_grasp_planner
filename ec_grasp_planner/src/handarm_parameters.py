@@ -77,14 +77,15 @@ class RBOHandP24WAM(RBOHand2):
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(90.), [0, 0, 1]),
                                                                                     tra.rotation_matrix(
-                                                                                        math.radians(180.), [1, 0, 0]))).dot(
-                                                                                tra.concatenate_matrices(
-                                                                                    tra.translation_matrix([0.0, 0.0, 0.0]),
-                                                                                    tra.rotation_matrix(math.radians(10.0), [0, 1, 0])))
+                                                                                        math.radians(180.), [1, 0, 0])))
 
         # transformation between the control frame of the hand and the frame in which the hand transform is defined
         # this is needed for the PISA hand to enforce the grasping signature
         self['SurfaceGrasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.0, 0.0])
+
+        # This is what should be changed per object if needed...
+        self['SurfaceGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(10.0), [0, 1, 0]))
 
         # the maximum allowed force for pushing down
         self['SurfaceGrasp']['object']['downward_force'] = 4
@@ -136,6 +137,7 @@ class RBOHandP24WAM(RBOHand2):
         # - floating above and behind the object,
         # - fingers pointing downwards
         # - palm facing the object and wall
+        # This is what should be changed per object if needed...
         self['WallGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
                 tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 15 cm behind
                 tra.concatenate_matrices(
@@ -195,10 +197,10 @@ class RBOHandO2WAM(RBOHandP24WAM):
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(90.), [0, 0, 1]),
                                                                                     tra.rotation_matrix(
-                                                                                        math.radians(180.), [1, 0, 0]))).dot(
-                                                                                tra.concatenate_matrices(
-                                                                                    tra.translation_matrix([-0.08, 0, 0.0]),
-                                                                                    tra.rotation_matrix(math.radians(20.0), [0, 1, 0])))
+                                                                                        math.radians(180.), [1, 0, 0])))
+        # This is what should be changed per object if needed...
+        self['SurfaceGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.08, 0.0, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(20.0), [0, 1, 0]))
 
 class RBOHandP24_pulpyWAM(RBOHandP24WAM):
     def __init__(self, **kwargs):
@@ -225,7 +227,7 @@ class RBOHandO2KUKA(KUKA):
 
         self['place_down_speed'] = 0.05
 
-
+        # This should be the same for all objects
         self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
                                                                                 tra.concatenate_matrices(
                                                                                     tra.rotation_matrix(
@@ -235,7 +237,12 @@ class RBOHandO2KUKA(KUKA):
 
         # transformation between the control frame of the hand and the frame in which the hand transform is defined
         # this is needed for the PISA hand to enforce the grasping signature
+        # This should be the same for all objects
         self['SurfaceGrasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.0, 0.0])
+
+        # This is what should be changed per object if needed...
+        self['SurfaceGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
 
         # the maximum allowed force for pushing down
         self['SurfaceGrasp']['object']['downward_force'] = 4
@@ -264,6 +271,7 @@ class RBOHandO2KUKA(KUKA):
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
         # please follow the same convention
+        # This should be the same for all objects
         self['WallGrasp']['object']['hand_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, 0.0]),
             tra.concatenate_matrices(
@@ -279,8 +287,9 @@ class RBOHandO2KUKA(KUKA):
         # - floating above and behind the object,
         # - fingers pointing downwards
         # - palm facing the object and wall
+        # This is what should be changed per object if needed...
         self['WallGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-                tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 15 cm behind
+                tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 14 cm behind
                 tra.concatenate_matrices(
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
@@ -317,6 +326,20 @@ class RBOHandO2KUKA(KUKA):
 
         # duration of lifting the object
         self['WallGrasp']['object']['lift_duration'] = 8
+
+        # modify grasp parameters for cuucumber
+        # TODO: This is just an example...
+        self['WallGrasp']['cucumber'] = self['WallGrasp']['object'].copy()
+        self['WallGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.23, 0, -0.1]), #23 cm above object, 10 cm behind
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(                #this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+        ))
         
              
         
@@ -350,6 +373,7 @@ class PISAHandKUKA(KUKA):
 
         self['SurfaceGrasp']['object']['hand_preshape_goal'] = 0.3
 
+        # This should be the same for all objects
         self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
                                                                                 tra.concatenate_matrices(
                                                                                     tra.rotation_matrix(
@@ -359,8 +383,13 @@ class PISAHandKUKA(KUKA):
 
         # transformation between the control frame of the hand and the frame in which the hand transform is defined
         # this is needed for the PISA hand to enforce the grasping signature
+        # This should be the same for all objects
         # TODO: Change this to reflect the hand signature
         self['SurfaceGrasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.0, 0.0])
+
+        # This is what should be changed per object if needed...
+        self['SurfaceGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
 
         # the maximum allowed force for pushing down
         self['SurfaceGrasp']['object']['downward_force'] = 4
@@ -388,6 +417,7 @@ class PISAHandKUKA(KUKA):
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
         # please follow the same convention
+        # This should be the same for all objects
         self['WallGrasp']['object']['hand_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, 0.0]),
             tra.concatenate_matrices(
@@ -403,6 +433,7 @@ class PISAHandKUKA(KUKA):
         # - floating above and behind the object,
         # - fingers pointing downwards
         # - palm facing the object and wall
+        # This should be changed per object if needed
         self['WallGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
                 tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 15 cm behind
                 tra.concatenate_matrices(
@@ -474,6 +505,7 @@ class PISAGripperKUKA(KUKA):
 
         self['SurfaceGrasp']['object']['hand_preshape_goal'] = 0.3
 
+        # This should be the same for all objects
         self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
                                                                                 tra.concatenate_matrices(
                                                                                     tra.rotation_matrix(
@@ -483,8 +515,12 @@ class PISAGripperKUKA(KUKA):
 
         # transformation between the control frame of the hand and the frame in which the hand transform is defined
         # this is needed for the PISA hand to enforce the grasping signature
-        # TODO: Change this to reflect the hand signature
+        # This should be the same for all objects
         self['SurfaceGrasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.0, 0.0])
+
+        # This is what should be changed per object if needed...
+        self['SurfaceGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
 
         # the maximum allowed force for pushing down
         self['SurfaceGrasp']['object']['downward_force'] = 4
@@ -512,6 +548,7 @@ class PISAGripperKUKA(KUKA):
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
         # please follow the same convention
+        # This should be the same for all objects
         self['WallGrasp']['object']['hand_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, 0.0]),
             tra.concatenate_matrices(
@@ -527,6 +564,7 @@ class PISAGripperKUKA(KUKA):
         # - floating above and behind the object,
         # - fingers pointing downwards
         # - palm facing the object and wall
+        # This should be changed per object if needed...
         self['WallGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
                 tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 15 cm behind
                 tra.concatenate_matrices(

@@ -153,7 +153,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # Slow Up speed is positive because it is defined on the world frame
     up_twist = np.array([0, 0, up_speed, 0, 0, 0])
     # Slide twist is positive because it is defined on the EE frame
-    slide_twist = np.array([0, 0, slide_speed])
+    slide_twist = np.array([0, 0, slide_speed, 0, 0, 0])
 
     control_sequence = []
 
