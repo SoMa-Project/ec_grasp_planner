@@ -16,7 +16,7 @@ class Manifold(dict):
         super(dict, self).__init__()
         if initializer_dict:
             for k in initializer_dict.keys():
-                self[k] = initializer_dict[k].copy()
+                self[k] = copy.copy(initializer_dict[k])
 
     def check_if_valid(self):
 

@@ -5,7 +5,7 @@ import math
 import numpy as np
 from tf import transformations as tra
 from geometry_graph_msgs.msg import Node, geometry_msgs
-from kinematics_check import srv as kin_check_srv
+from tub_feasibility_check import srv as kin_check_srv
 import rospy
 from functools import partial
 
@@ -25,6 +25,23 @@ def angle_between(v1, v2):
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+
+
+class PoseComponent(object):
+    def __init__(self, x, y, z, w=None):
+        # we have to explicitly convert to python floats since the later yaml conversion can't represent all
+        # numpy.float64 values
+        self.x = float(x)
+        self.y = float(y)
+        self.z = float(z)
+        self.w = float(w) if w is not None else None
+
+    def to_dict(self):
+        d = {'x': self.x, 'y': self.y, 'z': self.z}
+        if self.w is not None:
+            d['w'] = self.w
+        return d
+
 
 
 class AlternativeBehavior:
@@ -51,6 +68,8 @@ class multi_object_params:
     # (e.g. a sequence of joint states) to the default hard-coded motion in the planner.py
     # If no such alternative behavior is defined the function returns None
     def get_alternative_behavior(self, object_idx, ec_index):
+        if (object_idx, ec_index) not in self.stored_trajectories:
+            return None
         return self.stored_trajectories[(object_idx, ec_index)]
 
     # ================================================================================================
@@ -218,34 +237,35 @@ class multi_object_params:
 
                 manifold_name = motion +'_manifold'
 
-                ifco_trans, ifco_rot = multi_object_params.transform_to_pose(ifco_in_base_transform)
-
                 bounding_boxes = []
                 for obj in objects:
 
-                    obj_trans, obj_rot = multi_object_params.transform_to_pose(obj['frame'])
+                    obj_trans, obj_rot = multi_object_params.transform_to_python_pose(obj['frame'])
                     bounding_boxes.append({
                         'box': {
                             'type': 0,
-                            'dimensions': [obj['bounding_box'].x, obj['bounding_box'].y, obj['bounding_box'].z]  # TODO probably use indexing or x() instead...
+                            'dimensions': [obj['bounding_box'].x, obj['bounding_box'].y, obj['bounding_box'].z]
                         },
                         'pose': {
-                            'position': {'x': obj_trans.x, 'y': obj_trans.y, 'z': obj_trans.z},
-                            'orientation': {'x': obj_rot.x, 'y': obj_rot.y, 'z': obj_rot.z, 'w': obj_rot.w}
+                            'position': obj_trans.to_dict(),
+                            'orientation': obj_rot.to_dict(),
                         }
                     })
 
-                goal_trans, goal_rot = multi_object_params.transform_to_pose(curr_goal)
+                ifco_trans, ifco_rot = multi_object_params.transform_to_python_pose(ifco_in_base_transform)
+                goal_trans, goal_rot = multi_object_params.transform_to_python_pose(curr_goal)
+
+                geometry_msgs.msg.Pose() # TODO USE or REMOVE
 
                 args = {
                     'initial_configuration': curr_start_config,
                     'goal_pose': {
-                        'position': {'x': goal_trans.x, 'y': goal_trans.y, 'z': goal_trans.z},
-                        'orientation': {'x': goal_rot.x, 'y': goal_rot.y, 'z': goal_rot.z, 'w': goal_rot.w}
+                        'position': goal_trans.to_dict(),
+                        'orientation': goal_rot.to_dict(),
                     },
                     'ifco_pose': {
-                        'position': {'x': ifco_trans.x, 'y': ifco_trans.y, 'z': ifco_trans.z},  # TODO probably use indexing or x() instead...
-                        'orientation': {'x': ifco_rot.x, 'y': ifco_rot.y, 'z': ifco_rot.z, 'w': ifco_rot.w}
+                        'position': ifco_trans.to_dict(),
+                        'orientation': ifco_rot.to_dict(),
                     },
                     'bounding_boxes_with_poses': bounding_boxes,
                     'min_position_deltas': params[manifold_name]['min_position_deltas'],
@@ -258,8 +278,11 @@ class multi_object_params:
                 }
 
                 check_kinematics = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
+                print(args)
                 print("Call check kinematics. Arguments: \n" + yaml.safe_dump(args))
-                res = check_kinematics(yaml.safe_dump(args))
+
+                res = check_kinematics(initial_configuration=curr_start_config,
+                                       goal_pose= geometry_msgs.msg.Pose())# TODO call actual method
 
                 if res.status == 0:
                     # trajectory is not feasible and no alternative was found, directly return 0
@@ -312,6 +335,11 @@ class multi_object_params:
         orientation_quat = tra.quaternion_from_euler(angles[0], angles[1], angles[2])
         return translation, orientation_quat
 
+    @staticmethod
+    def transform_to_python_pose(in_transform):
+        trans, rot = multi_object_params.transform_to_pose(in_transform)
+        return PoseComponent(trans[0], trans[1], trans[2]), PoseComponent(rot[0], rot[1], rot[2], rot[3])
+
     def reset_kinematic_checks_information(self):
         self.stored_trajectories = {}
 
@@ -325,7 +353,7 @@ class multi_object_params:
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
 
-        use_kinematic_checks = True  # TODO move this to a (ros) parameter
+        use_kinematic_checks = rospy.get_param("feasibility_check/active", default=True)
         if use_kinematic_checks:
             feasibility_fun = partial(self.check_kinematic_feasibility, current_object_idx, objects, current_ec_index,
                                       strategy, all_ec_frames, ifco_in_base_transform, handarm_params)
