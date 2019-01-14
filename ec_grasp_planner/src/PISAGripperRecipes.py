@@ -130,6 +130,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     wall_force = params['wall_force']
     slide_speed = params['slide_speed']
+    scooping_angle = params['scooping_angle']
 
     # Grasping phase
     pre_grasp_twist = params['pre_grasp_twist']
@@ -150,7 +151,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # Slow Up speed is positive because it is defined on the world frame
     up_twist = np.array([0, 0, up_speed, 0, 0, 0])
     # Slide twist is positive because it is defined on the EE frame
-    slide_twist = np.array([0, 0, slide_speed, 0, 0, 0])
+    slide_twist = np.array([0, 0, slide_speed, 0, -scooping_angle, 0])
 
     control_sequence = []
 

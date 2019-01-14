@@ -559,14 +559,17 @@ class PISAGripperKUKA(KUKA):
         # - fingers pointing downwards
         # - palm facing the object and wall
         # This should be changed per object if needed...
+
+        self['WallGrasp']['object']['scooping_angle'] = math.radians(20)
+
         self['WallGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-                tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 15 cm behind
+                tra.translation_matrix([-0.15, 0, -0.1]), #15 cm above object, 10 cm behind
                 tra.concatenate_matrices(
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
                     tra.rotation_matrix(
-                        math.radians(0.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
-                    tra.rotation_matrix(                #this makes the fingers point downwards
+                        self['WallGrasp']['object']['scooping_angle'], [0, 1, 0]),
+                    tra.rotation_matrix(
                         math.radians(0.0), [0, 0, 1]),
             ))
 
