@@ -6,6 +6,8 @@ import numpy as np
 from tf import transformations as tra
 from geometry_graph_msgs.msg import Node, geometry_msgs
 from tub_feasibility_check import srv as kin_check_srv
+from tub_feasibility_check.msg import BoundingBoxWithPose, AllowedCollision
+from shape_msgs.msg import SolidPrimitive
 import rospy
 from functools import partial
 
@@ -27,7 +29,7 @@ def angle_between(v1, v2):
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 
-class PoseComponent(object):
+class PoseComponent(object): # TODO REMOVE class
     def __init__(self, x, y, z, w=None):
         # we have to explicitly convert to python floats since the later yaml conversion can't represent all
         # numpy.float64 values
@@ -227,62 +229,54 @@ class multi_object_params:
             goals = [pre_grasp_pose, go_down_pose]
             # gotoview joint config (copied from gui.py)
             # TODO read this from a central point (to ensure it is always the same parameter in gui and here)
-            curr_start_config = [0.457929, 0.295013, -0.232804, 2.59226, 1.25715, 1.50907, -0.616263]
+            #curr_start_config = [0.457929, 0.295013, -0.232804, 2.59226, 1.25715, 1.50907, -0.616263]
+            curr_start_config = rospy.get_param('planner_gui/robot_view_position') # TODO use current joint state instead?
+
             # This variable is used to determine if all returned status flags are 1 (original trajectory feasible)
             status_sum = 0
             # initialize stored trajectories for the given object
             self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
 
+            # The pose of the ifco in message format
+            ifco_pose = multi_object_params.transform_to_pose_msg(ifco_in_base_transform)
+
+            # The bounding boxes of all objects in message format
+            bounding_boxes = []
+            for obj in objects:
+                obj_pose = multi_object_params.transform_to_pose_msg(obj['frame'])
+                obj_bbox = SolidPrimitive(type=SolidPrimitive.BOX,
+                                          dimensions=[obj['bounding_box'].x, obj['bounding_box'].y,
+                                                      obj['bounding_box'].z])
+
+                bounding_boxes.append(BoundingBoxWithPose(box=obj_bbox, pose=obj_pose))
+
+            # The collisions that are allowed in message format
+            # TODO currently we only allow to touch the object to be grasped and the ifco bottom during a surface grasp, is that really desired? (what about a really crowded ifco)
+            allowed_collisions=[AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
+                                                 box_id=current_object_idx, terminate_on_collision=True),
+                                AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                                 constraint_name='bottom', terminate_on_collision=False)]
+
+            # perform the actual checks
             for motion, curr_goal in zip(checked_motions, goals):
 
                 manifold_name = motion +'_manifold'
 
-                bounding_boxes = []
-                for obj in objects:
+                goal_pose = multi_object_params.transform_to_pose_msg(curr_goal)
 
-                    obj_trans, obj_rot = multi_object_params.transform_to_python_pose(obj['frame'])
-                    bounding_boxes.append({
-                        'box': {
-                            'type': 0,
-                            'dimensions': [obj['bounding_box'].x, obj['bounding_box'].y, obj['bounding_box'].z]
-                        },
-                        'pose': {
-                            'position': obj_trans.to_dict(),
-                            'orientation': obj_rot.to_dict(),
-                        }
-                    })
+                check_feasibility = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
+                print("Call check kinematics for " + motion + " " + curr_goal)#Arguments: \n" + yaml.safe_dump(args))
 
-                ifco_trans, ifco_rot = multi_object_params.transform_to_python_pose(ifco_in_base_transform)
-                goal_trans, goal_rot = multi_object_params.transform_to_python_pose(curr_goal)
-
-                geometry_msgs.msg.Pose() # TODO USE or REMOVE
-
-                args = {
-                    'initial_configuration': curr_start_config,
-                    'goal_pose': {
-                        'position': goal_trans.to_dict(),
-                        'orientation': goal_rot.to_dict(),
-                    },
-                    'ifco_pose': {
-                        'position': ifco_trans.to_dict(),
-                        'orientation': ifco_rot.to_dict(),
-                    },
-                    'bounding_boxes_with_poses': bounding_boxes,
-                    'min_position_deltas': params[manifold_name]['min_position_deltas'],
-                    'max_position_deltas': params[manifold_name]['max_position_deltas'],
-                    'min_orientation_deltas': params[manifold_name]['min_orientation_deltas'],
-                    'max_orientation_deltas': params[manifold_name]['max_orientation_deltas'],
-                    # TODO currently we only allow to touch the object to be grasped during a surface grasp, is that really desired? (what about a really crowded ifco)
-                    'allowed_collisions': [{'type': 1, 'box_id': current_object_idx, 'terminate_on_collision': True},
-                                           {'type': 2, 'constraint_name': 'bottom', 'terminate_on_collision': False}]
-                }
-
-                check_kinematics = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
-                print(args)
-                print("Call check kinematics. Arguments: \n" + yaml.safe_dump(args))
-
-                res = check_kinematics(initial_configuration=curr_start_config,
-                                       goal_pose= geometry_msgs.msg.Pose())# TODO call actual method
+                res = check_feasibility(initial_configuration=curr_start_config,
+                                        goal_pose=goal_pose,
+                                        ifco_pose=ifco_pose,
+                                        bounding_boxes_with_poses=bounding_boxes,
+                                        min_position_deltas=params[manifold_name]['min_position_deltas'],
+                                        max_position_deltas=params[manifold_name]['max_position_deltas'],
+                                        min_orientation_deltas=params[manifold_name]['min_orientation_deltas'],
+                                        max_orientation_deltas=params[manifold_name]['max_orientation_deltas'],
+                                        allowed_collisions=allowed_collisions
+                                        )
 
                 if res.status == 0:
                     # trajectory is not feasible and no alternative was found, directly return 0
@@ -336,9 +330,11 @@ class multi_object_params:
         return translation, orientation_quat
 
     @staticmethod
-    def transform_to_python_pose(in_transform):
+    def transform_to_pose_msg(in_transform):
         trans, rot = multi_object_params.transform_to_pose(in_transform)
-        return PoseComponent(trans[0], trans[1], trans[2]), PoseComponent(rot[0], rot[1], rot[2], rot[3])
+        trans = geometry_msgs.msg.Point(x=trans[0], y=trans[1], z=trans[2])
+        rot = geometry_msgs.msg.Quaternion(x=rot[0], y=rot[1], z=rot[2], w=rot[3])
+        return geometry_msgs.msg.Pose(position=trans, orientation=rot)
 
     def reset_kinematic_checks_information(self):
         self.stored_trajectories = {}
