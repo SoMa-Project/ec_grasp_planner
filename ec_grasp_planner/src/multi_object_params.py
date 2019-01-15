@@ -29,23 +29,6 @@ def angle_between(v1, v2):
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 
-class PoseComponent(object): # TODO REMOVE class
-    def __init__(self, x, y, z, w=None):
-        # we have to explicitly convert to python floats since the later yaml conversion can't represent all
-        # numpy.float64 values
-        self.x = float(x)
-        self.y = float(y)
-        self.z = float(z)
-        self.w = float(w) if w is not None else None
-
-    def to_dict(self):
-        d = {'x': self.x, 'y': self.y, 'z': self.z}
-        if self.w is not None:
-            d['w'] = self.w
-        return d
-
-
-
 class AlternativeBehavior:
     # TODO this class should be adapted if return value of the feasibility check changes (e.g. switch conditions)
     def __init__(self, feasibility_check_result):
@@ -70,6 +53,7 @@ class multi_object_params:
     # (e.g. a sequence of joint states) to the default hard-coded motion in the planner.py
     # If no such alternative behavior is defined the function returns None
     def get_alternative_behavior(self, object_idx, ec_index):
+        print(self.stored_trajectories)
         if (object_idx, ec_index) not in self.stored_trajectories:
             return None
         return self.stored_trajectories[(object_idx, ec_index)]
@@ -237,8 +221,9 @@ class multi_object_params:
             # initialize stored trajectories for the given object
             self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
 
-            # The pose of the ifco in message format
-            ifco_pose = multi_object_params.transform_to_pose_msg(ifco_in_base_transform)
+            # The pose of the ifco (in base frame) in message format
+            ifco_pose = multi_object_params.transform_to_pose_msg(tra.inverse_matrix(ifco_in_base_transform))
+            print("IFCO_POSE", ifco_pose)
 
             # The bounding boxes of all objects in message format
             bounding_boxes = []
@@ -263,9 +248,10 @@ class multi_object_params:
                 manifold_name = motion +'_manifold'
 
                 goal_pose = multi_object_params.transform_to_pose_msg(curr_goal)
+                print("GOAL_POSE", ifco_pose)
 
                 check_feasibility = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
-                print("Call check kinematics for " + motion + " " + curr_goal)#Arguments: \n" + yaml.safe_dump(args))
+                print("Call check kinematics for " + motion + " " + str(curr_goal))#Arguments: \n" + yaml.safe_dump(args))
 
                 res = check_feasibility(initial_configuration=curr_start_config,
                                         goal_pose=goal_pose,
@@ -278,6 +264,8 @@ class multi_object_params:
                                         allowed_collisions=allowed_collisions
                                         )
 
+                print("check feasibility result was: " + str(res.status))
+
                 if res.status == 0:
                     # trajectory is not feasible and no alternative was found, directly return 0
                     return 0
@@ -285,12 +273,14 @@ class multi_object_params:
                 elif res.status == 2:
                     # original trajectory is not feasible, but alternative was found => save it
                     self.stored_trajectories[(current_object_idx, current_ec_index)][motion] = AlternativeBehavior(res)
+                    status_sum += 2
                     curr_start_config = res.final_configuration
 
                 elif res.status == 1:
                     # original trajectory is feasible. If all checked motions remain feasible, status_sum will be used
                     # to signal that the original HA should not be touched.
                     status_sum += 1
+                    curr_start_config = res.final_configuration
 
                 else:
                     raise ValueError(
@@ -303,7 +293,8 @@ class multi_object_params:
 
         else:
             # TODO implement other strategies
-            raise ValueError("Kinematics checks are currently only supported for surface grasps")
+            raise ValueError("Kinematics checks are currently only supported for surface grasps, but strategy was "
+                             + strategy)
 
         return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,
                                                                             strategy)
@@ -404,7 +395,7 @@ class multi_object_params:
 
 ## --------------------------------------------------------- ##
     # chose random object and ec
-    # the ec shoudl be valied for the given object
+    # the ec should be valid for the given object
     # if there are no valid EC then pick randomly from all
     def random_from_Qmatrix(self, pdf_matrix):
 
@@ -448,7 +439,7 @@ class multi_object_params:
 
             if not self.data[o["type"]]:
                 print("The given object {} has no parameters set in the yaml {}".format(o["type"], self.file_name))
-                return -1
+                return -1, -1
 
             all_ec_frames = []
             for j, ec in enumerate(ecs):
@@ -462,6 +453,13 @@ class multi_object_params:
                                                handarm_parameters)
 
         # print (" ** h_mx = {}".format(Q_matrix))
+
+        if Q_matrix.max() == 0.0:
+            rospy.logwarn("No Suitable Grasp Found - PLEASE REPLAN!!!")
+            if rospy.get_param("feasibility_check/active", default=True):
+                # If not even the feasibilty checker could find an alternative signal a planner failure
+                return -1, -1
+
 
         # select heuristic function for choosing object and EC
         #argmax samples from the [max (H(obj, ec)] list

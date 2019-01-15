@@ -186,8 +186,10 @@ class GraspPlanner:
             raise rospy.ServiceException("Vision service call failed: %s" % e)
 
         if not objects:
-            print("No object was detected")
-            return plan_srv.RunGraspPlannerResponse("", -1)
+            print("Vision: No object was detected")
+            return plan_srv.RunGraspPlannerResponse(success=False,
+                                                    hybrid_automaton_xml="Vision: No object was detected",
+                                                    chosen_object_idx=-1)
 
         robot_base_frame = self.args.robot_base_frame
         object_frame = objects[0].transform
@@ -234,7 +236,6 @@ class GraspPlanner:
         ifco_in_base_transform = tf_transformer.fromTranslationRotation(ifco_in_base_translation, ifco_in_base_rot)
         print ifco_in_base_transform
 
-
         # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
         (chosen_object_idx, chosen_node_idx) = self.multi_object_handler.process_objects_ecs(object_list,
                                                                                      node_list,
@@ -243,6 +244,11 @@ class GraspPlanner:
                                                                                      req.object_heuristic_function,
                                                                                      self.handarm_params
                                                                                      )
+
+        if chosen_object_idx < 0:
+            return plan_srv.RunGraspPlannerResponse(success=False,
+                                                    hybrid_automaton_xml="No feasible trajectory was found",
+                                                    chosen_object_idx=-1)
 
         chosen_object = object_list[chosen_object_idx]
         chosen_node = node_list[chosen_node_idx]
@@ -302,7 +308,10 @@ class GraspPlanner:
             # rospy.spin()
 
         ha_as_xml = ha.xml()
-        return plan_srv.RunGraspPlannerResponse(ha_as_xml, chosen_object_idx if ha_as_xml != "" else -1, chosen_node)
+        return plan_srv.RunGraspPlannerResponse(success=ha_as_xml != "",
+                                                hybrid_automaton_xml=ha_as_xml,
+                                                chosen_object_idx=chosen_object_idx if ha_as_xml != "" else -1,
+                                                chosen_node=chosen_node)
 
 
 # ================================================================================================
@@ -374,7 +383,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                           duration=0.2))  # time to trigger pre-shape
 
     # 1. Go above the object - PreGrasp
-    if alternative_behavior is not None:
+    if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
+
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
         goal_traj = np.array(alternative_behavior['pre_grasp'].trajectory_steps)
         print(goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
@@ -416,7 +426,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
 
     # 3. Go down onto the object - Godown
-    if alternative_behavior is not None:
+    if alternative_behavior is not None and 'go_down' in alternative_behavior:
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
         # Go down onto the object (joint controller + relative world frame motion)
         goal_traj = np.array(alternative_behavior['go_down'].trajectory_steps)
