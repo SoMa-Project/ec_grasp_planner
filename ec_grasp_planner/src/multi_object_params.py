@@ -7,6 +7,7 @@ from tf import transformations as tra
 from geometry_graph_msgs.msg import Node, geometry_msgs
 from tub_feasibility_check import srv as kin_check_srv
 from tub_feasibility_check.msg import BoundingBoxWithPose, AllowedCollision
+from tub_feasibility_check.srv import CheckKinematicsResponse
 from shape_msgs.msg import SolidPrimitive
 import rospy
 from functools import partial
@@ -34,7 +35,7 @@ class AlternativeBehavior:
     def __init__(self, feasibility_check_result):
         self.number_of_joints = len(feasibility_check_result.final_configuration)
         self.trajectory_steps = []
-        for i in range(0, len(feasibility_check_result.trajectory), step=self.number_of_joints):
+        for i in range(0, len(feasibility_check_result.trajectory), self.number_of_joints):
             self.trajectory_steps.append(feasibility_check_result.trajectory[i:i+self.number_of_joints])
 
 
@@ -49,9 +50,9 @@ class multi_object_params:
             self.load_object_params()
         return self.data
 
-    # This function will return a dictionary, mapping every motion name (e.g. pre_grasp) to an alternative behavior
-    # (e.g. a sequence of joint states) to the default hard-coded motion in the planner.py
-    # If no such alternative behavior is defined the function returns None
+    # This function will return a dictionary, mapping a motion name (e.g. pre_grasp) to an alternative behavior
+    # (e.g. a sequence of joint states) to the default hard-coded motion in the planner.py (in case it was necessary to
+    # generate). If for the given object-ec-pair no such alternative behavior was created, this function returns None.
     def get_alternative_behavior(self, object_idx, ec_index):
         print(self.stored_trajectories)
         if (object_idx, ec_index) not in self.stored_trajectories:
@@ -177,6 +178,13 @@ class multi_object_params:
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
 
+        # This list includes the checked motions in order (They have to be sequential!)
+        checked_motions = []
+        # The goal poses of the respective motions in op-space (index has to match index of checked_motions)
+        goals = []
+        # The collisions that are allowed in message format
+        allowed_collisions = []
+
         # TODO maybe move the kinematic stuff to separate file
 
         if strategy == 'SurfaceGrasp':
@@ -203,98 +211,114 @@ class multi_object_params:
             # hand pose above object
             pre_grasp_pose = goal_.dot(params['pregrasp_transform'])
 
-            print(pre_grasp_pose)  # TODO bring that pose into a suitable format for the service call
-
+            # goal pose for go down movement
             go_down_pose = pre_grasp_pose.dot(tra.translation_matrix([0, 0, -params['down_dist']])) # TODO multiplication order?
 
-            # This list includes the checked motions in order (They have to be sequential!)
             checked_motions = ["pre_grasp", "go_down"]
-            # The goal poses of the respective motions in op-space (index has to match index of checked_motions)
+
             goals = [pre_grasp_pose, go_down_pose]
-            # gotoview joint config (copied from gui.py)
-            # TODO read this from a central point (to ensure it is always the same parameter in gui and here)
-            #curr_start_config = [0.457929, 0.295013, -0.232804, 2.59226, 1.25715, 1.50907, -0.616263]
-            curr_start_config = rospy.get_param('planner_gui/robot_view_position') # TODO use current joint state instead?
-
-            # This variable is used to determine if all returned status flags are 1 (original trajectory feasible)
-            status_sum = 0
-            # initialize stored trajectories for the given object
-            self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
-
-            # The pose of the ifco (in base frame) in message format
-            ifco_pose = multi_object_params.transform_to_pose_msg(tra.inverse_matrix(ifco_in_base_transform))
-            print("IFCO_POSE", ifco_pose)
-
-            # The bounding boxes of all objects in message format
-            bounding_boxes = []
-            for obj in objects:
-                obj_pose = multi_object_params.transform_to_pose_msg(obj['frame'])
-                obj_bbox = SolidPrimitive(type=SolidPrimitive.BOX,
-                                          dimensions=[obj['bounding_box'].x, obj['bounding_box'].y,
-                                                      obj['bounding_box'].z])
-
-                bounding_boxes.append(BoundingBoxWithPose(box=obj_bbox, pose=obj_pose))
 
             # The collisions that are allowed in message format
             # TODO currently we only allow to touch the object to be grasped and the ifco bottom during a surface grasp, is that really desired? (what about a really crowded ifco)
-            allowed_collisions=[AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
-                                                 box_id=current_object_idx, terminate_on_collision=True),
+            allowed_collisions = [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
+                                                   box_id=current_object_idx, terminate_on_collision=True),
+                                  AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                                   constraint_name='bottom', terminate_on_collision=False),
+
+                                # TODO REMOVE THE TWO BENEATH LATER!
                                 AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                                 constraint_name='bottom', terminate_on_collision=False)]
+                                                 constraint_name='south', terminate_on_collision=False),
 
-            # perform the actual checks
-            for motion, curr_goal in zip(checked_motions, goals):
+                                AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                                 constraint_name='west', terminate_on_collision=False),
+                                  ]
 
-                manifold_name = motion +'_manifold'
+        elif strategy == "WallGrasp":
 
-                goal_pose = multi_object_params.transform_to_pose_msg(curr_goal)
-                print("GOAL_POSE", ifco_pose)
+            checked_motions = [] # TODO add InitialJointConfig, pre_grasp, go_down, lift_hand, slide_to_wall TODO overcome problem of FT-Switch after go_down
 
-                check_feasibility = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
-                print("Call check kinematics for " + motion + " " + str(curr_goal))#Arguments: \n" + yaml.safe_dump(args))
+            goals = [] # TODO see checked_motions
 
-                res = check_feasibility(initial_configuration=curr_start_config,
-                                        goal_pose=goal_pose,
-                                        ifco_pose=ifco_pose,
-                                        bounding_boxes_with_poses=bounding_boxes,
-                                        min_position_deltas=params[manifold_name]['min_position_deltas'],
-                                        max_position_deltas=params[manifold_name]['max_position_deltas'],
-                                        min_orientation_deltas=params[manifold_name]['min_orientation_deltas'],
-                                        max_orientation_deltas=params[manifold_name]['max_orientation_deltas'],
-                                        allowed_collisions=allowed_collisions
-                                        )
+            allowed_collisions = [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
+                                                   box_id=current_object_idx, terminate_on_collision=False,
+                                                   required_collision=True),
+                                  AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                                   constraint_name='bottom', terminate_on_collision=False),
 
-                print("check feasibility result was: " + str(res.status))
+                                  # TODO don't hardcode east, but instead find out which ec corresponds to which wall (by frame dist?)
+                                  AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                                   constraint_name='east', terminate_on_collision=True),
+                                  ]
 
-                if res.status == 0:
-                    # trajectory is not feasible and no alternative was found, directly return 0
-                    return 0
 
-                elif res.status == 2:
-                    # original trajectory is not feasible, but alternative was found => save it
-                    self.stored_trajectories[(current_object_idx, current_ec_index)][motion] = AlternativeBehavior(res)
-                    status_sum += 2
-                    curr_start_config = res.final_configuration
 
-                elif res.status == 1:
-                    # original trajectory is feasible. If all checked motions remain feasible, status_sum will be used
-                    # to signal that the original HA should not be touched.
-                    status_sum += 1
-                    curr_start_config = res.final_configuration
-
-                else:
-                    raise ValueError(
-                        "check_kinematics: No handler for result status of {} implemented".format(res.status))
-
-            if status_sum == len(checked_motions):
-                # all results had status 1, this means we can generate a HA without adding any special joint controllers
-                # In order to signal that we throw away all generated alternative trajectories.
-                self.stored_trajectories[(current_object_idx, current_ec_index)] = None
-
+            # TODO implement
         else:
             # TODO implement other strategies
-            raise ValueError("Kinematics checks are currently only supported for surface grasps, but strategy was "
-                             + strategy)
+            # raise ValueError("Kinematics checks are currently only supported for surface grasps, but strategy was "
+            #                 + strategy)
+            return 0
+
+        # The initial joint configuration (goToView config)
+        curr_start_config = [0.457929, 0.295013, -0.232804, 2.59226, 1.25715, 1.50907, 1.0]  # TODO use line below!
+        # curr_start_config = rospy.get_param('planner_gui/robot_view_position') # TODO use current joint state instead?
+
+        # initialize stored trajectories for the given object
+        self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
+
+        # The pose of the ifco (in base frame) in message format
+        ifco_pose = multi_object_params.transform_to_pose_msg(tra.inverse_matrix(ifco_in_base_transform))
+        print("IFCO_POSE", ifco_pose)
+
+        # The bounding boxes of all objects in message format
+        bounding_boxes = []
+        for obj in objects:
+            obj_pose = multi_object_params.transform_to_pose_msg(obj['frame'])
+            obj_bbox = SolidPrimitive(type=SolidPrimitive.BOX,
+                                      dimensions=[obj['bounding_box'].x, obj['bounding_box'].y, obj['bounding_box'].z])
+
+            bounding_boxes.append(BoundingBoxWithPose(box=obj_bbox, pose=obj_pose))
+
+        # perform the actual checks
+        for motion, curr_goal in zip(checked_motions, goals):
+
+            manifold_name = motion +'_manifold'
+
+            goal_pose = multi_object_params.transform_to_pose_msg(curr_goal)
+            print("GOAL_POSE", goal_pose) # TODO DEBUG HERE <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< !!!!
+
+            check_feasibility = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
+            print("Call check kinematics for " + motion + " " + str(curr_goal))#Arguments: \n" + yaml.safe_dump(args))
+
+            res = check_feasibility(initial_configuration=curr_start_config,
+                                    goal_pose=goal_pose,
+                                    ifco_pose=ifco_pose,
+                                    bounding_boxes_with_poses=bounding_boxes,
+                                    min_position_deltas=params[manifold_name]['min_position_deltas'],
+                                    max_position_deltas=params[manifold_name]['max_position_deltas'],
+                                    min_orientation_deltas=params[manifold_name]['min_orientation_deltas'],
+                                    max_orientation_deltas=params[manifold_name]['max_orientation_deltas'],
+                                    allowed_collisions=allowed_collisions
+                                    )
+
+            print("check feasibility result was: " + str(res.status))
+
+            if res.status == CheckKinematicsResponse.FAILED:
+                # trajectory is not feasible and no alternative was found, directly return 0
+                return 0
+
+            elif res.status == CheckKinematicsResponse.REACHED_SAMPLED:
+                # original trajectory is not feasible, but alternative was found => save it
+                self.stored_trajectories[(current_object_idx, current_ec_index)][motion] = AlternativeBehavior(res)
+                curr_start_config = res.final_configuration
+
+            elif res.status == CheckKinematicsResponse.REACHED_INITIAL:
+                # original trajectory is feasible, we don't have to save an alternative
+                curr_start_config = res.final_configuration
+
+            else:
+                raise ValueError(
+                    "check_kinematics: No handler for result status of {} implemented".format(res.status))
 
         return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,
                                                                             strategy)

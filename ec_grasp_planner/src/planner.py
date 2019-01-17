@@ -592,7 +592,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
 
 # ================================================================================================
-def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params, object_type, object_params):
+def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_params, object_type, object_params,
+                      alternative_behavior):
 
     # Get the parameters from the handarm_parameters.py file
     if (object_type in handarm_params['wall_grasp']):
