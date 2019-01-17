@@ -99,12 +99,12 @@ class MassEstimator(object):
         self.ee_frame = ee_frame
 
         # Create the publishers
-        self.estimator_status_pub = rospy.Publisher('/graspSuccessEstimator/status', Float64, queue_size=10)
-        self.estimator_number_pub = rospy.Publisher('/graspSuccessEstimator/num_objects', Float64, queue_size=10)
-        self.estimator_confidence_pub = rospy.Publisher('/graspSuccessEstimator/confidence', Float64, queue_size=10)
+        self.estimator_status_pub = rospy.Publisher('/graspSuccessEstimator/status', Float64, queue_size=10, latch=True)
+        self.estimator_number_pub = rospy.Publisher('/graspSuccessEstimator/num_objects', Float64, queue_size=10, latch=True)
+        self.estimator_confidence_pub = rospy.Publisher('/graspSuccessEstimator/confidence', Float64, queue_size=10, latch=True)
         self.estimator_confidence_all_pub = rospy.Publisher('/graspSuccessEstimator/confidence_all', Float64MultiArray,
-                                                            queue_size=10)
-        self.estimator_mass_pub = rospy.Publisher('/graspSuccessEstimator/masses', Float64MultiArray, queue_size=10)
+                                                            queue_size=10, latch=True)
+        self.estimator_mass_pub = rospy.Publisher('/graspSuccessEstimator/masses', Float64MultiArray, queue_size=10, latch=True)
 
         # Stores the last active control mode to ensure we only start estimation once (the moment we enter the state)
         self.active_cm = None
@@ -152,7 +152,7 @@ class MassEstimator(object):
                 self.publish_status(RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE)
 
     def publish_status(self, status):
-        rospy.sleep(2.0)  # Otherwise windows side isn't quick enough to subscribe to topic. TODO find better solution?
+        # rospy.sleep(2.0)  # Otherwise windows side isn't quick enough to subscribe to topic. TODO find better solution?
         self.estimator_status_pub.publish(status.value)
 
     def to_base_frame(self, ft_measurement_msg):
