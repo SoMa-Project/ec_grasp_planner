@@ -40,9 +40,16 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # 0b. Time to trigger pre-shape
     control_sequence.append(ha.TimeSwitch('softhand_preshape_1_1', 'PreGrasp', duration = hand_closing_time))
 
+    pregrasp_transform[0,3] = 100;
+
     # 1. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pregrasp_transform, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'PreGrasp'))
  
+    control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'finished',
+                                              ros_topic_name='controller_state', ros_topic_type='UInt8',
+                                              goal=np.array([1.]),
+                                              ))
+
     # 1b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller = 'GoAboveObject', epsilon = '0.01'))
     
