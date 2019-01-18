@@ -155,16 +155,16 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
 
         # defines the manifold in which alternative goal poses are sampled during kinematic checks
-        self['surface_grasp']['object']['pre_grasp_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
-                                                                          'max_position_deltas': [0.01, 0.01, 0.01],
-                                                                          'min_orientation_deltas': [0, 0, -1.5],
-                                                                          'max_orientation_deltas': [0, 0, 1.5]
+        self['surface_grasp']['object']['pre_grasp_manifold'] = Manifold({'min_position_deltas': [-0.05, -0.05, -0.05],#[-0.01, -0.01, -0.01],
+                                                                          'max_position_deltas': [0.05, 0.05, 0.05],#[0.01, 0.01, 0.01],
+                                                                          'min_orientation_deltas': [0, 0, 0],#-1.5],
+                                                                          'max_orientation_deltas': [0, 0, 0],#1.5]
                                                                          })
 
-        self['surface_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
-                                                                        'max_position_deltas': [0.01, 0.01, 0.01],
-                                                                        'min_orientation_deltas': [0, 0, -1.5],
-                                                                        'max_orientation_deltas': [0, 0, 1.5]
+        self['surface_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.04, -0.01],
+                                                                        'max_position_deltas': [0.01, 0.04, 0.01],
+                                                                        'min_orientation_deltas': [0, 0, 0],
+                                                                        'max_orientation_deltas': [0, 0, 0]
                                                                        })
         # TODO add more Manifolds
 
@@ -223,6 +223,37 @@ class RBOHandP24WAM(RBOHand2):
             [0.125, 0.09])  # first value: rotational, second translational
         self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.30])  # np.array([0.125, 0.12])
         self['wall_grasp']['object']['wall_force'] = 12.0
+
+        # defines the manifold in which alternative goal poses are sampled during feasibility checks
+        self['wall_grasp']['object']['init_joint_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
+                                                                       'max_position_deltas': [0.01, 0.01, 0.01],
+                                                                       'min_orientation_deltas': [0, 0, -0.001],
+                                                                       'max_orientation_deltas': [0, 0, 0.001]
+                                                                       })
+
+        self['wall_grasp']['object']['pre_grasp_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
+                                                                     'max_position_deltas': [0.01, 0.01, 0.01],
+                                                                     'min_orientation_deltas': [0, 0, -0.17],
+                                                                     'max_orientation_deltas': [0, 0, 0.17]
+                                                                     })
+
+        self['wall_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
+                                                                     'max_position_deltas': [0.01, 0.01, 0.01],
+                                                                     'min_orientation_deltas': [0, 0, -0.17],
+                                                                     'max_orientation_deltas': [0, 0, 0.17]
+                                                                     })
+
+        self['wall_grasp']['object']['lift_hand_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
+                                                                       'max_position_deltas': [0.01, 0.01, 0.01],
+                                                                       'min_orientation_deltas': [0, 0, -0.17],
+                                                                       'max_orientation_deltas': [0, 0, 0.17]
+                                                                       })
+
+        self['wall_grasp']['object']['slide_to_wall_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
+                                                                           'max_position_deltas': [0.01, 0.01, 0.01],
+                                                                           'min_orientation_deltas': [0, 0, -0.17],
+                                                                           'max_orientation_deltas': [0, 0, 0.17]
+                                                                          })
 
 
 class RBOHandP11WAM(RBOHandP24WAM):

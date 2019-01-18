@@ -173,6 +173,8 @@ class multi_object_params:
     def check_kinematic_feasibility(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames,
                                     ifco_in_base_transform, handarm_params):
 
+        print("LOOK AT ME!", all_ec_frames)
+
         object = objects[current_object_idx]
         ec_frame = all_ec_frames[current_ec_index]
         object_params = self.data[object['type']][strategy]
@@ -182,8 +184,8 @@ class multi_object_params:
         checked_motions = []
         # The goal poses of the respective motions in op-space (index has to match index of checked_motions)
         goals = []
-        # The collisions that are allowed in message format
-        allowed_collisions = []
+        # The collisions that are allowed in message format per motion
+        allowed_collisions = {}
 
         # TODO maybe move the kinematic stuff to separate file
 
@@ -212,56 +214,78 @@ class multi_object_params:
             pre_grasp_pose = goal_.dot(params['pregrasp_transform'])
 
             # goal pose for go down movement
-            go_down_pose = pre_grasp_pose.dot(tra.translation_matrix([0, 0, -params['down_dist']])) # TODO multiplication order?
+            go_down_pose = tra.translation_matrix([0, 0, -params['down_dist']]).dot(pre_grasp_pose)
 
-            checked_motions = ["pre_grasp", "go_down"]
+            checked_motions = ["pre_grasp"]#, "go_down"]
 
             goals = [pre_grasp_pose, go_down_pose]
 
-            # The collisions that are allowed in message format
+            print("ALLOWED COLLISIONS:", "box_" + str(current_object_idx), 'bottom')
+
+            # The collisions that are allowed per motion in message format
             # TODO currently we only allow to touch the object to be grasped and the ifco bottom during a surface grasp, is that really desired? (what about a really crowded ifco)
-            allowed_collisions = [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
-                                                   box_id=current_object_idx, terminate_on_collision=True),
-                                  AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                                   constraint_name='bottom', terminate_on_collision=False),
+            allowed_collisions = {
+                # no collisions are allowed during going to pre_grasp pose
+                'pre_grasp': [],
 
-                                # TODO REMOVE THE TWO BENEATH LATER!
-                                AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                                 constraint_name='south', terminate_on_collision=False),
-
-                                AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                                 constraint_name='west', terminate_on_collision=False),
-                                  ]
+                # ignore=True to allow touching with unsensorized parts
+                'go_down': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, ignored_collision=True,
+                                             box_id=current_object_idx, terminate_on_collision=True),
+                            AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                             constraint_name='bottom', terminate_on_collision=False)],
+            }
 
         elif strategy == "WallGrasp":
 
-            checked_motions = [] # TODO add InitialJointConfig, pre_grasp, go_down, lift_hand, slide_to_wall TODO overcome problem of FT-Switch after go_down
+            if object['type'] in handarm_params['wall_grasp']:
+                params = handarm_params['wall_grasp'][object['type']]
+            else:
+                params = handarm_params['wall_grasp']['object']
 
-            goals = [] # TODO see checked_motions
+            checked_motions = ['init_joint', ]#'pre_grasp', 'go_down', 'lift_hand', 'slide_to_wall'] # TODO overcome problem of FT-Switch after go_down
 
-            allowed_collisions = [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
+            goals = [params['initial_goal'], ] # TODO see checked_motions
+
+            # TODO make allowed_collisions CM specific (only in certain phases certain ecs should be in contact)
+            allowed_collisions = {
+
+                'init_joint': [],
+
+                'pre_grasp': [],
+
+                'go_down': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                                   constraint_name='bottom', terminate_on_collision=False),
+                            ],
+
+                'lift_hand': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                                   constraint_name='bottom', terminate_on_collision=False),
+                              ],
+
+                'slide_to_wall': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, ignored_collision=True,
                                                    box_id=current_object_idx, terminate_on_collision=False,
                                                    required_collision=True),
+
+                                    # TODO is this required?
                                   AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
                                                    constraint_name='bottom', terminate_on_collision=False),
 
-                                  # TODO don't hardcode east, but instead find out which ec corresponds to which wall (by frame dist?)
+                                  # TODO don't hardcode east, but instead find out which ec corresponds to which wall
+                                  # (by frame dist?) south would be the closest, north the opposing, east and west can be identified by checking in which half space they are in.
                                   AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
                                                    constraint_name='east', terminate_on_collision=True),
-                                  ]
 
+                                  ],
+            }
 
-
-            # TODO implement
         else:
             # TODO implement other strategies
-            # raise ValueError("Kinematics checks are currently only supported for surface grasps, but strategy was "
-            #                 + strategy)
-            return 0
+            raise ValueError("Kinematics checks are currently only supported for surface grasps and wall grasps, "
+                             "but strategy was " + strategy)
+            #return 0
 
         # The initial joint configuration (goToView config)
-        curr_start_config = [0.457929, 0.295013, -0.232804, 2.59226, 1.25715, 1.50907, 1.0]  # TODO use line below!
-        # curr_start_config = rospy.get_param('planner_gui/robot_view_position') # TODO use current joint state instead?
+        curr_start_config = [0.457929, 0.295013, -0.232804, 2.59226, 1.0, 1.50907, 1.0]  # TODO use line below!
+        #curr_start_config = rospy.get_param('planner_gui/robot_view_position') # TODO use current joint state instead?
 
         # initialize stored trajectories for the given object
         self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
@@ -282,7 +306,7 @@ class multi_object_params:
         # perform the actual checks
         for motion, curr_goal in zip(checked_motions, goals):
 
-            manifold_name = motion +'_manifold'
+            manifold_name = motion + '_manifold'
 
             goal_pose = multi_object_params.transform_to_pose_msg(curr_goal)
             print("GOAL_POSE", goal_pose) # TODO DEBUG HERE <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< !!!!
@@ -298,7 +322,7 @@ class multi_object_params:
                                     max_position_deltas=params[manifold_name]['max_position_deltas'],
                                     min_orientation_deltas=params[manifold_name]['min_orientation_deltas'],
                                     max_orientation_deltas=params[manifold_name]['max_orientation_deltas'],
-                                    allowed_collisions=allowed_collisions
+                                    allowed_collisions=allowed_collisions[motion]
                                     )
 
             print("check feasibility result was: " + str(res.status))
@@ -311,10 +335,12 @@ class multi_object_params:
                 # original trajectory is not feasible, but alternative was found => save it
                 self.stored_trajectories[(current_object_idx, current_ec_index)][motion] = AlternativeBehavior(res)
                 curr_start_config = res.final_configuration
+                print("FOUND ALTERNATIVE. New Start: ", curr_start_config)
 
             elif res.status == CheckKinematicsResponse.REACHED_INITIAL:
                 # original trajectory is feasible, we don't have to save an alternative
                 curr_start_config = res.final_configuration
+                print("USE NORMAL. Start: ", curr_start_config)
 
             else:
                 raise ValueError(
