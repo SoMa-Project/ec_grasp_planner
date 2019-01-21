@@ -1,4 +1,5 @@
 import numpy as np
+from tf import transformations as tra
 import hatools.components as ha
 from grasp_success_estimator import RESPONSES
 
@@ -151,7 +152,8 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # Slow Up speed is positive because it is defined on the world frame
     up_twist = np.array([0, 0, up_speed, 0, 0, 0])
     # Slide twist is positive because it is defined on the EE frame
-    slide_twist = np.array([0, 0, slide_speed, 0, -scooping_angle, 0])
+    slide_twist_matrix = tra.rotation_matrix(-scooping_angle, [0, 1, 0]).dot(tra.translation_matrix([0, 0, slide_speed]))
+    slide_twist = np.array([slide_twist_matrix[0,3], slide_twist_matrix[1,3], slide_twist_matrix[2,3], 0, 0, 0 ])
 
     control_sequence = []
 
