@@ -329,7 +329,7 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
         return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + transport_recipe), rviz_frames
     elif robot_name == 'KUKA':
         transport_recipe = TransportRecipesKUKA.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
-        placement_recipe = PlacementRecipes.get_placement_recipe(chosen_object, handarm_params, grasp_type)
+        placement_recipe = PlacementRecipes.get_placement_recipe(chosen_object, handarm_params, grasp_type, handarm_type)
         return cookbook.sequence_of_modes_and_switches(grasping_recipe + transport_recipe + placement_recipe), rviz_frames
     else:
         raise ValueError("No robot named {}".format(robot_name))

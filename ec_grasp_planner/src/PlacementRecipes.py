@@ -1,7 +1,7 @@
 import numpy as np
 import hatools.components as ha
 
-def get_placement_recipe(chosen_object, handarm_params, grasp_type):
+def get_placement_recipe(chosen_object, handarm_params, grasp_type, handarm_type):
 
     place_time = handarm_params['place_duration']
     down_speed = handarm_params['place_down_speed']
@@ -19,7 +19,12 @@ def get_placement_recipe(chosen_object, handarm_params, grasp_type):
     control_sequence.append(ha.TimeSwitch('PlaceInIFCO', 'softhand_open', duration = place_time))
 
     # 2. Release SKU
-    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = 1))
+    if "ClashHand" in handarm_type:
+        # Load the proper params from handarm_parameters.py
+        # Replace the BlockingJointControlMode with the CLASH hand control mode
+        control_sequence.append(ha.BlockJointControlMode(name  = 'softhand_open'))
+    else:
+        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = 1))
 
     # 2b. Switch when hand opening time ends
     control_sequence.append(ha.TimeSwitch('softhand_open', 'finished', duration = 0.5))
