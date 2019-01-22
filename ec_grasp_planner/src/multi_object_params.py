@@ -160,7 +160,7 @@ class multi_object_params:
         object_max = object_params['max']
         object_frame = object['frame']
 
-        object_in_ifco_frame  = ifco_in_base_transform.dot(object_frame)
+        object_in_ifco_frame = ifco_in_base_transform.dot(object_frame)
 
         if object_in_ifco_frame[0,3] > object_min[0]  \
             and object_in_ifco_frame[0,3] < object_max[0] \
@@ -169,6 +169,27 @@ class multi_object_params:
             return 1
         else:
             return 0
+
+    @staticmethod
+    def get_matching_ifco_wall(ifco_in_base_transform, ec_frame):
+
+        ec_to_world = ifco_in_base_transform.dot(ec_frame)
+        ec_z_axis_in_world = ec_to_world.dot(np.array([0, 0, 1, 1]))[:3]
+        ec_x_axis_in_world = ec_to_world.dot(np.array([1, 0, 0, 1]))[:3]
+
+        # one could also check for dot-product = 0 instead of using the x-axis but this is prone to numeric issues.
+        if ec_z_axis_in_world.dot(np.array([1, 0, 0])) > 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) > 0:
+            print("FOUND_EC south")
+            return 'south'
+        elif ec_z_axis_in_world.dot(np.array([1, 0, 0])) < 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) < 0:
+            print("FOUND_EC north")
+            return 'north'
+        elif ec_z_axis_in_world.dot(np.array([0, 1, 0])) < 0:
+            print("FOUND_EC west")
+            return 'west'
+        else:
+            print("FOUND_EC east")
+            return 'east'
 
     def check_kinematic_feasibility(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames,
                                     ifco_in_base_transform, handarm_params):
@@ -186,6 +207,10 @@ class multi_object_params:
         goals = []
         # The collisions that are allowed in message format per motion
         allowed_collisions = {}
+
+        # The initial joint configuration (goToView config)
+        curr_start_config = [0.457929, 0.295013, -0.232804, 2.0226, 0.0, 1.50907, 1.0]  # TODO use line below!
+        # curr_start_config = rospy.get_param('planner_gui/robot_view_position') # TODO use current joint state instead?
 
         # TODO maybe move the kinematic stuff to separate file
 
@@ -216,7 +241,7 @@ class multi_object_params:
             # goal pose for go down movement
             go_down_pose = tra.translation_matrix([0, 0, -params['down_dist']]).dot(pre_grasp_pose)
 
-            checked_motions = ["pre_grasp"]#, "go_down"]
+            checked_motions = ["pre_grasp", "go_down"]
 
             goals = [pre_grasp_pose, go_down_pose]
 
@@ -228,52 +253,93 @@ class multi_object_params:
                 # no collisions are allowed during going to pre_grasp pose
                 'pre_grasp': [],
 
-                # ignore=True to allow touching with unsensorized parts
-                'go_down': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, ignored_collision=True,
-                                             box_id=current_object_idx, terminate_on_collision=True),
+                # ignore=True to allow touching with unsensorized parts (e.g. the palm)
+                'go_down': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, ignored_collision=True, # TOD remove ignore collision once the new interface is implemented
+                                             box_id=current_object_idx, terminate_on_collision=True,
+                                             required_collision=True),
                             AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
                                              constraint_name='bottom', terminate_on_collision=False)],
             }
 
         elif strategy == "WallGrasp":
 
+            blocked_ecs = [0, 2, 3, 4] # TODO remove
+            if current_ec_index in blocked_ecs:
+                return 0
+
             if object['type'] in handarm_params['wall_grasp']:
                 params = handarm_params['wall_grasp'][object['type']]
             else:
                 params = handarm_params['wall_grasp']['object']
 
-            checked_motions = ['init_joint', ]#'pre_grasp', 'go_down', 'lift_hand', 'slide_to_wall'] # TODO overcome problem of FT-Switch after go_down
+            # hand pose above and behind the object
+            pre_approach_transform = params['pre_approach_transform']
 
-            goals = [params['initial_goal'], ] # TODO see checked_motions
+            wall_frame = np.copy(ec_frame)
+            wall_frame[:3, 3] = tra.translation_from_matrix(object_params['frame'])
+            # apply hand transformation
+            ec_hand_frame = wall_frame.dot(params['hand_transform'])
 
-            # TODO make allowed_collisions CM specific (only in certain phases certain ecs should be in contact)
+            #ec_hand_frame = (ec_frame.dot(params['hand_transform']))
+            pre_approach_pose = ec_hand_frame.dot(pre_approach_transform)
+
+            # goal pose for go down movement
+            go_down_pose = tra.translation_matrix([0, 0, -params['down_dist']]).dot(pre_approach_pose)
+
+            # pose after lifting. This is somewhat fake, since the real go_down_pose will be determined by
+            # the FT-Switch during go_down and the actual lifted distance by the TimeSwitch (or a pose switch in case
+            # the robot allows precise small movements) TODO better solution?
+            fake_lift_up_dist = np.min([params['lift_dist'], 0.1])
+            lift_hand_pose = tra.translation_matrix([0, 0, fake_lift_up_dist]).dot(go_down_pose)
+
+            dir_wall = tra.translation_matrix([0, 0, -params['sliding_dist']])
+            # TODO sliding_distance should be computed from wall and hand frame.
+            # slide direction is given by the normal of the wall
+            wall_frame = np.copy(ec_frame)
+            dir_wall[:3, 3] = wall_frame[:3, :3].dot(dir_wall[:3, 3])
+
+            slide_to_wall_pose = dir_wall.dot(lift_hand_pose)
+
+            # TODO remove code duplication with planner.py (refacto code snippets to function calls) !!!!!!!
+
+            checked_motions = ['pre_grasp', 'go_down', 'lift_hand', 'slide_to_wall'] # TODO overcome problem of FT-Switch after go_down
+
+            goals = [pre_approach_pose, go_down_pose, lift_hand_pose, slide_to_wall_pose] # TODO see checked_motions
+
+            # override initial robot configuration
+            # TODO also check gotToView -> params['initial_goal'] (requires forward kinematics, or change to op-space)
+            #curr_start_config = params['initial_goal']
+            curr_start_config = [0.457929, 0.295013, -0.232804, 2.0226, 0.1, 0.1, 0.1]
+
             allowed_collisions = {
 
-                'init_joint': [],
+                # 'init_joint': [],
 
+                # no collisions are allowed during going to pre_grasp pose
                 'pre_grasp': [],
 
-                'go_down': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                                   constraint_name='bottom', terminate_on_collision=False),
+                # Only allow touching the bottom of the ifco
+                'go_down': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, ignored_collision=True,
+                                             constraint_name='bottom', terminate_on_collision=False),
                             ],
 
-                'lift_hand': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                                   constraint_name='bottom', terminate_on_collision=False),
+                'lift_hand': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, ignored_collision=True,
+                                               constraint_name='bottom', terminate_on_collision=False),
                               ],
 
+                # TODO also allow all other obejcts to be touched during sliding motion
                 'slide_to_wall': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, ignored_collision=True,
                                                    box_id=current_object_idx, terminate_on_collision=False,
                                                    required_collision=True),
 
-                                    # TODO is this required?
-                                  AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                  # TODO is this required?
+                                  AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, ignored_collision=True,
                                                    constraint_name='bottom', terminate_on_collision=False),
 
-                                  # TODO don't hardcode east, but instead find out which ec corresponds to which wall
-                                  # (by frame dist?) south would be the closest, north the opposing, east and west can be identified by checking in which half space they are in.
                                   AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                                   constraint_name='east', terminate_on_collision=True),
-
+                                                   constraint_name=multi_object_params.get_matching_ifco_wall(
+                                                       ifco_in_base_transform, ec_frame),
+                                                   terminate_on_collision=True),
                                   ],
             }
 
@@ -282,10 +348,6 @@ class multi_object_params:
             raise ValueError("Kinematics checks are currently only supported for surface grasps and wall grasps, "
                              "but strategy was " + strategy)
             #return 0
-
-        # The initial joint configuration (goToView config)
-        curr_start_config = [0.457929, 0.295013, -0.232804, 2.59226, 1.0, 1.50907, 1.0]  # TODO use line below!
-        #curr_start_config = rospy.get_param('planner_gui/robot_view_position') # TODO use current joint state instead?
 
         # initialize stored trajectories for the given object
         self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
@@ -302,6 +364,7 @@ class multi_object_params:
                                       dimensions=[obj['bounding_box'].x, obj['bounding_box'].y, obj['bounding_box'].z])
 
             bounding_boxes.append(BoundingBoxWithPose(box=obj_bbox, pose=obj_pose))
+        print("BOUNDING_BOXES", bounding_boxes)
 
         # perform the actual checks
         for motion, curr_goal in zip(checked_motions, goals):
@@ -310,6 +373,7 @@ class multi_object_params:
 
             goal_pose = multi_object_params.transform_to_pose_msg(curr_goal)
             print("GOAL_POSE", goal_pose) # TODO DEBUG HERE <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< !!!!
+            print("INIT_CONF", curr_start_config)
 
             check_feasibility = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
             print("Call check kinematics for " + motion + " " + str(curr_goal))#Arguments: \n" + yaml.safe_dump(args))

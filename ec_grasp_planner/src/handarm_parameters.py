@@ -194,7 +194,7 @@ class RBOHandP24WAM(RBOHand2):
         # - fingers pointing downwards
         # - palm facing the object and wall
         self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.23, 0, -0.14]),  # 23 cm above object, 15 cm behind
+            tra.translation_matrix([-0.23, 0, -0.15]),  # 23 cm above object, 15 cm behind
             tra.concatenate_matrices(
                 tra.rotation_matrix(
                     math.radians(0.), [1, 0, 0]),
@@ -231,14 +231,14 @@ class RBOHandP24WAM(RBOHand2):
                                                                        'max_orientation_deltas': [0, 0, 0.001]
                                                                        })
 
-        self['wall_grasp']['object']['pre_grasp_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
-                                                                     'max_position_deltas': [0.01, 0.01, 0.01],
+        self['wall_grasp']['object']['pre_grasp_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.02],
+                                                                     'max_position_deltas': [0.01, 0.01, 0.02],
                                                                      'min_orientation_deltas': [0, 0, -0.17],
                                                                      'max_orientation_deltas': [0, 0, 0.17]
                                                                      })
 
-        self['wall_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
-                                                                     'max_position_deltas': [0.01, 0.01, 0.01],
+        self['wall_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.02],
+                                                                     'max_position_deltas': [0.01, 0.01, 0.02],
                                                                      'min_orientation_deltas': [0, 0, -0.17],
                                                                      'max_orientation_deltas': [0, 0, 0.17]
                                                                      })
