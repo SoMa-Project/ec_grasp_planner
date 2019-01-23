@@ -212,6 +212,8 @@ class RBOHandO2WAM(RBOHandP24WAM):
                                 [0, 1, 0]))
 
 
+
+
 #TODO: this needs to be adapted similar to match the frames above!
 #The map is now 3d and the frame definitions changed.
 class RBOHand2Kuka(RBOHand2):
@@ -309,3 +311,6 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                     tra.rotation_matrix(                #this makes the fingers point downwards
                         math.radians(0.0), [0, 0, 1]),
             ))
+class RBOHand10_strainSensorWAM(RBOHandP24_pulpyWAM):
+    def __init__(self, **kwargs):
+        RBOHandP24_pulpyWAM.__init__(self, **kwargs)
