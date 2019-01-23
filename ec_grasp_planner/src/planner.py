@@ -454,8 +454,9 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration=hand_closing_time))
 
     # 5. Rotate hand after closing and before lifting it up relative to current hand pose
-    control_sequence.append(ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate',
-                                                     name='PostGraspRotate', goal_is_relative='1'))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate',
+                                                     name='PostGraspRotate', goal_is_relative='1',
+                                                     ))
 
     # 5b. Switch when hand rotated
     control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp_1', controller='PostGraspRotate',

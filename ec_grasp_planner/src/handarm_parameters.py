@@ -210,15 +210,15 @@ class RBOHandP24WAM(RBOHand2):
                 tra.rotation_matrix(
                     math.radians(0.), [1, 0, 0]),
                 tra.rotation_matrix(
-                    math.radians(15.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                    math.radians(30.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
                 tra.rotation_matrix(  # this makes the fingers point downwards
                     math.radians(0.0), [0, 0, 1]),
             ))
 
         # first motion after grasp, in hand palm frame
         self['corner_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.05, 0.0, 0.0]),  # nothing right now
-            tra.rotation_matrix(math.radians(-18.0),
+            tra.translation_matrix([-0.01, 0.0, 0.0]),  # nothing right now
+            tra.rotation_matrix(math.radians(-12.0),
                                 [0, 1, 0]))
 
         # drop configuration - this is system specific!
@@ -232,7 +232,7 @@ class RBOHandP24WAM(RBOHand2):
         self['corner_grasp']['object']['down_dist'] = 0.25
         self['corner_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.09])  # first value: rotational, second translational
-        self['corner_grasp']['object']['slide_velocity'] = np.array([0.125, 0.30])  # np.array([0.125, 0.12])
+        self['corner_grasp']['object']['slide_velocity'] = np.array([0.125, 0.20])  # np.array([0.125, 0.12])
         self['corner_grasp']['object']['wall_force'] = 12.0
 
 
