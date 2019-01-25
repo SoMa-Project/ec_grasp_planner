@@ -210,6 +210,9 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
 class KUKA(BaseHandArm):
     def __init__(self, **kwargs):
         super(KUKA, self).__init__()
+        self['recovery_speed'] = 0.05
+        self['recovery_duration'] = 5
+        self['recovery_placement_force'] = 2.5
 
 
 class RBOHandO2KUKA(KUKA):

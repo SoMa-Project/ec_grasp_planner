@@ -3,7 +3,7 @@ import math
 import hatools.components as ha
 from grasp_success_estimator import RESPONSES
 
-def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, grasp_type):
+def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, grasp_type, handarm_type):
 
     object_type = chosen_object['type']
     # Get the relevant parameters for hand object combination
@@ -19,33 +19,39 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     success_estimator_timeout = handarm_params['success_estimator_timeout']
 
     # Up speed is positive because it is defined on the world frame
-    up_twist = np.array([0, 0, up_speed, 0, 0, 0])
+    up_world_twist = np.array([0, 0, up_speed, 0, 0, 0])
+
+    # Up speed is negative because it is defined on the EE frame
+    up_EE_twist = np.array([0, 0, -up_speed, 0, 0, 0])
 
     # assemble controller sequence
     control_sequence = []
 
     # 1. Lift upwards
-    control_sequence.append(ha.CartesianVelocityControlMode(up_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="world"))
- 
-    # 1b. Switch after half the lift time
-    control_sequence.append(ha.TimeSwitch('GoUp_1', 'EstimationMassMeasurement', duration = lift_time/2))
+    if grasp_type == 'SurfaceGrasp':
+        control_sequence.append(ha.CartesianVelocityControlMode(up_EE_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="EE"))
+    elif grasp_type == 'WallGrasp':
+        control_sequence.append(ha.CartesianVelocityControlMode(up_world_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="world"))
+    
+    # 1b. Switch after the lift time
+    control_sequence.append(ha.TimeSwitch('GoUp_1', 'EstimationMassMeasurement', duration = lift_time))
 
     # 2. Measure the mass again and estimate number of grasped objects (grasp success estimation)
     control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
 
     # 2b. Switches after estimation measurement was done
-    target_cm_okay = 'GoUp_2'
+    target_cm_okay = 'GoDropOff'
 
     # 2b.1 No object was grasped => go to failure mode.
     target_cm_estimation_no_object = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_NO_OBJECT, default=target_cm_okay)
-    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_estimation_no_object,
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', 'softhand_open_after_failure',
                                               ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
                                               goal=np.array([RESPONSES.ESTIMATION_RESULT_NO_OBJECT.value]),
                                               ))
 
     # 2b.2 More than one object was grasped => failure
     target_cm_estimation_too_many = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_TOO_MANY, default=target_cm_okay)
-    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_estimation_too_many,
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', 'softhand_open_after_failure',
                                               ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
                                               goal=np.array([RESPONSES.ESTIMATION_RESULT_TOO_MANY.value]),
                                               ))
@@ -69,6 +75,12 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     # 2b.6 There is no special switch for unknown error response (estimator signals ESTIMATION_RESULT_UNKNOWN_FAILURE)
     #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
 
+    if "ClashHand" in handarm_type:
+        # Load the proper params from handarm_parameters.py
+        # Replace the BlockingJointControlMode with the CLASH hand control mode
+        control_sequence.append(ha.BlockJointControlMode(name='softhand_open_after_failure'))
+    else:
+        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_after_failure', synergy = 1))
 
     # 3. After estimation measurement control modes.
     extra_failure_cms = set()
@@ -80,21 +92,21 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     for cm in extra_failure_cms:
         if cm.startswith('failure_rerun'):
             # 3.1 Failure control mode representing grasping failure, which might be corrected by re-running the plan.
+            control_sequence.append(ha.TimeSwitch('softhand_open_after_failure', cm, duration=0.5))
             control_sequence.append(ha.BlockJointControlMode(name=cm))
         if cm.startswith('failure_replan'):
             # 3.2 Failure control mode representing grasping failure, which can't be corrected and requires to re-plan.
+            control_sequence.append(ha.TimeSwitch('softhand_open_after_failure', cm, duration=0.5))
             control_sequence.append(ha.BlockJointControlMode(name=cm))
-
-    # 3.3 Success control mode. Lift hand even further
-    control_sequence.append(ha.CartesianVelocityControlMode(up_twist, controller_name = 'GoUpHTransform', name = target_cm_okay, reference_frame="world"))
- 
-    # 3b. Switch after half the lift time
-    control_sequence.append(ha.TimeSwitch(target_cm_okay, 'GoDropOff', duration = lift_time/2))
     
     # 4. Go above the object - Pregrasp
-    control_sequence.append(ha.InterpolatedHTransformControlMode(drop_off_pose, controller_name = 'GoToDropPose', goal_is_relative='0', name = 'GoDropOff'))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(drop_off_pose, controller_name = 'GoToDropPose', goal_is_relative='0', name = target_cm_okay))
  
     # 4b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('GoDropOff', 'PlaceInIFCO', controller = 'GoToDropPose', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch(target_cm_okay, 'PlaceInIFCO', controller = 'GoToDropPose', epsilon = '0.01'))
+
+    # 4c. Switch to recovery if no plan is found
+    control_sequence.append(ha.RosTopicSwitch(target_cm_okay, 'recovery_NoPlanFound' + grasp_type, ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
 
     return control_sequence

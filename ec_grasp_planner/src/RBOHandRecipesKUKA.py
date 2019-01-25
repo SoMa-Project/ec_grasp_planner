@@ -42,10 +42,13 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
 
     # 1. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pregrasp_transform, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'PreGrasp'))
- 
+
     # 1b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller = 'GoAboveObject', epsilon = '0.01'))
     
+    # 1c. Switch to finished if no plan is found
+    control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'finished', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
     # 2. Go to gravity compensation 
     control_sequence.append(ha.BlockJointControlMode(name = 'PrepareForMassMeasurement'))
 
@@ -93,10 +96,13 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
                                                  goal_is_relative = '1',
                                                  frame_id = 'world'))
 
+    # 4c. Switch to recovery if the cartesian velocity fails due to joint limits
+    control_sequence.append(ha.RosTopicSwitch('GoDown', 'recovery_GoDownSG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
     # 5. Lift upwards so the hand can inflate
     control_sequence.append(
         ha.CartesianVelocityControlMode(up_twist, controller_name='CorrectiveLift', name="LiftHand",
-                                             reference_frame="world"))
+                                             reference_frame="EE"))
 
     # the 1 in softhand_close_1 represents a surface grasp. This way the strategy is encoded in the HA.
     mode_name_hand_closing = 'softhand_close_1_0'
@@ -169,6 +175,9 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # 1b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller = 'GoAboveObject', epsilon = '0.01'))
     
+    # 1c. Switch to finished if no plan is found
+    control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'finished', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
     # 2. Go to gravity compensation 
     control_sequence.append(ha.BlockJointControlMode(name = 'PrepareForMassMeasurement'))
 
@@ -216,6 +225,9 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  goal_is_relative='1',
                                                  frame_id='world'))
 
+    # 4c. Switch to recovery if the cartesian velocity fails due to joint limits
+    control_sequence.append(ha.RosTopicSwitch('GoDown', 'recovery_GoDownWG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
     # 5. Lift upwards so the hand doesn't slide on table surface
     control_sequence.append(
         ha.CartesianVelocityControlMode(up_twist, controller_name='Lift1', name="LiftHand",
@@ -235,6 +247,9 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame))
+
+    # 6c. Switch to recovery if the cartesian velocity fails due to joint limits
+    control_sequence.append(ha.RosTopicSwitch('SlideToWall', 'recovery_SlideWG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 7. Go back a bit to allow the hand to inflate
     control_sequence.append(

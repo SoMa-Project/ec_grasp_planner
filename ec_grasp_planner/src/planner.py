@@ -42,6 +42,7 @@ import ClashHandRecipes
 import TransportRecipesWAM
 import TransportRecipesKUKA
 import PlacementRecipes
+import RecoveryRecipesKUKA
 import multi_object_params as mop
 
 markers_rviz = MarkerArray()
@@ -318,9 +319,11 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
     elif grasp_type == 'WallGrasp':  
         wall_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))      
         grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_wall_grasp(chosen_object, wall_frame, handarm_params, pre_grasp_pose)
+        recovery_recipe = RecoveryRecipesKUKA.get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_frame)
         rviz_frames.append(wall_frame)       
     elif grasp_type == 'SurfaceGrasp':
         grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_surface_grasp(chosen_object, handarm_params, pre_grasp_pose)
+        recovery_recipe = RecoveryRecipesKUKA.get_recovery_recipe(handarm_params, handarm_type, grasp_type)
     else:
         raise ValueError("Unknown grasp type: {}".format(grasp_type))
 
@@ -328,9 +331,9 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
         transport_recipe = TransportRecipesWAM.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
         return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + transport_recipe), rviz_frames
     elif robot_name == 'KUKA':
-        transport_recipe = TransportRecipesKUKA.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
-        placement_recipe = PlacementRecipes.get_placement_recipe(chosen_object, handarm_params, grasp_type, handarm_type)
-        return cookbook.sequence_of_modes_and_switches(grasping_recipe + transport_recipe + placement_recipe), rviz_frames
+        transport_recipe = TransportRecipesKUKA.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type, handarm_type)
+        placement_recipe = PlacementRecipes.get_placement_recipe(handarm_params, handarm_type)
+        return cookbook.sequence_of_modes_and_switches(grasping_recipe + transport_recipe + placement_recipe + recovery_recipe), rviz_frames
     else:
         raise ValueError("No robot named {}".format(robot_name))
 
