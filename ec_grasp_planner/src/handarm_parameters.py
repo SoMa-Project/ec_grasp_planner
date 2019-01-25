@@ -656,10 +656,10 @@ class ClashHandKUKA(KUKA):
         self['SurfaceGrasp']['object']['lift_duration'] = 8
 
         # default hand close value
-        self['SurfaceGrasp']['object']['goal_close_'] = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+        self['SurfaceGrasp']['object']['goal_close'] = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
 
         # default hand preshape value
-        self['SurfaceGrasp']['object']['goal_preshape_'] = np.array([0.05, 0.05, 0.05, 0.05, 0.05, 0.05])
+        self['SurfaceGrasp']['object']['goal_preshape'] = np.array([0.05, 0.05, 0.05, 0.05, 0.05, 0.05])
 
         #####################################################################################
         # below are parameters for wall grasp 
@@ -726,10 +726,10 @@ class ClashHandKUKA(KUKA):
         self['WallGrasp']['object']['lift_duration'] = 8  
 
         # default hand close value
-        self['WallGrasp']['object']['goal_close_'] = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+        self['WallGrasp']['object']['goal_close'] = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
 
         # default hand preshape value
-        self['WallGrasp']['object']['goal_preshape_'] = np.array([0.05, 0.05, 0.05, 0.05, 0.05, 0.05])
+        self['WallGrasp']['object']['goal_preshape'] = np.array([0.05, 0.05, 0.05, 0.05, 0.05, 0.05])
 
         # Object dependent parameters example
 
