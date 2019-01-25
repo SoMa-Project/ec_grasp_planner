@@ -388,13 +388,17 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
         goal_traj = np.array(alternative_behavior['pre_grasp'].trajectory_steps)
         print(goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
-        control_sequence.append(ha.InterpolatedJointController(goal_traj, name='PreGrasp', v_max=pre_grasp_velocity))
+        control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
+                                                    goal_is_relative='0',
+                                                    v_max=pre_grasp_velocity))
+
+            #ha.InterpolatedJointController(goal_traj, name='PreGrasp', v_max=pre_grasp_velocity))
     else:
         # we can use the original motion
         control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose,
+                                                                     name='PreGrasp',
                                                                      controller_name='GoAboveObject',
                                                                      goal_is_relative='0',
-                                                                     name='PreGrasp',
                                                                      v_max=pre_grasp_velocity))
 
     # 1b. Switch when hand reaches the goal pose
@@ -431,7 +435,9 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         # Go down onto the object (joint controller + relative world frame motion)
         goal_traj = np.array(alternative_behavior['go_down'].trajectory_steps)
         print(goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
-        control_sequence.append(ha.InterpolatedJointController(goal_traj, name='GoDown', v_max=go_down_velocity))
+        control_sequence.append(ha.JointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
+                                                    goal_is_relative='0',
+                                                    v_max=pre_grasp_velocity))
 
         # Relative motion that ensures that the actual force/torque threshold is reached
         control_sequence.append(
