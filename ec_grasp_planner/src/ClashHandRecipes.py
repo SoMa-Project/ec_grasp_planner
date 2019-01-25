@@ -3,7 +3,16 @@ from tf import transformations as tra
 import hatools.components as ha
 from grasp_success_estimator import RESPONSES
 
+# / ************************************************************************************************************************* /
+# General way of calling clash hand controller with behaviour specifing the action to be called:
+    #    control_sequence.append(ha.ros_CLASHhandController(goal=goal, behaviour=behaviour, in_deg=in_deg, velocity=velocity, 
+    #             wait=wait, thumb=thumb, diff=diff, force=force, stiffness=stiffness, proximity_reflex=proximity_reflex, 
+    #             contact_torque_threshold=contact_torque_threshold, param_name=param_name, param_value=param_value))
+# / ************************************************************************************************************************* /
+
 def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
+
+    
 
     object_type = chosen_object['type']
     # Get the relevant parameters for hand object combination
@@ -30,13 +39,16 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # Slow Up speed is also positive because it is defined on the world frame
     up_twist = np.array([0, 0, up_speed, 0, 0, 0])
 
+    # Get grasp specific params from handarm_parameters
+    goal_preshape = params['goal_preshape']
+    goal_close = params['goal_close']
+        
+
     # assemble controller sequence
     control_sequence = []
 
     # 0. Trigger pre-shaping the hand and/or pretension
-    # Replace the BlockJointControlMode with the CLASH hand control mode
-    # Pass the required parameters and add them in handarm_parameters.py
-    control_sequence.append(ha.BlockJointControlMode(name = 'softhand_preshape'))
+    control_sequence.append(ha.ros_CLASHhandController(goal=goal_preshape, behaviour='goto_pos',  name='softhand_preshape'))
     
     # 0b. Time to trigger pre-shape
     control_sequence.append(ha.TimeSwitch('softhand_preshape', 'PreGrasp', duration = hand_closing_time))
@@ -101,9 +113,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     control_sequence.append(ha.RosTopicSwitch('GoDown', 'recovery_GoDownSG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 5. Call hand controller
-    # Replace the BlockJointControlMode with the CLASH hand control mode
-    # Pass the required parameters and add them in handarm_parameters.py
-    control_sequence.append(ha.BlockJointControlMode(name = 'softhand_close'))
+    control_sequence.append(ha.ros_CLASHhandController(goal=goal_close, behaviour='goto_pos',  name='softhand_close'))
 
     # 5b. Switch when hand closing time ends
     control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp_1', duration = hand_closing_time))
@@ -145,6 +155,10 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     success_estimator_timeout = handarm_params['success_estimator_timeout']
 
+    # Get grasp specific params from handarm_parameters
+    goal_preshape = params['goal_preshape']
+    goal_close = params['goal_close']
+
     # Set the twists to use TRIK controller with
 
     # Down speed is negative because it is defined on the world frame
@@ -158,9 +172,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     control_sequence = []
 
     # 0 trigger pre-shaping the hand and/or pretension
-    # Replace the BlockJointControlMode with the CLASH hand control mode
-    # Pass the required parameters and add them in handarm_parameters.py
-    control_sequence.append(ha.BlockJointControlMode(name = 'softhand_preshape'))
+    control_sequence.append(ha.ros_CLASHhandController(goal=goal_preshape, behaviour='goto_pos', name='softhand_preshape'))
 
     # 0b. Time to trigger pre-shape
     control_sequence.append(ha.TimeSwitch('softhand_preshape', 'PreGrasp', duration = hand_closing_time))
@@ -247,18 +259,15 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # 6c. Switch to recovery if the cartesian velocity fails due to joint limits
     control_sequence.append(ha.RosTopicSwitch('SlideToWall', 'recovery_SlideWG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
-    # 7. Go back a bit to allow the hand to inflate
+    # 7. Go back a bit to allow the hand to close
     control_sequence.append(
         ha.CartesianVelocityControlMode(pre_grasp_twist, controller_name='SlideBackFromWall',
                                              name="SlideBackFromWall", reference_frame="EE"))
     # 7b. We switch after a short time
     control_sequence.append(ha.TimeSwitch('SlideBackFromWall', 'softhand_close', duration=pre_grasp_rotate_time))
-    
 
     # 8. Maintain contact while closing the hand
-    # Replace the BlockJointControlMode with the CLASH hand control mode
-    # Pass the required parameters and add them in handarm_parameters.py
-    control_sequence.append(ha.BlockJointControlMode(name = 'softhand_close'))
+    control_sequence.append(ha.ros_CLASHhandController(goal=goal_close, behaviour='goto_pos',  name='softhand_close'))
 
     # 8b. Switch when hand closing duration ends
     control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=hand_closing_time))

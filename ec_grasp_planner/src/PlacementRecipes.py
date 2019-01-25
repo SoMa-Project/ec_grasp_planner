@@ -11,7 +11,7 @@ def get_placement_recipe(handarm_params, handarm_type):
     # The twists are defined on the world frame
     down_twist = np.array([0, 0, -place_speed, 0, 0, 0]); 
     up_twist =  np.array([0, 0, place_speed, 0, 0, 0]);
- 
+
     # assemble controller sequence
     control_sequence = []
 
@@ -24,8 +24,9 @@ def get_placement_recipe(handarm_params, handarm_type):
     # 2. Release SKU
     if "ClashHand" in handarm_type:
         # Load the proper params from handarm_parameters.py
-        # Replace the BlockingJointControlMode with the CLASH hand control mode
-        control_sequence.append(ha.BlockJointControlMode(name  = 'softhand_open'))
+        # Open hand goal
+        goal_open_ = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        control_sequence.append(ha.ros_CLASHhandController(goal=goal_open_, behaviour='goto_pos',  name='softhand_open'))
     else:
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = 1))
 
