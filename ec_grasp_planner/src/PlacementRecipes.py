@@ -1,7 +1,7 @@
 import numpy as np
 import hatools.components as ha
 
-def get_placement_recipe(chosen_object, handarm_params, grasp_type, handarm_type):
+def get_placement_recipe(handarm_params, handarm_type):
 
     place_time = handarm_params['place_duration']
     down_speed = handarm_params['place_down_speed']
