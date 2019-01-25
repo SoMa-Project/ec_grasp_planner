@@ -377,6 +377,19 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # # 1b. Switch when hand reaches the goal pose
     # control_sequence.append(ha.FramePoseSwitch('Pre_preGrasp', 'PreGrasp', controller='GoAboveIFCO', epsilon='0.01'))
 
+    # TODO get rid of this workaround since we actually have joint space planning capabilities
+    initial_jointConf = params['initial_goal']
+
+    # 0. initial position above ifco
+    control_sequence.append(
+        ha.JointControlMode(initial_jointConf, name='InitialJointConfig', controller_name='initialJointCtrl'))
+
+    # 0b. Joint config switch
+    control_sequence.append(ha.JointConfigurationSwitch('InitialJointConfig', 'softhand_preshape_1_1',
+                                                        controller='initialJointCtrl', epsilon=str(math.radians(7.))))
+
+    # #################################
+
     # 0. trigger pre-shaping the hand (if there is a synergy). The first 1 in the name represents a surface grasp.
     control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_1_1'))
     control_sequence.append(ha.TimeSwitch('softhand_preshape_1_1', 'PreGrasp',
@@ -386,7 +399,9 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
 
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
-        goal_traj = np.array(alternative_behavior['pre_grasp'].trajectory_steps)
+        pre_grasp_velocity = params['pre_grasp_joint_velocity']
+        goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
+
         print(goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
         control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
@@ -433,11 +448,14 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     if alternative_behavior is not None and 'go_down' in alternative_behavior:
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
         # Go down onto the object (joint controller + relative world frame motion)
-        goal_traj = np.array(alternative_behavior['go_down'].trajectory_steps)
-        print(goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
+
+        go_down_velocity = params['pre_grasp_joint_velocity']
+        goal_traj = alternative_behavior['go_down'].get_trajectory()
+
+        print("GOAL_TRAJ", goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
         control_sequence.append(ha.JointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
                                                     goal_is_relative='0',
-                                                    v_max=pre_grasp_velocity))
+                                                    v_max=go_down_velocity))
 
         # Relative motion that ensures that the actual force/torque threshold is reached
         control_sequence.append(

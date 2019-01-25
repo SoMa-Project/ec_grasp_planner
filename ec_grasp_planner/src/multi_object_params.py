@@ -38,6 +38,9 @@ class AlternativeBehavior:
         for i in range(0, len(feasibility_check_result.trajectory), self.number_of_joints):
             self.trajectory_steps.append(feasibility_check_result.trajectory[i:i+self.number_of_joints])
 
+    def get_trajectory(self):
+        return np.transpose(np.array(self.trajectory_steps))
+
 
 class multi_object_params:
     def __init__(self, file_name="object_param.yaml"):
@@ -248,9 +251,13 @@ class multi_object_params:
 
             post_grasp_pose = params['post_grasp_transform'].dot(go_down_pose)  # TODO it would be better to allow relative motion as goal frames
 
-            checked_motions = ["pre_grasp", "go_down"]#, "post_grasp_rot"]  # TODO what about remaining motions? (see wallgrasp)
+            checked_motions = ["pre_grasp", "go_down"]#, "post_grasp_rot"] ,go_up, go_drop_off  # TODO what about remaining motions? (see wallgrasp)
 
             goals = [pre_grasp_pose, go_down_pose]#, post_grasp_pose]
+
+            # override initial robot configuration
+            # TODO also check gotToView -> params['initial_goal'] (requires forward kinematics, or change to op-space)
+            curr_start_config = params['initial_goal']
 
             print("ALLOWED COLLISIONS:", "box_" + str(current_object_idx), 'bottom')
 

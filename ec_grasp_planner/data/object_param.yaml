@@ -58,7 +58,7 @@
 
   netbag:
     SurfaceGrasp:
-      success: 0.0
+      success: 0.25
       min: [-0.14, -0.1]
       max: [0.14, 0.05]
       reactions: 

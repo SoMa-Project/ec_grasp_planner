@@ -147,6 +147,10 @@ class RBOHandP24WAM(RBOHand2):
         # time of soft hand closing
         self['surface_grasp']['object']['hand_closing_duration'] = 5
 
+        # Workaround to prevent joint limits (don't start at view position) TODO get rid of that!
+        self['surface_grasp']['object']['initial_goal'] = np.array(
+            [0.387987, 0.638624, -0.361978, 2.10522, -0.101053, -0.497832, -0.487216])
+
         # time of soft hand closing
         self['surface_grasp']['object']['down_dist'] = 0.35
         self['surface_grasp']['object']['up_dist'] = 0.409
@@ -154,7 +158,12 @@ class RBOHandP24WAM(RBOHand2):
             [0.125, 0.09])  # first value: rotational, second translational
         self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
 
+        # maximal joint velocities in case a JointController is used (e.g. alternative behavior was genererated)
+        self['surface_grasp']['object']['pre_grasp_joint_velocity'] = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1])  #np.ones(7) * 0.2
+        self['surface_grasp']['object']['go_down_joint_velocity'] = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1])  #np.ones(7) * 0.2
+
         # defines the manifold in which alternative goal poses are sampled during kinematic checks
+        # for object specific ones look further down.
         self['surface_grasp']['object']['pre_grasp_manifold'] = Manifold({'min_position_deltas': [-0.05, -0.05, -0.05],#[-0.01, -0.01, -0.01],
                                                                           'max_position_deltas': [0.05, 0.05, 0.05],#[0.01, 0.01, 0.01],
                                                                           'min_orientation_deltas': [0, 0, 0],#-1.5],
@@ -166,7 +175,24 @@ class RBOHandP24WAM(RBOHand2):
                                                                         'min_orientation_deltas': [0, 0, 0],
                                                                         'max_orientation_deltas': [0, 0, 0]
                                                                        })
-        # TODO add more Manifolds
+
+        self['surface_grasp']['object']['post_grasp_rot_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.04, -0.05],
+                                                                               'max_position_deltas': [0.06, 0.04, 0.01],
+                                                                               'min_orientation_deltas': [0, 0, 0],
+                                                                               'max_orientation_deltas': [0, 0, 0]
+                                                                              })
+
+        self['surface_grasp']['object']['go_up_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.04, -0.05],
+                                                                      'max_position_deltas': [0.06, 0.04, 0.01],
+                                                                      'min_orientation_deltas': [0, 0, 0],
+                                                                      'max_orientation_deltas': [0, 0, 0]
+                                                                      })
+
+        self['surface_grasp']['object']['go_drop_off_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.04, -0.05],
+                                                                            'max_position_deltas': [0.06, 0.04, 0.01],
+                                                                            'min_orientation_deltas': [0, 0, 0],
+                                                                            'max_orientation_deltas': [0, 0, 0]
+                                                                            })
 
         #####################################################################################
         # below are parameters for wall grasp with P24 fingers (standard RBO hand)
@@ -223,6 +249,9 @@ class RBOHandP24WAM(RBOHand2):
             [0.125, 0.09])  # first value: rotational, second translational
         self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.30])  # np.array([0.125, 0.12])
         self['wall_grasp']['object']['wall_force'] = 12.0
+
+        # maximal joint velocities in case a JointController is used (e.g. alternative behavior was genererated)
+        self['wall_grasp']['object']['max_joint_velocity'] = np.ones(7) * 0.2
 
         # defines the manifold in which alternative goal poses are sampled during feasibility checks
         self['wall_grasp']['object']['init_joint_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
@@ -383,6 +412,19 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
             # tra.translation_matrix([-0.03, 0.0, 0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
             tra.translation_matrix([-0.06, 0.0, 0.0]),
             tra.rotation_matrix(math.radians(35.0), [0, 1, 0]))  # <-- best so far
+
+
+        self['surface_grasp']['mango']['pre_grasp_manifold'] = Manifold({'min_position_deltas': [-0.05, -0.05, -0.05],#[-0.01, -0.01, -0.01],
+                                                                          'max_position_deltas': [0.05, 0.05, 0.05],#[0.01, 0.01, 0.01],
+                                                                          'min_orientation_deltas': [0, 0, -1.5],#-1.5],
+                                                                          'max_orientation_deltas': [0, 0, 1.5],#1.5]
+                                                                         })
+
+        self['surface_grasp']['mango']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.04, -0.05],
+                                                                       'max_position_deltas': [0.06, 0.04, 0.01],
+                                                                       'min_orientation_deltas': [0, 0, -1.5],
+                                                                       'max_orientation_deltas': [0, 0, 1.5]
+                                                                       })
 
         self['wall_grasp']['cucumber'] = self['wall_grasp']['object'].copy()
         self['wall_grasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
