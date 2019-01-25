@@ -238,12 +238,19 @@ class multi_object_params:
             # hand pose above object
             pre_grasp_pose = goal_.dot(params['pregrasp_transform'])
 
+            # down_dist = params['down_dist']  #  dist lower than ifco bottom: behavior of the high level planner
+            # dist = z difference to object centroid (both transformations are w.r.t. to world frame
+            # (more realistic behavior since we have to touch the object for a successful grasp)
+            down_dist = pre_grasp_pose[2, 3] - object_params['frame'][2, 3]  # get z-translation difference
+
             # goal pose for go down movement
-            go_down_pose = tra.translation_matrix([0, 0, -params['down_dist']]).dot(pre_grasp_pose)
+            go_down_pose = tra.translation_matrix([0, 0, -down_dist]).dot(pre_grasp_pose)
 
-            checked_motions = ["pre_grasp", "go_down"]
+            post_grasp_pose = params['post_grasp_transform'].dot(go_down_pose)  # TODO it would be better to allow relative motion as goal frames
 
-            goals = [pre_grasp_pose, go_down_pose]
+            checked_motions = ["pre_grasp", "go_down"]#, "post_grasp_rot"]  # TODO what about remaining motions? (see wallgrasp)
+
+            goals = [pre_grasp_pose, go_down_pose]#, post_grasp_pose]
 
             print("ALLOWED COLLISIONS:", "box_" + str(current_object_idx), 'bottom')
 
@@ -253,19 +260,23 @@ class multi_object_params:
                 # no collisions are allowed during going to pre_grasp pose
                 'pre_grasp': [],
 
-                # ignore=True to allow touching with unsensorized parts (e.g. the palm)
-                'go_down': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, ignored_collision=True, # TOD remove ignore collision once the new interface is implemented
-                                             box_id=current_object_idx, terminate_on_collision=True,
-                                             required_collision=True),
+                'go_down': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
+                                             box_id=current_object_idx, terminating=True),
                             AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                             constraint_name='bottom', terminate_on_collision=False)],
+                                             constraint_name='bottom', terminating=False)],
+
+                # TODO also account for the additional object in a way?
+                'post_grasp_rot': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
+                                             box_id=current_object_idx, terminating=True),
+                                   AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                             constraint_name='bottom', terminating=False)]
             }
 
-        elif strategy == "WallGrasp":
+        elif strategy == "WallGrasp":  # TODO add to planner.py
 
-            blocked_ecs = [0, 2, 3, 4] # TODO remove
-            if current_ec_index in blocked_ecs:
-                return 0
+            #blocked_ecs = [0, 2, 3, 4] # TODO remove
+            #if current_ec_index in blocked_ecs:
+            #    return 0
 
             if object['type'] in handarm_params['wall_grasp']:
                 params = handarm_params['wall_grasp'][object['type']]
@@ -319,27 +330,27 @@ class multi_object_params:
                 'pre_grasp': [],
 
                 # Only allow touching the bottom of the ifco
-                'go_down': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, ignored_collision=True,
-                                             constraint_name='bottom', terminate_on_collision=False),
+                'go_down': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
+                                             terminating=False),
                             ],
 
-                'lift_hand': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, ignored_collision=True,
-                                               constraint_name='bottom', terminate_on_collision=False),
+                'lift_hand': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
+                                               terminating=False),
                               ],
 
                 # TODO also allow all other obejcts to be touched during sliding motion
-                'slide_to_wall': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, ignored_collision=True,
-                                                   box_id=current_object_idx, terminate_on_collision=False,
-                                                   required_collision=True),
-
-                                  # TODO is this required?
-                                  AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, ignored_collision=True,
-                                                   constraint_name='bottom', terminate_on_collision=False),
+                'slide_to_wall': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=current_object_idx,
+                                                   erminating=False,
+                                                   ),
 
                                   AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
                                                    constraint_name=multi_object_params.get_matching_ifco_wall(
                                                        ifco_in_base_transform, ec_frame),
-                                                   terminate_on_collision=True),
+                                                   terminating=True),
+
+                                  # TODO is this one required?
+                                  AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
+                                                   terminating=False),
                                   ],
             }
 
