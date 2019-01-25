@@ -319,8 +319,8 @@ class multi_object_params:
 
             # override initial robot configuration
             # TODO also check gotToView -> params['initial_goal'] (requires forward kinematics, or change to op-space)
-            #curr_start_config = params['initial_goal']
-            curr_start_config = [0.457929, 0.295013, -0.232804, 2.0226, 0.1, 0.1, 0.1]
+            curr_start_config = params['initial_goal']
+            #curr_start_config = [0.457929, 0.295013, -0.232804, 2.0226, 0.1, 0.1, 0.1]
 
             allowed_collisions = {
 
@@ -340,7 +340,7 @@ class multi_object_params:
 
                 # TODO also allow all other obejcts to be touched during sliding motion
                 'slide_to_wall': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=current_object_idx,
-                                                   erminating=False,
+                                                   terminating=False,
                                                    ),
 
                                   AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
