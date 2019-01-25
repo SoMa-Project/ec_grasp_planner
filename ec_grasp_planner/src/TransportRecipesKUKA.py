@@ -15,6 +15,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     lift_time = params['lift_duration']
     up_speed = params['up_speed']
     drop_off_pose = handarm_params['drop_off_pose']
+    view_joint_config = handarm_params['view_joint_config']
 
     success_estimator_timeout = handarm_params['success_estimator_timeout']
 
@@ -75,13 +76,6 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     # 2b.6 There is no special switch for unknown error response (estimator signals ESTIMATION_RESULT_UNKNOWN_FAILURE)
     #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
 
-    if "ClashHand" in handarm_type:
-        # Load the proper params from handarm_parameters.py
-        # Replace the BlockingJointControlMode with the CLASH hand control mode
-        control_sequence.append(ha.BlockJointControlMode(name='softhand_open_after_failure'))
-    else:
-        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_after_failure', synergy = 1))
-
     # 3. After estimation measurement control modes.
     extra_failure_cms = set()
     if target_cm_estimation_no_object != target_cm_okay:
@@ -90,20 +84,34 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
         extra_failure_cms.add(target_cm_estimation_too_many)
 
     for cm in extra_failure_cms:
-        if cm.startswith('failure_rerun'):
-            # 3.1 Failure control mode representing grasping failure, which might be corrected by re-running the plan.
-            control_sequence.append(ha.TimeSwitch('softhand_open_after_failure', cm, duration=0.5))
-            control_sequence.append(ha.BlockJointControlMode(name=cm))
-        if cm.startswith('failure_replan'):
-            # 3.2 Failure control mode representing grasping failure, which can't be corrected and requires to re-plan.
-            control_sequence.append(ha.TimeSwitch('softhand_open_after_failure', cm, duration=0.5))
-            control_sequence.append(ha.BlockJointControlMode(name=cm))
+        # Failure control modes representing grasping failure, which might be corrected by re-running the plan or replanning. 
+        control_sequence.append(ha.TimeSwitch('softhand_open_after_failure', 'go_to_view_config', duration=0.5))
+
+        # 4. View config above ifco
+        control_sequence.append(ha.JointControlMode(view_joint_config, name='go_to_view_config', controller_name='viewJointCtrl'))
+
+        # 4b. Joint config switch
+        control_sequence.append(ha.JointConfigurationSwitch('go_to_view_config', cm, controller='viewJointCtrl', epsilon=str(math.radians(7.))))
+
+        # 4c. Switch if no plan was found
+        control_sequence.append(ha.RosTopicSwitch('go_to_view_config', cm, ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+        
+        # 5. Finish the plan
+        control_sequence.append(ha.BlockJointControlMode(name=cm))
+
+    if "ClashHand" in handarm_type:
+        # Load the proper params from handarm_parameters.py
+        # Replace the BlockingJointControlMode with the CLASH hand control mode
+        control_sequence.append(ha.BlockJointControlMode(name='softhand_open_after_failure'))
+    else:
+        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_after_failure', synergy = 1))
+        
     
     # 4. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(drop_off_pose, controller_name = 'GoToDropPose', goal_is_relative='0', name = target_cm_okay))
  
     # 4b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch(target_cm_okay, 'PlaceInIFCO', controller = 'GoToDropPose', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch(target_cm_okay, 'PlaceInTote', controller = 'GoToDropPose', epsilon = '0.01'))
 
     # 4c. Switch to recovery if no plan is found
     control_sequence.append(ha.RosTopicSwitch(target_cm_okay, 'recovery_NoPlanFound' + grasp_type, ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))

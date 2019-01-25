@@ -213,6 +213,7 @@ class KUKA(BaseHandArm):
         self['recovery_speed'] = 0.05
         self['recovery_duration'] = 5
         self['recovery_placement_force'] = 2.5
+        self['view_joint_config'] = np.array([0, 0, 0, 0, 0, 0, 0])
 
 
 class RBOHandO2KUKA(KUKA):
@@ -228,7 +229,7 @@ class RBOHandO2KUKA(KUKA):
         # duration of placing the object
         self['place_duration'] = 5
 
-        self['place_down_speed'] = 0.05
+        self['place_speed'] = 0.05
 
         # This should be the same for all objects
         self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
