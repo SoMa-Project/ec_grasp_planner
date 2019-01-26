@@ -213,7 +213,7 @@ class KUKA(BaseHandArm):
         self['recovery_speed'] = 0.05
         self['recovery_duration'] = 5
         self['recovery_placement_force'] = 2.5
-        self['view_joint_config'] = np.array([0, 0, 0, 0, 0, 0, 0])
+        self['view_joint_config'] = np.array([-0.7, 0.9, 0, -0.7, 0, 0.9, 0])
 
 
 class RBOHandO2KUKA(KUKA):
@@ -224,7 +224,7 @@ class RBOHandO2KUKA(KUKA):
 
         self['mesh_file_scale'] = 0.1
 
-        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.29692, -0.57419, 0.16603]), tra.quaternion_matrix([0.6986, -0.68501, -0.11607, -0.171]))
         
         # duration of placing the object
         self['place_duration'] = 5
@@ -351,7 +351,7 @@ class PISAHandKUKA(KUKA):
     def __init__(self, **kwargs):
         super(PISAHandKUKA, self).__init__()
 
-        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.40392, -0.65228, 0.11258]), tra.quaternion_matrix([-0.6846, 0.72715, 0.018816, 0.047258]))
         
         # duration of placing the object
         self['place_duration'] = 5
@@ -478,7 +478,7 @@ class PISAGripperKUKA(KUKA):
 
         # Placement pose reachable for the PISA gripper
 
-        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.32804, -0.62733, 0.068286]), tra.quaternion_matrix([0.85531, -0.51811, -0.0023802, -0.0016251]))
 
         # duration of placing the object
         self['place_duration'] = 5
@@ -611,7 +611,7 @@ class ClashHandKUKA(KUKA):
 
         # Placement pose reachable for the CLASH hand
 
-        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
+        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.32804, -0.62733, 0.068286]), tra.quaternion_matrix([0.85531, -0.51811, -0.0023802, -0.0016251]))
 
         # duration of placing the object
         self['place_duration'] = 5
