@@ -88,7 +88,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
         control_sequence.append(ha.TimeSwitch('softhand_open_after_failure', 'go_to_view_config', duration=0.5))
 
         # 4. View config above ifco
-        control_sequence.append(ha.JointControlMode(view_joint_config, name='go_to_view_config', controller_name='viewJointCtrl'))
+        control_sequence.append(ha.PlanningJointControlMode(view_joint_config, name='go_to_view_config', controller_name='viewJointCtrl'))
 
         # 4b. Joint config switch
         control_sequence.append(ha.JointConfigurationSwitch('go_to_view_config', cm, controller='viewJointCtrl', epsilon=str(math.radians(7.))))

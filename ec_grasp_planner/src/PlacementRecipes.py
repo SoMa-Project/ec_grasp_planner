@@ -26,7 +26,7 @@ def get_placement_recipe(handarm_params, handarm_type):
         # Load the proper params from handarm_parameters.py
         # Open hand goal
         goal_open_ = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        control_sequence.append(ha.ros_CLASHhandController(goal=goal_open_, behaviour='goto_pos',  name='softhand_open'))
+        control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_open_, behaviour='GotoPos',  name='softhand_open'))
     else:
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = 1))
 
@@ -40,7 +40,7 @@ def get_placement_recipe(handarm_params, handarm_type):
     control_sequence.append(ha.TimeSwitch('get_out_of_tote', 'go_to_view_config', duration = place_time))
 
     # 4. View config above ifco
-    control_sequence.append(ha.JointControlMode(view_joint_config, name='go_to_view_config', controller_name='viewJointCtrl'))
+    control_sequence.append(ha.PlanningJointControlMode(view_joint_config, name='go_to_view_config', controller_name='viewJointCtrl'))
 
     # 4b. Joint config switch
     control_sequence.append(ha.JointConfigurationSwitch('go_to_view_config', 'finished', controller='viewJointCtrl', epsilon=str(math.radians(7.))))

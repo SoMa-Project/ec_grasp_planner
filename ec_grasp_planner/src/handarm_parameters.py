@@ -214,6 +214,10 @@ class KUKA(BaseHandArm):
         self['recovery_duration'] = 5
         self['recovery_placement_force'] = 2.5
         self['view_joint_config'] = np.array([-0.7, 0.9, 0, -0.7, 0, 0.9, 0])
+        # duration of placing the object
+        self['place_duration'] = 5
+
+        self['place_speed'] = 0.05
 
 
 class RBOHandO2KUKA(KUKA):
@@ -225,11 +229,6 @@ class RBOHandO2KUKA(KUKA):
         self['mesh_file_scale'] = 0.1
 
         self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.29692, -0.57419, 0.16603]), tra.quaternion_matrix([0.6986, -0.68501, -0.11607, -0.171]))
-        
-        # duration of placing the object
-        self['place_duration'] = 5
-
-        self['place_speed'] = 0.05
 
         # This should be the same for all objects
         self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
@@ -353,10 +352,6 @@ class PISAHandKUKA(KUKA):
 
         self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.40392, -0.65228, 0.11258]), tra.quaternion_matrix([-0.6846, 0.72715, 0.018816, 0.047258]))
         
-        # duration of placing the object
-        self['place_duration'] = 5
-
-        self['place_down_speed'] = 0.05
 
         ####################################################################################
         # Params that define the grasping controller
@@ -479,12 +474,6 @@ class PISAGripperKUKA(KUKA):
         # Placement pose reachable for the PISA gripper
 
         self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.32804, -0.62733, 0.068286]), tra.quaternion_matrix([0.85531, -0.51811, -0.0023802, -0.0016251]))
-
-        # duration of placing the object
-        self['place_duration'] = 5
-
-        self['place_down_speed'] = 0.05
-
 
         ####################################################################################
         # Params that define the grasping controller
@@ -613,13 +602,6 @@ class ClashHandKUKA(KUKA):
 
         self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.32804, -0.62733, 0.068286]), tra.quaternion_matrix([0.85531, -0.51811, -0.0023802, -0.0016251]))
 
-        # duration of placing the object
-        self['place_duration'] = 5
-
-        self['place_down_speed'] = 0.05
-
-
-
         ####################################################################################
         # CLASH hand specific params
         ####################################################################################
@@ -735,7 +717,7 @@ class ClashHandKUKA(KUKA):
 
         self['WallGrasp']['cucumber'] = self['WallGrasp']['object'].copy()
         self['WallGrasp']['cucumber']['thumb_pos_preshape'] = np.array([ 0, 10, 10])
-        self['SurfaceGrasp']['cucumber']['diff_pos_preshape'] = np.array([10, 10, 10])
+        self['WallGrasp']['cucumber']['diff_pos_preshape'] = np.array([10, 10, 10])
 
         # self['SurfaceGrasp']['salad']['thumb_pos_preshape'] = np.array([ 0, 0, 0])
 
