@@ -402,12 +402,19 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         pre_grasp_velocity = params['pre_grasp_joint_velocity']
         goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
 
-        print(goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
+        print("GOAL TRAJ PreGrasp", goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
         control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
-                                                    v_max=pre_grasp_velocity))
+                                                    v_max=pre_grasp_velocity,
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear'))
 
             #ha.InterpolatedJointController(goal_traj, name='PreGrasp', v_max=pre_grasp_velocity))
+
+        # 1b. Switch when hand reaches the goal configuration
+        control_sequence.append(ha.JointConfigurationSwitch('PreGrasp', 'ReferenceMassMeasurement',
+                                                            controller='GoAboveObject', epsilon=str(math.radians(7.))))
+
     else:
         # we can use the original motion
         control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose,
@@ -416,9 +423,9 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                                      goal_is_relative='0',
                                                                      v_max=pre_grasp_velocity))
 
-    # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
-                                               epsilon='0.01'))
+        # 1b. Switch when hand reaches the goal pose
+        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
+                                                   epsilon='0.01'))
 
     # TODO add a time switch and short waiting time before the reference measurement is actually done?
     # 2. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
@@ -449,13 +456,16 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
         # Go down onto the object (joint controller + relative world frame motion)
 
-        go_down_velocity = params['pre_grasp_joint_velocity']
+        go_down_velocity = params['go_down_velocity']
+        go_down_joint_velocity = params['go_down_joint_velocity']
         goal_traj = alternative_behavior['go_down'].get_trajectory()
 
-        print("GOAL_TRAJ", goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
+        print("GOAL_TRAJ GoDown", goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
         control_sequence.append(ha.JointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
                                                     goal_is_relative='0',
-                                                    v_max=go_down_velocity))
+                                                    v_max=go_down_joint_velocity,
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear'))
 
         # Relative motion that ensures that the actual force/torque threshold is reached
         control_sequence.append(
@@ -466,7 +476,11 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                  reference_frame="world",
                                                  v_max=go_down_velocity))
 
-        # Force/Torque switch for the additional relative go down
+        # Switch when goal is reached to trigger the relative go down further motion
+        control_sequence.append(ha.JointConfigurationSwitch('GoDown', 'GoDownFurther', controller='GoDown',
+                                                            epsilon=str(math.radians(7.))))
+
+        # Force/Torque switch for the additional relative go down further
         control_sequence.append(ha.ForceTorqueSwitch('GoDownFurther',
                                                      mode_name_hand_closing,
                                                      goal=force,
@@ -486,7 +500,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                  reference_frame="world",
                                                  v_max=go_down_velocity))
 
-    # 3b. Switch when goal is reached
+    # 3b. Force/Torque switch for go down
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                  mode_name_hand_closing,
                                                  goal=force,

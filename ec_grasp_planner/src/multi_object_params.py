@@ -32,13 +32,23 @@ def angle_between(v1, v2):
 
 class AlternativeBehavior:
     # TODO this class should be adapted if return value of the feasibility check changes (e.g. switch conditions)
-    def __init__(self, feasibility_check_result):
+    def __init__(self, feasibility_check_result, init_conf):
         self.number_of_joints = len(feasibility_check_result.final_configuration)
         self.trajectory_steps = []
         for i in range(0, len(feasibility_check_result.trajectory), self.number_of_joints):
             self.trajectory_steps.append(feasibility_check_result.trajectory[i:i+self.number_of_joints])
 
+        if np.allclose(init_conf, self.trajectory_steps[0]):
+            rospy.logwarn("Initial configuration {0} is first point in trajectory".format(init_conf))
+            # :1 = skip the initial position TODO remove if relative is used!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            self.trajectory_steps = self.trajectory_steps[1:]
+
+    def assert_that_initial_config_not_included(self, init_conf):
+        if np.allclose(init_conf, self.trajectory_steps[0]):
+            raise ValueError("Initial configuration {0} is first point in trajectory".format(init_conf))
+
     def get_trajectory(self):
+        print("get_trajectory LEN:", len(self.trajectory_steps))
         return np.transpose(np.array(self.trajectory_steps))
 
 
@@ -384,6 +394,8 @@ class multi_object_params:
             bounding_boxes.append(BoundingBoxWithPose(box=obj_bbox, pose=obj_pose))
         print("BOUNDING_BOXES", bounding_boxes)
 
+        all_steps_okay = True
+
         # perform the actual checks
         for motion, curr_goal in zip(checked_motions, goals):
 
@@ -415,18 +427,25 @@ class multi_object_params:
 
             elif res.status == CheckKinematicsResponse.REACHED_SAMPLED:
                 # original trajectory is not feasible, but alternative was found => save it
-                self.stored_trajectories[(current_object_idx, current_ec_index)][motion] = AlternativeBehavior(res)
+                self.stored_trajectories[(current_object_idx, current_ec_index)][motion] = AlternativeBehavior(res, curr_start_config)
                 curr_start_config = res.final_configuration
+                all_steps_okay = False
                 print("FOUND ALTERNATIVE. New Start: ", curr_start_config)
 
             elif res.status == CheckKinematicsResponse.REACHED_INITIAL:
-                # original trajectory is feasible, we don't have to save an alternative
+                # original trajectory is feasible, we don't have to save an alternative TODO update comment & code
+                self.stored_trajectories[(current_object_idx, current_ec_index)][motion] = AlternativeBehavior(res, curr_start_config)
                 curr_start_config = res.final_configuration
                 print("USE NORMAL. Start: ", curr_start_config)
 
             else:
                 raise ValueError(
                     "check_kinematics: No handler for result status of {} implemented".format(res.status))
+
+        if all_steps_okay:
+            # if all steps are okay use original trajectory TODO only replace preceding steps!
+            #self.stored_trajectories[(current_object_idx, current_ec_index)] = {} # TODO add again
+            pass
 
         return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,
                                                                             strategy)
