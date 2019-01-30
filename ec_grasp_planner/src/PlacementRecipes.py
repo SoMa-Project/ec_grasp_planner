@@ -8,6 +8,7 @@ def get_placement_recipe(handarm_params, handarm_type):
     place_speed = handarm_params['place_speed']
     view_joint_config = handarm_params['view_joint_config']
 
+
     # The twists are defined on the world frame
     down_twist = np.array([0, 0, -place_speed, 0, 0, 0]); 
     up_twist =  np.array([0, 0, place_speed, 0, 0, 0]);
@@ -25,13 +26,24 @@ def get_placement_recipe(handarm_params, handarm_type):
     if "ClashHand" in handarm_type:
         # Load the proper params from handarm_parameters.py
         # Open hand goal
-        goal_open_ = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_open_, behaviour='GotoPos',  name='softhand_open'))
+        goal_open = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_open, behaviour='GotoPos',  name='softhand_open'))
+        
+        # 2b. Switch when hand opening time ends
+        control_sequence.append(ha.TimeSwitch('softhand_open', 'unstiffen_hand_again', duration = 0.5))
+
+        # 2.1. Trigger pre-shaping the hand and/or pretension
+        control_sequence.append(ha.ros_CLASHhandControlMode(name='unstiffen_hand_again', behaviour='SetPretension'))
+    
+        # 2.2. Time to trigger pre-shape
+        control_sequence.append(ha.TimeSwitch('unstiffen_hand_again', 'get_out_of_tote', duration = 1))
+
+
     else:
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = 1))
 
-    # 2b. Switch when hand opening time ends
-    control_sequence.append(ha.TimeSwitch('softhand_open', 'get_out_of_tote', duration = 0.5))
+        # 2b. Switch when hand opening time ends
+        control_sequence.append(ha.TimeSwitch('softhand_open', 'get_out_of_tote', duration = 0.5))
 
     # 3. Get out of the tote
     control_sequence.append(ha.CartesianVelocityControlMode(up_twist, controller_name = 'GetOutOfTote', name = 'get_out_of_tote', reference_frame="world"))

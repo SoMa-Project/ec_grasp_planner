@@ -84,25 +84,28 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
         extra_failure_cms.add(target_cm_estimation_too_many)
 
     for cm in extra_failure_cms:
-        # Failure control modes representing grasping failure, which might be corrected by re-running the plan or replanning. 
-        control_sequence.append(ha.TimeSwitch('softhand_open_after_failure', 'go_to_view_config', duration=0.5))
+        if cm.startswith('failure_rerun') or cm.startswith('failure_replan'):
+            # Failure control modes representing grasping failure, which might be corrected by re-running the plan or replanning. 
+            control_sequence.append(ha.TimeSwitch('softhand_open_after_failure', 'go_to_view_config_after_failure', duration=0.5))
 
-        # 4. View config above ifco
-        control_sequence.append(ha.PlanningJointControlMode(view_joint_config, name='go_to_view_config', controller_name='viewJointCtrl'))
+            # 4. View config above ifco
+            control_sequence.append(ha.PlanningJointControlMode(view_joint_config, name='go_to_view_config_after_failure', controller_name='viewJointCtrl'))
 
-        # 4b. Joint config switch
-        control_sequence.append(ha.JointConfigurationSwitch('go_to_view_config', cm, controller='viewJointCtrl', epsilon=str(math.radians(7.))))
+            # 4b. Joint config switch
+            control_sequence.append(ha.JointConfigurationSwitch('go_to_view_config_after_failure', cm, controller='viewJointCtrl', epsilon=str(math.radians(7.))))
 
-        # 4c. Switch if no plan was found
-        control_sequence.append(ha.RosTopicSwitch('go_to_view_config', cm, ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
-        
-        # 5. Finish the plan
-        control_sequence.append(ha.BlockJointControlMode(name=cm))
+            # 4c. Switch if no plan was found
+            control_sequence.append(ha.RosTopicSwitch('go_to_view_config_after_failure', cm, ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+            
+            # 5. Finish the plan
+            control_sequence.append(ha.BlockJointControlMode(name=cm))
 
     if "ClashHand" in handarm_type:
         # Load the proper params from handarm_parameters.py
         # Replace the BlockingJointControlMode with the CLASH hand control mode
-        control_sequence.append(ha.BlockJointControlMode(name='softhand_open_after_failure'))
+        # Open hand goal
+        goal_open = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_open, behaviour='GotoPos',  name='softhand_open_after_failure'))
     else:
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_after_failure', synergy = 1))
         

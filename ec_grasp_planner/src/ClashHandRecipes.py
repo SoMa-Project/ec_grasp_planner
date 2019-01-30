@@ -29,6 +29,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # Grasping phase
     up_speed = params['up_speed']
     hand_closing_time = params['hand_closing_duration']
+    lift_time = params['corrective_lift_duration']
     
     success_estimator_timeout = handarm_params['success_estimator_timeout']
 
@@ -38,19 +39,30 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     down_twist = np.array([0, 0, down_speed, 0, 0, 0])
     # Slow Up speed is also positive because it is defined on the world frame
     up_twist = np.array([0, 0, up_speed, 0, 0, 0])
+    up_corrective_twist = np.array([0, 0, -up_speed, 0, 0, 0])
 
     # Get grasp specific params from handarm_parameters
     goal_preshape = params['goal_preshape']
     goal_close = params['goal_close']
+    thumb_stiffness = params['thumb_stiffness']
+    diff_stiffness = params['diff_stiffness']
+    goal_open = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
         
 
     # assemble controller sequence
     control_sequence = []
 
     # 0. Trigger pre-shaping the hand and/or pretension
-    control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_preshape, name='softhand_preshape', behaviour='GotoPos'))
+    control_sequence.append(ha.ros_CLASHhandControlMode(name='softhand_stiffen', behaviour='SetPretension', thumb=thumb_stiffness, diff=diff_stiffness))
     
     # 0b. Time to trigger pre-shape
+    control_sequence.append(ha.TimeSwitch('softhand_stiffen', 'softhand_preshape', duration = hand_closing_time))
+
+    # 0c. Trigger pre-shaping the hand and/or pretension
+    control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_preshape, name='softhand_preshape', behaviour='GotoPos'))
+    
+    # 0d. Time to trigger pre-shape
     control_sequence.append(ha.TimeSwitch('softhand_preshape', 'PreGrasp', duration = hand_closing_time))
 
     # 1. Go above the object - Pregrasp
@@ -60,7 +72,13 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller = 'GoAboveObject', epsilon = '0.01'))
     
     # 1c. Switch to finished if no plan is found
-    control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'softhand_open', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'softhand_open_after_preshape', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
+    # 1d. Open hand goal
+    control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_open, behaviour='GotoPos',  name='softhand_open_after_preshape'))
+
+    # 1e. Wait for a bit to allow vibrations to attenuate
+    control_sequence.append(ha.TimeSwitch('softhand_open_after_preshape', 'finished', duration = 0.5))
 
     # 2. Go to gravity compensation 
     control_sequence.append(ha.BlockJointControlMode(name = 'PrepareForMassMeasurement'))
@@ -102,7 +120,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     
     # 4b. Switch when force-torque sensor is triggered
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'softhand_close',
+                                                 'LiftHand',
                                                  goal = force,
                                                  norm_weights = np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion = "THRESH_UPPER_BOUND",
@@ -112,11 +130,33 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # 4c. Switch to recovery if the cartesian velocity fails due to joint limits
     control_sequence.append(ha.RosTopicSwitch('GoDown', 'recovery_GoDownSG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
-    # 5. Call hand controller
+    # 5. Lift upwards so the hand can close
+    control_sequence.append(
+        ha.CartesianVelocityControlMode(up_corrective_twist, controller_name='CorrectiveLift', name="LiftHand",
+                                             reference_frame="EE"))
+
+
+    # 5b. We switch after a short time 
+    control_sequence.append(ha.TimeSwitch('LiftHand', 'unstiffen_hand', duration=lift_time))
+
+    # 6. Trigger pre-shaping the hand and/or pretension
+    control_sequence.append(ha.ros_CLASHhandControlMode(name='unstiffen_hand', behaviour='SetPretension'))
+    
+    # 6b. Time to trigger pre-shape
+    control_sequence.append(ha.TimeSwitch('unstiffen_hand', 'softhand_close', duration = hand_closing_time))
+
+    # 7. Call hand controller
     control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_close, behaviour='GotoPos',  name='softhand_close'))
 
-    # 5b. Switch when hand closing time ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp_1', duration = hand_closing_time))
+    # 7b. Switch when hand closing time ends
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'stiffen_hand_again', duration = hand_closing_time))
+
+    # 8. Trigger pre-shaping the hand and/or pretension
+    control_sequence.append(ha.ros_CLASHhandControlMode(name='stiffen_hand_again', behaviour='SetPretension', thumb=thumb_stiffness, diff=diff_stiffness))
+    
+    # 8b. Time to trigger pre-shape
+    control_sequence.append(ha.TimeSwitch('stiffen_hand_again', 'GoUp_1', duration = hand_closing_time))
+
 
 
     return control_sequence
@@ -158,6 +198,8 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # Get grasp specific params from handarm_parameters
     goal_preshape = params['goal_preshape']
     goal_close = params['goal_close']
+    thumb_stiffness = params['thumb_stiffness']
+    diff_stiffness = params['diff_stiffness']
     goal_open = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
 
@@ -173,10 +215,16 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     control_sequence = []
 
-    # 0 trigger pre-shaping the hand and/or pretension
+    # 0. Trigger pre-shaping the hand and/or pretension
+    control_sequence.append(ha.ros_CLASHhandControlMode(name='softhand_stiffen', behaviour='SetPretension', thumb=thumb_stiffness, diff=diff_stiffness))
+    
+    # 0b. Time to trigger pre-shape
+    control_sequence.append(ha.TimeSwitch('softhand_stiffen', 'softhand_preshape', duration = hand_closing_time))
+
+    # 0c. trigger pre-shaping the hand and/or pretension
     control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_preshape, behaviour='GotoPos', name='softhand_preshape'))
 
-    # 0b. Time to trigger pre-shape
+    # 0d. Time to trigger pre-shape
     control_sequence.append(ha.TimeSwitch('softhand_preshape', 'PreGrasp', duration = hand_closing_time))
 
     # 1. Go above the object - Pregrasp
@@ -272,13 +320,25 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
         ha.CartesianVelocityControlMode(pre_grasp_twist, controller_name='SlideBackFromWall',
                                              name="SlideBackFromWall", reference_frame="EE"))
     # 7b. We switch after a short time
-    control_sequence.append(ha.TimeSwitch('SlideBackFromWall', 'softhand_close', duration=pre_grasp_rotate_time))
+    control_sequence.append(ha.TimeSwitch('SlideBackFromWall', 'unstiffen_hand', duration=pre_grasp_rotate_time))
 
-    # 8. Maintain contact while closing the hand
+    # 6. Trigger pre-shaping the hand and/or pretension
+    control_sequence.append(ha.ros_CLASHhandControlMode(name='unstiffen_hand', behaviour='SetPretension'))
+    
+    # 6b. Time to trigger pre-shape
+    control_sequence.append(ha.TimeSwitch('unstiffen_hand', 'softhand_close', duration = hand_closing_time))
+
+    # 7. Call hand controller
     control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_close, behaviour='GotoPos',  name='softhand_close'))
 
+    # 7b. Switch when hand closing time ends
+    control_sequence.append(ha.TimeSwitch('softhand_close', 'stiffen_hand_again', duration = hand_closing_time))
+
+    # 8. Trigger pre-shaping the hand and/or pretension
+    control_sequence.append(ha.ros_CLASHhandControlMode(name='stiffen_hand_again', behaviour='SetPretension', thumb=thumb_stiffness, diff=diff_stiffness))
+
     # 8b. Switch when hand closing duration ends
-    control_sequence.append(ha.TimeSwitch('softhand_close', 'PostGraspRotate', duration=hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('stiffen_hand_again', 'PostGraspRotate', duration=hand_closing_time))
 
     # 9. Rotate a bit to roll the object in the hand
     control_sequence.append(
