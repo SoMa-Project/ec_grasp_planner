@@ -159,7 +159,7 @@ class RBOHandP24WAM(RBOHand2):
         self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
 
         # maximal joint velocities in case a JointController is used (e.g. alternative behavior was genererated)
-        self['surface_grasp']['object']['pre_grasp_joint_velocity'] = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1])  #np.ones(7) * 0.2
+        self['surface_grasp']['object']['pre_grasp_joint_velocity'] = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1])
         self['surface_grasp']['object']['go_down_joint_velocity'] = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1])  #np.ones(7) * 0.2
 
         # defines the manifold in which alternative goal poses are sampled during kinematic checks
@@ -250,8 +250,10 @@ class RBOHandP24WAM(RBOHand2):
         self['wall_grasp']['object']['slide_velocity'] = np.array([0.125, 0.30])  # np.array([0.125, 0.12])
         self['wall_grasp']['object']['wall_force'] = 12.0
 
-        # maximal joint velocities in case a JointController is used (e.g. alternative behavior was genererated)
+        # maximal joint velocities in case a JointController is used (e.g. alternative behavior was generated)
         self['wall_grasp']['object']['max_joint_velocity'] = np.ones(7) * 0.2
+        # maximal joint velocities during sliding motion in case a JointController is used.
+        self['wall_grasp']['object']['slide_joint_velocity'] = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1])
 
         # defines the manifold in which alternative goal poses are sampled during feasibility checks
         self['wall_grasp']['object']['init_joint_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],

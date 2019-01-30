@@ -207,8 +207,6 @@ class multi_object_params:
     def check_kinematic_feasibility(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames,
                                     ifco_in_base_transform, handarm_params):
 
-        print("LOOK AT ME!", all_ec_frames)
-
         object = objects[current_object_idx]
         ec_frame = all_ec_frames[current_ec_index]
         object_params = self.data[object['type']][strategy]
@@ -337,7 +335,6 @@ class multi_object_params:
             # override initial robot configuration
             # TODO also check gotToView -> params['initial_goal'] (requires forward kinematics, or change to op-space)
             curr_start_config = params['initial_goal']
-            #curr_start_config = [0.457929, 0.295013, -0.232804, 2.0226, 0.1, 0.1, 0.1]
 
             allowed_collisions = {
 
@@ -402,7 +399,7 @@ class multi_object_params:
             manifold_name = motion + '_manifold'
 
             goal_pose = multi_object_params.transform_to_pose_msg(curr_goal)
-            print("GOAL_POSE", goal_pose) # TODO DEBUG HERE <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< !!!!
+            print("GOAL_POSE", goal_pose)
             print("INIT_CONF", curr_start_config)
 
             check_feasibility = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
@@ -444,13 +441,11 @@ class multi_object_params:
 
         if all_steps_okay:
             # if all steps are okay use original trajectory TODO only replace preceding steps!
-            #self.stored_trajectories[(current_object_idx, current_ec_index)] = {} # TODO add again
+            # self.stored_trajectories[(current_object_idx, current_ec_index)] = {} # TODO add again
             pass
 
         return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,
                                                                             strategy)
-
-
 
     def black_list_risk_regions(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames,
                                 ifco_in_base_transform):
@@ -481,7 +476,7 @@ class multi_object_params:
     def reset_kinematic_checks_information(self):
         self.stored_trajectories = {}
 
-## --------------------------------------------------------- ##
+    # ------------------------------------------------------------- #
     # object-environment-hand based heuristic, q_value for grasping
     def heuristic(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames, ifco_in_base_transform, handarm_params):
 
@@ -491,10 +486,15 @@ class multi_object_params:
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
 
-        use_kinematic_checks = rospy.get_param("feasibility_check/active", default=True)
-        if use_kinematic_checks:
+        feasibility_checker = rospy.get_param("feasibility_check/active", default="TUB")
+        if feasibility_checker == 'TUB':
             feasibility_fun = partial(self.check_kinematic_feasibility, current_object_idx, objects, current_ec_index,
                                       strategy, all_ec_frames, ifco_in_base_transform, handarm_params)
+
+        elif feasibility_checker == 'Ocado':
+            # TODO integrate ocado
+            raise ValueError("Ocado feasibility checker not integrated yet!")
+
         else:
             feasibility_fun = partial(self.black_list_risk_regions, current_object_idx, objects, current_ec_index,
                                       strategy, all_ec_frames, ifco_in_base_transform)
@@ -505,7 +505,7 @@ class multi_object_params:
             self.pdf_object_ec(object_params, ec_frame, strategy) * \
             feasibility_fun()
 
-        #print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
+        # print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
         return q_val
 
 ## --------------------------------------------------------- ##
