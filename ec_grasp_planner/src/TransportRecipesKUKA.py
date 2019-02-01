@@ -75,7 +75,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
 
     # 2b.6 There is no special switch for unknown error response (estimator signals ESTIMATION_RESULT_UNKNOWN_FAILURE)
     #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
-
+    
     # 3. After estimation measurement control modes.
     extra_failure_cms = set()
     if target_cm_estimation_no_object != target_cm_okay:
@@ -92,13 +92,13 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
             control_sequence.append(ha.PlanningJointControlMode(view_joint_config, name='go_to_view_config_after_failure', controller_name='viewJointCtrl'))
 
             # 4b. Joint config switch
-            control_sequence.append(ha.JointConfigurationSwitch('go_to_view_config_after_failure', cm, controller='viewJointCtrl', epsilon=str(math.radians(7.))))
+            control_sequence.append(ha.JointConfigurationSwitch('go_to_view_config_after_failure', 'finished', controller='viewJointCtrl', epsilon=str(math.radians(7.))))
 
             # 4c. Switch if no plan was found
-            control_sequence.append(ha.RosTopicSwitch('go_to_view_config_after_failure', cm, ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+            control_sequence.append(ha.RosTopicSwitch('go_to_view_config_after_failure', 'finished', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
             
             # 5. Finish the plan
-            control_sequence.append(ha.BlockJointControlMode(name=cm))
+            control_sequence.append(ha.BlockJointControlMode(name='finished'))
 
     if "ClashHand" in handarm_type:
         # Load the proper params from handarm_parameters.py
