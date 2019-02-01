@@ -22,7 +22,7 @@ def get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_frame = n
         control_sequence.append(ha.CartesianVelocityControlMode(up_EE_twist, controller_name = 'GoUpHTransform', name = 'recovery_GoDownSG', reference_frame="EE"))
 
         # Switch to finished after some time
-        control_sequence.append(ha.TimeSwitch('recovery_GoDownSG', 'finished', duration = recovery_time))    
+        control_sequence.append(ha.TimeSwitch('recovery_GoDownSG', 'go_to_view_config', duration = recovery_time))    
 
         # If no plan to placement was found, start going down again to place the object back where it was grasped
         control_sequence.append(ha.CartesianVelocityControlMode(down_EE_twist, controller_name = 'GoUpHTransform', name = 'recovery_NoPlanFoundSurfaceGrasp', reference_frame="EE"))
@@ -44,7 +44,8 @@ def get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_frame = n
         if "ClashHand" in handarm_type:
             # Load the proper params from handarm_parameters.py
             # Replace the BlockingJointControlMode with the CLASH hand control mode
-            control_sequence.append(ha.BlockJointControlMode(name  = 'softhand_open_recovery_SurfaceGrasp'))
+            goal_open = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+            control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_open, behaviour='GotoPos',  name='softhand_open_recovery_SurfaceGrasp'))
         else:
             control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_recovery_SurfaceGrasp', synergy = 1))
 
@@ -57,7 +58,7 @@ def get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_frame = n
         control_sequence.append(ha.CartesianVelocityControlMode(up_world_twist, controller_name = 'GoUpHTransform', name = 'recovery_GoDownWG', reference_frame="world"))
 
         # Switch to finished after some time
-        control_sequence.append(ha.TimeSwitch('recovery_GoDownWG', 'softhand_open_recovery_WallGrasp', duration = recovery_time))    
+        control_sequence.append(ha.TimeSwitch('recovery_GoDownWG', 'go_to_view_config', duration = recovery_time))    
 
         # Lift the hand if the CartesianVelocityControlMode crashed due to joint limits during approaching the IFCO wall
         control_sequence.append(ha.CartesianVelocityControlMode(up_EE_twist, controller_name = 'GoUpHTransform', name = 'recovery_SlideWG', reference_frame="EE"))
