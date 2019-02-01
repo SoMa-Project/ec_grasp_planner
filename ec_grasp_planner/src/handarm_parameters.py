@@ -212,7 +212,7 @@ class KUKA(BaseHandArm):
         super(KUKA, self).__init__()
         self['recovery_speed'] = 0.03
         self['recovery_duration'] = 5
-        self['recovery_placement_force'] = 2.5
+        self['recovery_placement_force'] = 1.5
         self['view_joint_config'] = np.array([-0.7, 0.9, 0, -0.7, 0, 0.9, 0])
         # duration of placing the object
         self['place_duration'] = 5
@@ -639,7 +639,7 @@ class ClashHandKUKA(KUKA):
         self['SurfaceGrasp']['object']['hand_closing_duration'] = 2
 
         # duration of lifting the object
-        self['SurfaceGrasp']['object']['lift_duration'] = 5
+        self['SurfaceGrasp']['object']['lift_duration'] = 8
 
         # default hand close value
         self['SurfaceGrasp']['object']['goal_close'] = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
@@ -654,27 +654,39 @@ class ClashHandKUKA(KUKA):
         self['SurfaceGrasp']['mango']['goal_preshape'] = np.array([ 0, 10, 0, 5, 5, 5])
         self['SurfaceGrasp']['mango']['goal_close'] = np.array([0, 30, 60, 50, 50, 60])
 
+        # self['SurfaceGrasp']['cucumber'] = self['SurfaceGrasp']['object'].copy() #params used for the experiment
+        # self['SurfaceGrasp']['cucumber']['goal_preshape'] = np.array([ 0, 10, 5, 10, 10, 0])
+        # self['SurfaceGrasp']['cucumber']['goal_close'] = np.array([0, 60, 30, 60, 60, 30])
+        # self['SurfaceGrasp']['cucumber']['corrective_lift_duration'] = 1
+
         self['SurfaceGrasp']['cucumber'] = self['SurfaceGrasp']['object'].copy()
-        self['SurfaceGrasp']['cucumber']['goal_preshape'] = np.array([ 0, 10, 5, 10, 10, 0])
-        self['SurfaceGrasp']['cucumber']['goal_close'] = np.array([0, 60, 30, 60, 60, 30])
-        self['SurfaceGrasp']['cucumber']['corrective_lift_duration'] = 1
+        self['SurfaceGrasp']['cucumber']['goal_preshape'] = np.array([ 0, 30, 10, 50, 50, 10])        
+        self['SurfaceGrasp']['cucumber']['goal_close'] = np.array([0, 80, 30, 80, 80, 30])
+        self['SurfaceGrasp']['cucumber']['corrective_lift_duration'] = 1.2
+        self['SurfaceGrasp']['cucumber']['downward_force'] = 4
 
         self['SurfaceGrasp']['punnet'] = self['SurfaceGrasp']['object'].copy()
         self['SurfaceGrasp']['punnet']['goal_preshape'] = np.array([ 0, -20, 0, -30, -30, -10])
-        self['SurfaceGrasp']['punnet']['goal_close'] = np.array([0, 10, 50, 10, 10, 60])
+        self['SurfaceGrasp']['punnet']['goal_close'] = np.array([0, 20, 50, 30, 30, 60])
         self['SurfaceGrasp']['punnet']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.02, 0.0, 0.0]),
                                                                                     tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
         self['SurfaceGrasp']['punnet']['corrective_lift_duration'] = 1.2
 
         self['SurfaceGrasp']['lettuce'] = self['SurfaceGrasp']['object'].copy()
-        self['SurfaceGrasp']['lettuce']['goal_preshape'] = np.array([ 0, 0, 0, -30, -30, -10])
-        self['SurfaceGrasp']['lettuce']['goal_close'] = np.array([0, 60, 30, 50, 50, 30])
+        self['SurfaceGrasp']['lettuce']['goal_preshape'] = np.array([ 0, -20, 0, -30, -30, -10])
+        self['SurfaceGrasp']['lettuce']['goal_close'] = np.array([0, 60, 50, 60, 60, 50])
         self['SurfaceGrasp']['lettuce']['corrective_lift_duration'] = 0
 
+        # self['SurfaceGrasp']['netbag'] = self['SurfaceGrasp']['object'].copy()
+        # self['SurfaceGrasp']['netbag']['goal_preshape'] = np.array([ 0, 10, 10, 10, 10, 10])
+        # self['SurfaceGrasp']['netbag']['goal_close'] = np.array([0, 50, 70, 60, 60, 60])
+        # self['SurfaceGrasp']['netbag']['corrective_lift_duration'] = 1.2
+
         self['SurfaceGrasp']['netbag'] = self['SurfaceGrasp']['object'].copy()
-        self['SurfaceGrasp']['netbag']['goal_preshape'] = np.array([ 0, 10, 10, 10, 10, 10])
-        self['SurfaceGrasp']['netbag']['goal_close'] = np.array([0, 50, 70, 60, 60, 60])
+        self['SurfaceGrasp']['netbag']['goal_preshape'] = np.array([ 0, 30, 0, 30, 30, 10])
+        self['SurfaceGrasp']['netbag']['goal_close'] = np.array([0, 60, 90, 70, 70, 90])
         self['SurfaceGrasp']['netbag']['corrective_lift_duration'] = 1.2
+        self['SurfaceGrasp']['netbag']['downward_force'] = 4
 
         #####################################################################################
         # below are parameters for wall grasp 
@@ -751,7 +763,7 @@ class ClashHandKUKA(KUKA):
         self['WallGrasp']['object']['diff_stiffness'] = np.array([0.25])
 
         self['WallGrasp']['mango'] = self['WallGrasp']['object'].copy()
-        self['WallGrasp']['mango']['scooping_angle'] = math.radians(20)
+        self['WallGrasp']['mango']['scooping_angle'] = math.radians(10)
         self['WallGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(
                 tra.translation_matrix([-0.15, 0, -0.04]), #15 cm above object, 2 cm behind
                 tra.concatenate_matrices(
@@ -762,14 +774,18 @@ class ClashHandKUKA(KUKA):
                     tra.rotation_matrix(
                         math.radians(0.0), [0, 0, 1]),
             ))
-        self['WallGrasp']['mango']['wall_force'] = 5.0
+        self['WallGrasp']['mango']['wall_force'] = 10.0
+        self['WallGrasp']['mango']['goal_preshape'] = np.array([0, 0, 0, 40, 40, 10])
+        self['WallGrasp']['mango']['goal_close'] = np.array([0, 65, 20, 60, 60, 30])
+        self['WallGrasp']['mango']['lift_duration'] = 8
+
 
 
         self['WallGrasp']['cucumber'] = self['WallGrasp']['object'].copy()
         self['WallGrasp']['cucumber']['scooping_angle'] = math.radians(10)
         self['WallGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
                 # tra.translation_matrix([-0.15, 0, -0.03]), #15 cm above object, 2 cm behind
-                tra.translation_matrix([-0.15, 0, 0.01]),
+                tra.translation_matrix([-0.15, 0, -0.03]),
                 tra.concatenate_matrices(
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
@@ -779,19 +795,21 @@ class ClashHandKUKA(KUKA):
                         math.radians(0.0), [0, 0, 1]),
             ))
         self['WallGrasp']['cucumber']['wall_force'] = 13.0
-        self['WallGrasp']['cucumber']['goal_preshape'] = np.array([0, 20, 0, 15, 15, -10])
+        self['WallGrasp']['cucumber']['goal_preshape'] = np.array([0, 20, 0, 15, 15, 20])
         self['WallGrasp']['cucumber']['corrective_lift_duration'] = 1.0
         self['WallGrasp']['cucumber']['post_grasp_rotation_duration'] = 4
+        self['WallGrasp']['cucumber']['lift_duration'] = 11
+
 
         self['WallGrasp']['punnet'] = self['WallGrasp']['object'].copy()
         self['WallGrasp']['punnet']['scooping_angle'] = math.radians(10)        
-        self['WallGrasp']['punnet']['wall_force'] = 12
-        self['WallGrasp']['punnet']['goal_preshape'] = np.array([0, 10, 0, 15, 15, -20])
-        self['WallGrasp']['punnet']['corrective_lift_duration'] = 1.0
+        self['WallGrasp']['punnet']['wall_force'] = 15
+        self['WallGrasp']['punnet']['goal_preshape'] = np.array([0, 10, 0, 30, 30, -20])
+        self['WallGrasp']['punnet']['corrective_lift_duration'] = 1.3
         self['WallGrasp']['punnet']['post_grasp_rotation_duration'] = 4
         self['WallGrasp']['punnet']['pre_approach_transform'] = tra.concatenate_matrices(
                 # tra.translation_matrix([-0.15, 0, -0.03]), #15 cm above object, 2 cm behind
-                tra.translation_matrix([-0.15, 0, -0.03]),
+                tra.translation_matrix([-0.15, 0, -0.05]),
                 tra.concatenate_matrices(
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
@@ -800,31 +818,45 @@ class ClashHandKUKA(KUKA):
                     tra.rotation_matrix(
                         math.radians(0.0), [0, 0, 1]),
             ))
+        self['WallGrasp']['punnet']['post_grasp_twist'] = np.array([0.0, 0.0, -0.01, 0.0, math.radians(0.0), 0.0])
         self['WallGrasp']['punnet']['slide_speed'] = 0.05 #sliding speed
+        self['WallGrasp']['punnet']['diff_stiffness'] = np.array([0.0])
 
-       
 
-        # ####################################################################################
-        # # CLASH specific params for wall grasp
-        # ####################################################################################        
-        
-        # self['WallGrasp']['object']['scooping_angle_deg'] = 10
+        self['WallGrasp']['lettuce'] = self['WallGrasp']['object'].copy()
+        self['WallGrasp']['lettuce']['scooping_angle'] = math.radians(15)
+        self['WallGrasp']['lettuce']['goal_preshape'] = np.array([0, 10, 0, 30, 30, -20])
+        self['WallGrasp']['lettuce']['pre_approach_transform'] = tra.concatenate_matrices(
+                tra.translation_matrix([-0.15, 0, -0.07]), #15 cm above object, 2 cm behind
+                tra.concatenate_matrices(
+                    tra.rotation_matrix(
+                        math.radians(0.), [1, 0, 0]),
+                    tra.rotation_matrix(
+                        self['WallGrasp']['lettuce']['scooping_angle'], [0, 1, 0]),
+                    tra.rotation_matrix(
+                        math.radians(0.0), [0, 0, 1]),
+            ))
+        self['WallGrasp']['lettuce']['wall_force'] = 8
+        self['WallGrasp']['lettuce']['lift_duration'] = 12
+        self['WallGrasp']['lettuce']['goal_close'] = np.array([0, 70, 20, 70, 70, 25])
+        self['WallGrasp']['lettuce']['corrective_lift_duration'] = 1.5
 
-        # self['WallGrasp']['salad']['scooping_angle_deg'] = 30  
-
-        # self['WallGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.2, 0, -0.2]), tra.rotation_matrix(
-        #                                                                                 math.radians(scooping_angle_deg), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]), tra.rotation_matrix(math.radians(180.0), [0, 0, 1]))
-
-        
-        # self['WallGrasp']['punnet']['thumb_pos_preshape'] = np.array([ 0, -25, 0])
-
-        # self['WallGrasp']['cucumber']['wall_force'] = 10
-
-        # self['WallGrasp']['netbag']['wall_force'] = 4
-
-        # self['WallGrasp']['punnet']['wall_force'] = 12
-
-        # self['WallGrasp']['salad']['wall_force'] = 1.5
-        
-        
-        
+        self['WallGrasp']['netbag'] = self['WallGrasp']['object'].copy()
+        self['WallGrasp']['netbag']['scooping_angle'] = math.radians(10)
+        self['WallGrasp']['netbag']['goal_preshape'] = np.array([ 0, 10, 10, 25, 25, 0])
+        self['WallGrasp']['netbag']['pre_approach_transform'] = tra.concatenate_matrices(
+                tra.translation_matrix([-0.15, 0, -0.07]), #15 cm above object, 2 cm behind
+                tra.concatenate_matrices(
+                    tra.rotation_matrix(
+                        math.radians(0.), [1, 0, 0]),
+                    tra.rotation_matrix(
+                        self['WallGrasp']['netbag']['scooping_angle'], [0, 1, 0]),
+                    tra.rotation_matrix(
+                        math.radians(0.0), [0, 0, 1]),
+            ))
+        self['WallGrasp']['netbag']['wall_force'] = 7
+        self['WallGrasp']['netbag']['lift_duration'] = 12
+        self['WallGrasp']['netbag']['goal_close'] = np.array([0, 50, 70, 60, 60, 60])
+        self['WallGrasp']['netbag']['corrective_lift_duration'] = 1.5
+        self['WallGrasp']['netbag']['diff_stiffness'] = np.array([0.0])
+        self['WallGrasp']['netbag']['downward_force'] = 2
