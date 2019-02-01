@@ -17,7 +17,7 @@ from scipy.stats import norm
 
 import sys
 
-
+CABLE_PULLING_THRESHOLD = -0.5
 class RESPONSES(Enum):
     REFERENCE_MEASUREMENT_SUCCESS = 0.0
     REFERENCE_MEASUREMENT_FAILURE = 1.0
@@ -223,7 +223,7 @@ class MassEstimator(object):
             ft_in_base = self.to_base_frame(self.last_ft_measurement)
             if ft_in_base is not None:
                 second_mass = MassEstimator.force2mass(ft_in_base[2])  # z-axis
-                mass_diff = second_mass - self.reference_mass
+                mass_diff = second_mass - max(self.reference_mass, 0)
 
                 print("MASSES:", second_mass, self.reference_mass, " diff:", mass_diff)
                 print("FT_IN_BASE ref:", self.ft_measurement_reference)
@@ -258,6 +258,12 @@ class MassEstimator(object):
                 # publish the estimated masses
                 self.estimator_mass_pub.publish(MassEstimator.list_to_Float64MultiArrayMsg(
                     [self.reference_mass, second_mass]))
+
+
+                if self.reference_mass < CABLE_PULLING_THRESHOLD:
+                    print("The cables are pulling too much to make a reliable guess")
+                    self.publish_status(RESPONSES.ESTIMATION_RESULT_OKAY)
+                    return
 
                 # publish the corresponding status message
                 if max_num_obj == 0:
