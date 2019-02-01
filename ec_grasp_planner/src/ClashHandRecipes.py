@@ -307,7 +307,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     # 6b. Switch when the f/t sensor is triggered with normal force from wall
     force = np.array([0, 0, wall_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SlideBackFromWall', 'ForceSwitch', goal=force,
+    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'unstiffen_hand', 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame))
@@ -315,12 +315,12 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # 6c. Switch to recovery if the cartesian velocity fails due to joint limits
     control_sequence.append(ha.RosTopicSwitch('SlideToWall', 'recovery_SlideWG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
-    # 7. Go back a bit to allow the hand to close
-    control_sequence.append(
-        ha.CartesianVelocityControlMode(pre_grasp_twist, controller_name='SlideBackFromWall',
-                                             name="SlideBackFromWall", reference_frame="EE"))
-    # 7b. We switch after a short time
-    control_sequence.append(ha.TimeSwitch('SlideBackFromWall', 'unstiffen_hand', duration=pre_grasp_rotate_time))
+    # # 7. Go back a bit to allow the hand to close
+    # control_sequence.append(
+    #     ha.CartesianVelocityControlMode(pre_grasp_twist, controller_name='SlideBackFromWall',
+    #                                          name="SlideBackFromWall", reference_frame="EE"))
+    # # 7b. We switch after a short time
+    # control_sequence.append(ha.TimeSwitch('SlideBackFromWall', 'unstiffen_hand', duration=pre_grasp_rotate_time))
 
     # 6. Trigger pre-shaping the hand and/or pretension
     control_sequence.append(ha.ros_CLASHhandControlMode(name='unstiffen_hand', behaviour='SetPretension'))
