@@ -44,15 +44,15 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     target_cm_okay = 'GoDropOff'
 
     # 2b.1 No object was grasped => go to failure mode.
-    target_cm_estimation_no_object = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_NO_OBJECT, default=target_cm_okay)
-    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', 'softhand_open_after_failure',
+    target_cm_estimation_no_object = 'softhand_open_after_failure_and_' + reaction.cm_name_for(FailureCases.MASS_ESTIMATION_NO_OBJECT, default=target_cm_okay)
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_estimation_no_object,
                                               ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
                                               goal=np.array([RESPONSES.ESTIMATION_RESULT_NO_OBJECT.value]),
                                               ))
 
     # 2b.2 More than one object was grasped => failure
-    target_cm_estimation_too_many = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_TOO_MANY, default=target_cm_okay)
-    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', 'softhand_open_after_failure',
+    target_cm_estimation_too_many = 'softhand_open_after_failure_and_' + reaction.cm_name_for(FailureCases.MASS_ESTIMATION_TOO_MANY, default=target_cm_okay)
+    control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_estimation_too_many,
                                               ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
                                               goal=np.array([RESPONSES.ESTIMATION_RESULT_TOO_MANY.value]),
                                               ))
@@ -84,30 +84,30 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
         extra_failure_cms.add(target_cm_estimation_too_many)
 
     for cm in extra_failure_cms:
-        if cm.startswith('failure_rerun') or cm.startswith('failure_replan'):
-            # Failure control modes representing grasping failure, which might be corrected by re-running the plan or replanning. 
-            control_sequence.append(ha.TimeSwitch('softhand_open_after_failure', 'go_to_view_config_after_failure', duration=0.5))
 
-            # 4. View config above ifco
-            control_sequence.append(ha.PlanningJointControlMode(view_joint_config, name='go_to_view_config_after_failure', controller_name='viewJointCtrl'))
+        if "ClashHand" in handarm_type:
+            # Open hand goal
+            goal_open = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+            control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_open, behaviour='GotoPos',  name=cm))
+        else:
+            control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = cm, synergy = 1))
 
-            # 4b. Joint config switch
-            control_sequence.append(ha.JointConfigurationSwitch('go_to_view_config_after_failure', 'finished', controller='viewJointCtrl', epsilon=str(math.radians(7.))))
+        # Failure control modes representing grasping failure, which might be corrected by re-running the plan or replanning. 
+        control_sequence.append(ha.TimeSwitch(cm, 'go_to_view_config_after_failure', duration=0.5))
 
-            # 4c. Switch if no plan was found
-            control_sequence.append(ha.RosTopicSwitch('go_to_view_config_after_failure', 'finished', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
-            
-            # 5. Finish the plan
-            control_sequence.append(ha.BlockJointControlMode(name='finished'))
+        # 4. View config above ifco
+        control_sequence.append(ha.PlanningJointControlMode(view_joint_config, name='go_to_view_config_after_failure', controller_name='viewJointCtrl'))
 
-    if "ClashHand" in handarm_type:
-        # Load the proper params from handarm_parameters.py
-        # Replace the BlockingJointControlMode with the CLASH hand control mode
-        # Open hand goal
-        goal_open = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_open, behaviour='GotoPos',  name='softhand_open_after_failure'))
-    else:
-        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_after_failure', synergy = 1))
+        # 4b. Joint config switch
+        control_sequence.append(ha.JointConfigurationSwitch('go_to_view_config_after_failure', 'finished', controller='viewJointCtrl', epsilon=str(math.radians(7.))))
+
+        # 4c. Switch if no plan was found
+        control_sequence.append(ha.RosTopicSwitch('go_to_view_config_after_failure', 'finished', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+        
+        # 5. Finish the plan
+        control_sequence.append(ha.BlockJointControlMode(name='finished'))
+
+    
         
     
     # 4. Go above the object - Pregrasp
