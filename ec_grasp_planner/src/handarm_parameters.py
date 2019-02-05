@@ -12,8 +12,18 @@ from tf import transformations as tra
 # python ec_grasps.py --anglesliding 0.0 --inflation 0.33 --force 7.0 --grasp surface_grasp test_folder
 
 class Manifold(dict):
-    def __init__(self, initializer_dict=None):
+    def __init__(self, initializer_dict=None, position_deltas=None, orientation_deltas=None):
         super(dict, self).__init__()
+
+        # Parse convenient parameters for symmetric manifolds (min == max)
+        if position_deltas is not None:
+            self['max_position_deltas'] = [max(-pd, pd) for pd in position_deltas]
+            self['min_position_deltas'] = [min(-pd, pd) for pd in position_deltas]
+        if orientation_deltas is not None:
+            self['max_orientation_deltas'] = [max(-od, od) for od in orientation_deltas]
+            self['min_orientation_deltas'] = [min(-od, od) for od in orientation_deltas]
+
+        # parse (and overwrite) any paramters given in the initializer list
         if initializer_dict:
             for k in initializer_dict.keys():
                 self[k] = copy.copy(initializer_dict[k])
@@ -407,7 +417,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
             tra.rotation_matrix(math.radians(0.), [0, 1, 0]))
         # tra.rotation_matrix(math.radians(10.), [1, 0, 0]))
 
-        # object specific parameters for punnet
+        # object specific parameters for mango
         self['surface_grasp']['mango'] = self['surface_grasp']['object'].copy()
 
         self['surface_grasp']['mango']['pregrasp_transform'] = tra.concatenate_matrices(
@@ -415,19 +425,13 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
             tra.translation_matrix([-0.06, 0.0, 0.0]),
             tra.rotation_matrix(math.radians(35.0), [0, 1, 0]))  # <-- best so far
 
+        self['surface_grasp']['mango']['pre_grasp_manifold'] = Manifold(position_deltas=[0.04, 0.04, 0.04],
+                                                                        orientation_deltas=[0, 0, np.pi])
 
-        self['surface_grasp']['mango']['pre_grasp_manifold'] = Manifold({'min_position_deltas': [-0.05, -0.05, -0.05],#[-0.01, -0.01, -0.01],
-                                                                          'max_position_deltas': [0.05, 0.05, 0.05],#[0.01, 0.01, 0.01],
-                                                                          'min_orientation_deltas': [0, 0, -1.5],#-1.5],
-                                                                          'max_orientation_deltas': [0, 0, 1.5],#1.5]
-                                                                         })
+        self['surface_grasp']['mango']['go_down_manifold'] = Manifold(position_deltas=[0.06, 0.06, 0.10],
+                                                                      orientation_deltas=[0, 0, np.pi])
 
-        self['surface_grasp']['mango']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.04, -0.05],
-                                                                       'max_position_deltas': [0.06, 0.04, 0.01],
-                                                                       'min_orientation_deltas': [0, 0, -1.5],
-                                                                       'max_orientation_deltas': [0, 0, 1.5]
-                                                                       })
-
+        # object specific parameters for cucumber (wall grasp)
         self['wall_grasp']['cucumber'] = self['wall_grasp']['object'].copy()
         self['wall_grasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.23, 0, -0.14]),  # 23 cm above object, 15 cm behind

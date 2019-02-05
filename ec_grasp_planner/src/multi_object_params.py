@@ -263,6 +263,28 @@ class multi_object_params:
 
             goals = [pre_grasp_pose, go_down_pose]#, post_grasp_pose]
 
+            # TODO what about using the bounding boxes as for automatic goal manifold calculation?
+
+            # Take orientation of object but translation of pre grasp pose
+            pre_grasp_pos_manifold = np.copy(object_params['frame'])
+            pre_grasp_pos_manifold[:3, 3] = tra.translation_from_matrix(pre_grasp_pose)
+
+            goal_manifold_frames = {
+                'pre_grasp': pre_grasp_pos_manifold,
+
+                # Use object frame for resampling
+                'go_down': np.copy(object_params['frame'])
+            }
+
+            goal_manifold_orientations = {
+                # use hand orientation
+                'pre_grasp': tra.quaternion_from_matrix(pre_grasp_pose),
+
+                # Use object orientation
+                'go_down': tra.quaternion_from_matrix(object_params['frame'])  # TODO use hand orietation instead?
+            }
+
+
             # override initial robot configuration
             # TODO also check gotToView -> params['initial_goal'] (requires forward kinematics, or change to op-space)
             curr_start_config = params['initial_goal']
@@ -331,6 +353,36 @@ class multi_object_params:
             checked_motions = ['pre_grasp', 'go_down', 'lift_hand', 'slide_to_wall'] # TODO overcome problem of FT-Switch after go_down
 
             goals = [pre_approach_pose, go_down_pose, lift_hand_pose, slide_to_wall_pose] # TODO see checked_motions
+
+            # Take orientation of object but translation of pre grasp pose
+            pre_grasp_pos_manifold = np.copy(object_params['frame'])
+            pre_grasp_pos_manifold[:3, 3] = tra.translation_from_matrix(pre_approach_pose)
+
+            goal_manifold_frames = {
+                'pre_grasp': pre_grasp_pos_manifold,
+
+                # Use object frame for sampling
+                'go_down': np.copy(object_params['frame']),
+
+                'lift_hand': np.copy(object_params['frame']),  # should always be the same frame as go_down
+
+                # Use wall frame for sampling. Keep in mind that the wall frame has different orientation, than world.
+                'slide_to_wall': wall_frame,
+            }
+
+            goal_manifold_orientations = {
+                # use hand orientation
+                'pre_grasp': tra.quaternion_from_matrix(pre_approach_pose),
+
+                # Use object orientation
+                'go_down': tra.quaternion_from_matrix(object_params['frame']),  # TODO use hand orietation instead?
+
+                # should always be the same orientation as go_down
+                'lift_hand': tra.quaternion_from_matrix(object_params['frame']),
+
+                # use wall orientation
+                'slide_to_wall': tra.quaternion_from_matrix(wall_frame),
+            }
 
             # override initial robot configuration
             # TODO also check gotToView -> params['initial_goal'] (requires forward kinematics, or change to op-space)
@@ -402,6 +454,13 @@ class multi_object_params:
             print("GOAL_POSE", goal_pose)
             print("INIT_CONF", curr_start_config)
 
+            goal_manifold_frame = multi_object_params.transform_to_pose_msg(goal_manifold_frames[motion])  # TODO change dictionaries to Motion class?
+
+            goal_manifold_orientation = geometry_msgs.msg.Quaternion(x=goal_manifold_orientations[motion][0],
+                                                                     y=goal_manifold_orientations[motion][1],
+                                                                     z=goal_manifold_orientations[motion][2],
+                                                                     w=goal_manifold_orientations[motion][3])
+
             check_feasibility = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
             print("Call check kinematics for " + motion + " " + str(curr_goal))#Arguments: \n" + yaml.safe_dump(args))
 
@@ -409,8 +468,10 @@ class multi_object_params:
                                     goal_pose=goal_pose,
                                     ifco_pose=ifco_pose,
                                     bounding_boxes_with_poses=bounding_boxes,
+                                    goal_manifold_frame=goal_manifold_frame,
                                     min_position_deltas=params[manifold_name]['min_position_deltas'],
                                     max_position_deltas=params[manifold_name]['max_position_deltas'],
+                                    goal_manifold_orientation=goal_manifold_orientation,
                                     min_orientation_deltas=params[manifold_name]['min_orientation_deltas'],
                                     max_orientation_deltas=params[manifold_name]['max_orientation_deltas'],
                                     allowed_collisions=allowed_collisions[motion]
