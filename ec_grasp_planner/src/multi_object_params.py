@@ -281,7 +281,7 @@ class multi_object_params:
                 'pre_grasp': tra.quaternion_from_matrix(pre_grasp_pose),
 
                 # Use object orientation
-                'go_down': tra.quaternion_from_matrix(object_params['frame'])  # TODO use hand orietation instead?
+                'go_down': tra.quaternion_from_matrix(go_down_pose), #tra.quaternion_from_matrix(object_params['frame'])  # TODO use hand orietation instead?
             }
 
 
@@ -375,10 +375,10 @@ class multi_object_params:
                 'pre_grasp': tra.quaternion_from_matrix(pre_approach_pose),
 
                 # Use object orientation
-                'go_down': tra.quaternion_from_matrix(object_params['frame']),  # TODO use hand orietation instead?
+                'go_down': tra.quaternion_from_matrix(go_down_pose),  # TODO use hand orietation instead?
 
                 # should always be the same orientation as go_down
-                'lift_hand': tra.quaternion_from_matrix(object_params['frame']),
+                'lift_hand': tra.quaternion_from_matrix(go_down_pose),
 
                 # use wall orientation
                 'slide_to_wall': tra.quaternion_from_matrix(wall_frame),
@@ -518,7 +518,7 @@ class multi_object_params:
         zone_fac = self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)
         wall_fac = self.black_list_walls(current_ec_index, all_ec_frames, strategy)
 
-        return zone_fac * wall_fac
+        return 1.0 #zone_fac * wall_fac TODO re-insert?
 
     @staticmethod
     def transform_to_pose(in_transform):

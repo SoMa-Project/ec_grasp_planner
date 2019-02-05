@@ -428,8 +428,17 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         self['surface_grasp']['mango']['pre_grasp_manifold'] = Manifold(position_deltas=[0.04, 0.04, 0.04],
                                                                         orientation_deltas=[0, 0, np.pi])
 
-        self['surface_grasp']['mango']['go_down_manifold'] = Manifold(position_deltas=[0.06, 0.06, 0.10],
-                                                                      orientation_deltas=[0, 0, np.pi])
+        self['surface_grasp']['mango']['go_down_manifold'] =  Manifold({'min_position_deltas': [-0.09, -0.09, -0.09],
+                                                                        'max_position_deltas': [0.09, 0.09, 0.09],
+
+                                                                        'min_orientation_deltas': [0, 0,  -np.pi],
+                                                                        'max_orientation_deltas': [0, 0,  np.pi]
+                                                                       })
+
+
+
+        #Manifold(position_deltas=[0.03, 0.05, 0.08],
+                                                             #         orientation_deltas=[0, 0, np.pi])
 
         # object specific parameters for cucumber (wall grasp)
         self['wall_grasp']['cucumber'] = self['wall_grasp']['object'].copy()
