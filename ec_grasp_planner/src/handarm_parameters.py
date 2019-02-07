@@ -225,12 +225,12 @@ class RBOHandP24WAM(RBOHand2):
                     math.radians(90.0), [0, 0, 1]),
             ))
 
-        # the pre-approach pose should be:
+        # the pre-approach pose should be:              # TODO maybe move a little in negative y direction!
         # - floating above and behind the object,
         # - fingers pointing downwards
         # - palm facing the object and wall
         self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.23, 0, -0.15]),  # 23 cm above object, 15 cm behind
+            tra.translation_matrix([-0.23, 0, -0.13]),  # 23 cm above object, 15 cm behind
             tra.concatenate_matrices(
                 tra.rotation_matrix(
                     math.radians(0.), [1, 0, 0]),
@@ -266,11 +266,11 @@ class RBOHandP24WAM(RBOHand2):
         self['wall_grasp']['object']['slide_joint_velocity'] = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1])
 
         # defines the manifold in which alternative goal poses are sampled during feasibility checks
-        self['wall_grasp']['object']['init_joint_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
-                                                                       'max_position_deltas': [0.01, 0.01, 0.01],
-                                                                       'min_orientation_deltas': [0, 0, -0.001],
-                                                                       'max_orientation_deltas': [0, 0, 0.001]
-                                                                       })
+        #self['wall_grasp']['object']['init_joint_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
+        #                                                               'max_position_deltas': [0.01, 0.01, 0.01],
+        #                                                               'min_orientation_deltas': [0, 0, -0.001],
+        #                                                               'max_orientation_deltas': [0, 0, 0.001]
+        #                                                               })
 
         self['wall_grasp']['object']['pre_grasp_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.02],
                                                                      'max_position_deltas': [0.01, 0.01, 0.02],
@@ -278,16 +278,16 @@ class RBOHandP24WAM(RBOHand2):
                                                                      'max_orientation_deltas': [0, 0, 0.17]
                                                                      })
 
-        self['wall_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.02],
-                                                                     'max_position_deltas': [0.01, 0.01, 0.02],
-                                                                     'min_orientation_deltas': [0, 0, -0.17],
-                                                                     'max_orientation_deltas': [0, 0, 0.17]
+        self['wall_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.02, -0.04],
+                                                                     'max_position_deltas': [0.01, 0.02, 0.10],
+                                                                     'min_orientation_deltas': [0, 0, -np.pi/16.0],
+                                                                     'max_orientation_deltas': [0, 0, np.pi/16.0]
                                                                      })
 
-        self['wall_grasp']['object']['lift_hand_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
-                                                                       'max_position_deltas': [0.01, 0.01, 0.01],
-                                                                       'min_orientation_deltas': [0, 0, -0.17],
-                                                                       'max_orientation_deltas': [0, 0, 0.17]
+        self['wall_grasp']['object']['lift_hand_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.02, -0.04],
+                                                                       'max_position_deltas': [0.01, 0.02, 0.04],
+                                                                       'min_orientation_deltas': [0, 0, -np.pi/16.0],
+                                                                       'max_orientation_deltas': [0, 0, np.pi/16.0]
                                                                        })
 
         self['wall_grasp']['object']['slide_to_wall_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],

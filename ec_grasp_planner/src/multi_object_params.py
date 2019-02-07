@@ -204,6 +204,7 @@ class multi_object_params:
             print("FOUND_EC east")
             return 'east'
 
+    # TODO move that to a separate file?
     def check_kinematic_feasibility(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames,
                                     ifco_in_base_transform, handarm_params):
 
@@ -273,7 +274,7 @@ class multi_object_params:
                 'pre_grasp': pre_grasp_pos_manifold,
 
                 # Use object frame for resampling
-                'go_down': np.copy(object_params['frame'])
+                'go_down': np.copy(object_params['frame'])  # TODO change that again to go_down_pose!?
             }
 
             goal_manifold_orientations = {
@@ -311,9 +312,9 @@ class multi_object_params:
 
         elif strategy == "WallGrasp":  # TODO add to planner.py
 
-            #blocked_ecs = [0, 2, 3, 4] # TODO remove
-            #if current_ec_index in blocked_ecs:
-            #    return 0
+            blocked_ecs = [0, 1, 2,  4] # TODO remove
+            if current_ec_index in blocked_ecs:
+                return 0
 
             if object['type'] in handarm_params['wall_grasp']:
                 params = handarm_params['wall_grasp'][object['type']]
@@ -346,9 +347,19 @@ class multi_object_params:
             wall_frame = np.copy(ec_frame)
             dir_wall[:3, 3] = wall_frame[:3, :3].dot(dir_wall[:3, 3])
 
+            # normal goal pose behind the wall
             slide_to_wall_pose = dir_wall.dot(lift_hand_pose)
 
-            # TODO remove code duplication with planner.py (refacto code snippets to function calls) !!!!!!!
+            # now project it into the wall plane!
+            z_projection = np.array([[1, 0, 0, 0],
+                                     [0, 1, 0, 0],
+                                     [0, 0, 0, 0],
+                                     [0, 0, 0, 1]])
+
+            to_wall_plane_transform = wall_frame.dot(z_projection.dot(tra.inverse_matrix(wall_frame).dot(slide_to_wall_pose)))
+            slide_to_wall_pose[:3, 3] = tra.translation_from_matrix(to_wall_plane_transform)
+
+            # TODO remove code duplication with planner.py (refactor code snippets to function calls) !!!!!!!
 
             checked_motions = ['pre_grasp', 'go_down', 'lift_hand', 'slide_to_wall'] # TODO overcome problem of FT-Switch after go_down
 
@@ -358,16 +369,18 @@ class multi_object_params:
             pre_grasp_pos_manifold = np.copy(object_params['frame'])
             pre_grasp_pos_manifold[:3, 3] = tra.translation_from_matrix(pre_approach_pose)
 
+            slide_pos_manifold = np.copy(slide_to_wall_pose)
+
             goal_manifold_frames = {
                 'pre_grasp': pre_grasp_pos_manifold,
 
                 # Use object frame for sampling
-                'go_down': np.copy(object_params['frame']),
+                'go_down': np.copy(go_down_pose),
 
-                'lift_hand': np.copy(object_params['frame']),  # should always be the same frame as go_down
+                'lift_hand': np.copy(lift_hand_pose),  # should always be the same frame as go_down # TODO use world orientation?
 
                 # Use wall frame for sampling. Keep in mind that the wall frame has different orientation, than world.
-                'slide_to_wall': wall_frame,
+                'slide_to_wall': slide_pos_manifold,
             }
 
             goal_manifold_orientations = {
@@ -378,7 +391,7 @@ class multi_object_params:
                 'go_down': tra.quaternion_from_matrix(go_down_pose),  # TODO use hand orietation instead?
 
                 # should always be the same orientation as go_down
-                'lift_hand': tra.quaternion_from_matrix(go_down_pose),
+                'lift_hand': tra.quaternion_from_matrix(lift_hand_pose),
 
                 # use wall orientation
                 'slide_to_wall': tra.quaternion_from_matrix(wall_frame),
@@ -412,7 +425,7 @@ class multi_object_params:
                                   AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
                                                    constraint_name=multi_object_params.get_matching_ifco_wall(
                                                        ifco_in_base_transform, ec_frame),
-                                                   terminating=True),
+                                                   terminating=False),
 
                                   # TODO is this one required?
                                   AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
