@@ -13,6 +13,8 @@ import math
 import yaml
 import datetime
 
+from os.path import expanduser
+
 from random import randint
 from random import uniform
 
@@ -66,6 +68,40 @@ import multi_object_params as mop
 
 markers_rviz = MarkerArray()
 frames_rviz = []
+
+
+class TimingBenchmark:
+    def __init__(self, identifier):
+        self.identifier = identifier
+        self.success = False
+        self.timestamp = None
+        self.obj = None
+        self.strategy = None
+        self.used_checker = "Invalid"
+
+        self.total_duration = None
+        self.vision_duration = None
+        self.planning_duration = None
+        self.avg_heuristic_duration = None
+        self.feasibility_total_duration = None
+
+    def dump(self):
+
+        with open(expanduser('~')+'/timing.csv', 'a') as csvfile:
+            line = "{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}\n".format(
+                self.identifier,
+                self.timestamp,
+                self.obj,
+                self.strategy,
+                self.used_checker,
+                self.success,
+                self.total_duration,
+                self.vision_duration,
+                self.planning_duration,
+                self.avg_heuristic_duration,
+                self.feasibility_total_duration if self.feasibility_total_duration is not None else -1,
+                )
+            csvfile.write(line)
 
 
 class FailureCases(Enum):
@@ -142,6 +178,8 @@ class GraspPlanner:
         self.grasp_type = ""
         self.handarm_params = None
 
+        self.timing_object = TimingBenchmark(-1)
+
 
     # ------------------------------------------------------------------------------------------------
     def handle_run_grasp_planner(self, req):
@@ -170,6 +208,14 @@ class GraspPlanner:
         # check if the handarm parameters aren't containing any contradicting information or bugs because of non-copying
         self.handarm_params.checkValidity()
 
+        # TIMING: create new data point
+        self.timing_object = TimingBenchmark(self.timing_object.identifier+1)
+        self.timing_object.timestamp = datetime.datetime.now()
+        self.timing_object.obj = self.object_type
+        self.timing_object.strategy = self.grasp_type
+        self.timing_object.used_checker = rospy.get_param("feasibility_check/active", default="TUB")
+        self.multi_object_handler.set_timing_object(self.timing_object)
+
         try:
             print('Wait for vision service')
             rospy.wait_for_service('compute_ec_graph', timeout=30)
@@ -179,7 +225,13 @@ class GraspPlanner:
         try:
             print('Call vision service now...!')
             call_vision = rospy.ServiceProxy('compute_ec_graph', vision_srv.ComputeECGraph)
+
+            time_now = time.clock()
+            total_time_start = time_now
+            vision_time_start = time_now
             res = call_vision(self.object_type)
+            self.timing_object.vision_duration = time.clock() - vision_time_start
+
             graph = res.graph
             objects = res.objects.objects
         except rospy.ServiceException as e:
@@ -194,9 +246,9 @@ class GraspPlanner:
         robot_base_frame = self.args.robot_base_frame
         object_frame = objects[0].transform
 
-        time = rospy.Time(0)
-        graph.header.stamp = time
-        object_frame.header.stamp = time # TODO why do we need to change the time in the header?
+        time_latest = rospy.Time(0)
+        graph.header.stamp = time_latest
+        object_frame.header.stamp = time_latest # TODO why do we need to change the time in the header?
         bounding_box = objects[0].boundingbox
 
         # build list of objects
@@ -207,7 +259,7 @@ class GraspPlanner:
 
             # the TF must be in the same reference frame as the EC frames
             # Get the object frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, o.transform.header.frame_id, time,
+            self.tf_listener.waitForTransform(robot_base_frame, o.transform.header.frame_id, time_latest,
                                               rospy.Duration(2.0))
             camera_in_base = self.tf_listener.asMatrix(robot_base_frame, o.transform.header)
             object_in_camera = pm.toMatrix(pm.fromMsg(o.transform.pose))
@@ -227,14 +279,18 @@ class GraspPlanner:
         node_list = [n for i, n in enumerate(graph.nodes) if n.label in goal_node_labels]
 
         # Get the geometry graph frame in robot base frame
-        self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
+        self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time_latest, rospy.Duration(2.0))
         graph_in_base_transform = self.tf_listener.asMatrix(robot_base_frame, graph.header)
 
-        self.tf_listener.waitForTransform('ifco', robot_base_frame, time, rospy.Duration(2.0))
+        self.tf_listener.waitForTransform('ifco', robot_base_frame, time_latest, rospy.Duration(2.0))
         (ifco_in_base_translation, ifco_in_base_rot) = self.tf_listener.lookupTransform('ifco', robot_base_frame, rospy.Time(0)) #transform_msg_to_homogenous_tf()
         tf_transformer = tf.TransformerROS()
         ifco_in_base_transform = tf_transformer.fromTranslationRotation(ifco_in_base_translation, ifco_in_base_rot)
         print ifco_in_base_transform
+
+        time_now = time.clock()
+        feasibility_total_time_start = time_now
+        planning_duration_start = time_now
 
         # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
         (chosen_object_idx, chosen_node_idx) = self.multi_object_handler.process_objects_ecs(object_list,
@@ -245,7 +301,17 @@ class GraspPlanner:
                                                                                      self.handarm_params
                                                                                      )
 
+        self.timing_object.feasibility_total_duration = time.clock() - feasibility_total_time_start
+
         if chosen_object_idx < 0:
+
+            # Dump failure
+            time_now = time.clock()
+            self.timing_object.success = False
+            self.timing_object.planning_duration = time_now - planning_duration_start
+            self.timing_object.total_duration = time_now - total_time_start
+            self.timing_object.dump()
+
             return plan_srv.RunGraspPlannerResponse(success=False,
                                                     hybrid_automaton_xml="No feasible trajectory was found",
                                                     chosen_object_idx=-1)
@@ -260,7 +326,7 @@ class GraspPlanner:
         grasp_path = None
         while grasp_path is None:
             # Get the geometry graph frame in robot base frame
-            self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
+            self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time_latest, rospy.Duration(2.0))
             graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
 
             # Get the object frame in robot base frame
@@ -286,6 +352,11 @@ class GraspPlanner:
                                                                      self.multi_object_handler.get_alternative_behavior(
                                                                          chosen_object_idx, chosen_node_idx))
 
+        # TIMING stop planning and total time
+        time_now = time.clock()
+        self.timing_object.planning_duration = time_now - planning_duration_start
+        self.timing_object.total_duration = time_now - total_time_start
+
         # --------------------------------------------------------
         # Output the hybrid automaton
 
@@ -307,7 +378,14 @@ class GraspPlanner:
             publish_rviz_markers(self.rviz_frames, robot_base_frame, self.handarm_params)
             # rospy.spin()
 
+
+
         ha_as_xml = ha.xml()
+
+        # DUMP timing stuff to hard drive
+        self.timing_object.success = ha_as_xml != ""
+        self.timing_object.dump()
+
         return plan_srv.RunGraspPlannerResponse(success=ha_as_xml != "",
                                                 hybrid_automaton_xml=ha_as_xml,
                                                 chosen_object_idx=chosen_object_idx if ha_as_xml != "" else -1,

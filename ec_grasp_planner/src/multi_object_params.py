@@ -13,6 +13,7 @@ import rospy
 from functools import partial
 
 import rospkg
+import time
 
 rospack = rospkg.RosPack()
 pkg_path = rospack.get_path('ec_grasp_planner')
@@ -57,6 +58,10 @@ class multi_object_params:
         self.file_name = file_name
         self.data = None
         self.stored_trajectories = {}
+        self.timing_object = None
+
+    def set_timing_object(self, timing_object):
+        self.timing_object = timing_object
 
     def get_object_params(self):
         if self.data is None:
@@ -549,6 +554,7 @@ class multi_object_params:
 
         feasibility_checker = rospy.get_param("feasibility_check/active", default="TUB")
         if feasibility_checker == 'TUB':
+
             feasibility_fun = partial(self.check_kinematic_feasibility, current_object_idx, objects, current_ec_index,
                                       strategy, all_ec_frames, ifco_in_base_transform, handarm_params)
 
@@ -643,6 +649,8 @@ class multi_object_params:
 
         Q_matrix = np.zeros((len(objects), len(ecs)))
 
+        heuristic_duration_sum = 0.0
+        call_counter = 0
         # iterate through all objects
         for i, o in enumerate(objects):
 
@@ -661,8 +669,15 @@ class multi_object_params:
             for j, ec in enumerate(ecs):
                 # the ec frame must be in the same reference frame as the object
                 ec_frame_in_base = graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))
+
+                heuristic_time_start = time.clock()
                 Q_matrix[i,j] = self.heuristic(i, objects, j, ec.label, all_ec_frames, ifco_in_base_transform,
                                                handarm_parameters)
+
+                heuristic_duration_sum += time.clock() - heuristic_time_start
+                call_counter += 1
+
+        self.timing_object.avg_heuristic_duration = heuristic_duration_sum / float(call_counter)
 
         # print (" ** h_mx = {}".format(Q_matrix))
 
