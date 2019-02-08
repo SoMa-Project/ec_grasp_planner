@@ -279,7 +279,7 @@ class RBOHandP24WAM(RBOHand2):
                                                                      })
 
         self['wall_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.02, -0.04],
-                                                                     'max_position_deltas': [0.01, 0.02, 0.10],
+                                                                     'max_position_deltas': [0.01, 0.02, 0.06],
                                                                      'min_orientation_deltas': [0, 0, -np.pi/16.0],
                                                                      'max_orientation_deltas': [0, 0, np.pi/16.0]
                                                                      })

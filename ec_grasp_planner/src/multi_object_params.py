@@ -285,7 +285,6 @@ class multi_object_params:
                 'go_down': tra.quaternion_from_matrix(go_down_pose), #tra.quaternion_from_matrix(object_params['frame'])  # TODO use hand orietation instead?
             }
 
-
             # override initial robot configuration
             # TODO also check gotToView -> params['initial_goal'] (requires forward kinematics, or change to op-space)
             curr_start_config = params['initial_goal']
@@ -305,9 +304,9 @@ class multi_object_params:
 
                 # TODO also account for the additional object in a way?
                 'post_grasp_rot': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
-                                             box_id=current_object_idx, terminating=True),
+                                                    box_id=current_object_idx, terminating=True),
                                    AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                             constraint_name='bottom', terminating=False)]
+                                                    constraint_name='bottom', terminating=False)]
             }
 
         elif strategy == "WallGrasp":  # TODO add to planner.py
@@ -333,12 +332,20 @@ class multi_object_params:
             pre_approach_pose = ec_hand_frame.dot(pre_approach_transform)
 
             # goal pose for go down movement
-            go_down_pose = tra.translation_matrix([0, 0, -params['down_dist']]).dot(pre_approach_pose)
+
+            # down_dist = params['down_dist']  #  dist lower than ifco bottom: behavior of the high level planner
+            # dist = z difference to ifco bottom minus hand frame offset (dist from hand frame to collision point)
+            # (more realistic behavior since we have a force threshold when going down to the bottom)
+            bounded_lift_down_dist = pre_approach_pose[2, 3] - tra.inverse_matrix(ifco_in_base_transform)[2, 3]
+            hand_frame_to_bottom_offset = 0.07  # 7cm TODO maybe move to handarm_parameters.py
+            bounded_lift_down_dist = min(params['down_dist'], bounded_lift_down_dist-hand_frame_to_bottom_offset)
+
+            go_down_pose = tra.translation_matrix([0, 0, -bounded_lift_down_dist]).dot(pre_approach_pose)
 
             # pose after lifting. This is somewhat fake, since the real go_down_pose will be determined by
             # the FT-Switch during go_down and the actual lifted distance by the TimeSwitch (or a pose switch in case
             # the robot allows precise small movements) TODO better solution?
-            fake_lift_up_dist = np.min([params['lift_dist'], 0.1])
+            fake_lift_up_dist = np.min([params['lift_dist'], 0.01])  # 1cm
             lift_hand_pose = tra.translation_matrix([0, 0, fake_lift_up_dist]).dot(go_down_pose)
 
             dir_wall = tra.translation_matrix([0, 0, -params['sliding_dist']])
@@ -418,19 +425,23 @@ class multi_object_params:
                               ],
 
                 # TODO also allow all other obejcts to be touched during sliding motion
-                'slide_to_wall': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=current_object_idx,
-                                                   terminating=False,
-                                                   ),
+                'slide_to_wall': [
+                                            # Allow all other objects to be touched as well
+                                            # (since hand will go through them in simulation) TODO desired behavior?
+                                            AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=obj_idx,
+                                                             terminating=False)  # ,required=obj_idx==current_object_idx)
+                                            for obj_idx in range(0, len(objects))
+                                 ]
+                + [
+                                     AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                                      constraint_name=multi_object_params.get_matching_ifco_wall(
+                                                          ifco_in_base_transform, ec_frame),
+                                                      terminating=False),
 
-                                  AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                                   constraint_name=multi_object_params.get_matching_ifco_wall(
-                                                       ifco_in_base_transform, ec_frame),
-                                                   terminating=False),
+                                     AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
+                                                      terminating=False),
+                  ],
 
-                                  # TODO is this one required?
-                                  AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
-                                                   terminating=False),
-                                  ],
             }
 
         else:
@@ -475,6 +486,9 @@ class multi_object_params:
                                                                      w=goal_manifold_orientations[motion][3])
 
             check_feasibility = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
+
+            print("allowed", allowed_collisions[motion])
+
             print("Call check kinematics for " + motion + " " + str(curr_goal))#Arguments: \n" + yaml.safe_dump(args))
 
             res = check_feasibility(initial_configuration=curr_start_config,
