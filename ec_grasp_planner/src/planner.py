@@ -185,8 +185,8 @@ class GraspPlanner:
             objects = res.objects.objects
         except rospy.ServiceException as e:
             raise rospy.ServiceException("Vision service call failed: %s" % e)
-			# below line is missing from master
-			#return plan_srv.RunGraspPlannerResponse("")
+            # below line is missing from master
+            #return plan_srv.RunGraspPlannerResponse("")
 
         if not objects:
             print("No object was detected")
