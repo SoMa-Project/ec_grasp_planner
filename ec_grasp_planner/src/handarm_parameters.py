@@ -116,7 +116,7 @@ class RBOHandP24WAM(RBOHand2):
         # below are parameters for wall grasp with P24 fingers (standard RBO hand)
         #####################################################################################
         
-        self['WallGrasprasp']['object']['initial_goal'] = np.array([0.439999, 0.624437, -0.218715, 1.71695, -0.735594, 0.197093, -0.920799])
+        self['WallGrasp']['object']['initial_goal'] = np.array([0.439999, 0.624437, -0.218715, 1.71695, -0.735594, 0.197093, -0.920799])
 
 
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
