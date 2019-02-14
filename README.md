@@ -209,7 +209,7 @@ Step 2, call the rosservice
 
 object_type can be specified to do certain object-specific behaviours. Right now there is only a default behaviour which is the same for all objects.
 
-grasp_type should be one of {any,EdgeGrasp,WallGrasp,SurfaceGrasp}. In this version only SurfaceGrasp is supported.
+grasp_type should be one of {Any,EdgeGrasp,WallGrasp,SurfaceGrasp}. In this version only SurfaceGrasp and WallGrasp is supported.
 
 handarm_type should match your specific robot/hand combination, i.e. RBOHand2Kuka for the rbo hand mounted omn the KUKA iiwa.  The value must match one of the class names in handarm_parameters.py.
 

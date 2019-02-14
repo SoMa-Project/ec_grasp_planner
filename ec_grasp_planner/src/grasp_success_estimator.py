@@ -281,4 +281,3 @@ if __name__ == '__main__':
         rospy.spin()
         # locking between the callbacks not required as long as we use only one spinner. See:
         # https://answers.ros.org/question/48429/should-i-use-a-lock-on-resources-in-a-listener-node-with-multiple-callbacks/
-
