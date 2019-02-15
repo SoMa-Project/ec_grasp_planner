@@ -179,15 +179,16 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # Set the initial pose above the object
     goal_ = np.copy(object_frame) #TODO: this should be support_surface_frame
     #goal_[:3,3] = tra.translation_from_matrix(object_frame)
+    
+    #the grasp frame is symmetrical - check which side is nicer to reach
+    #this is a hacky first version for our WAM
+    zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
+    #if goal_[0][0]<0:
+    goal_ = goal_.dot(zflip_transform)
+
     goal_ = goal_.dot(pregrasp_transform)
     pre_grasp_pose =  goal_.dot(tra.inverse_matrix(hand_transform))
     pre_grasp_pose_sig = pre_grasp_pose.dot(tra.inverse_matrix(grasp_signature));
-
-    #the grasp frame is symmetrical - check which side is nicer to reach
-    #this is a hacky first version for our WAM
-    #zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
-    #if goal_[0][0]<0:
-    #    goal_ = goal_.dot(zflip_transform)
 
 
     # hand pose above object
@@ -218,9 +219,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
 
 
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoDownHTransform', goal_is_relative='1', name="MoveJoao",reference_frame="iiwa_link_0"))
-    control_sequence.append(ha.TimeSwitch('MoveJoao', 'Start', duration = 3.0))
+    #control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoDownHTransform', goal_is_relative='1', name="MoveJoao",reference_frame="iiwa_link_0"))
+    #control_sequence.append(ha.TimeSwitch('MoveJoao', 'Start', duration = 3.0))
 
     # 2. Go above the object - Pregrasp
     control_sequence.append(
@@ -241,8 +241,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 3b. Switch when goal is reached
     #control_sequence.append(ha.FramePoseSwitch('GoDown', 'GoUp', controller = 'GoDown', epsilon = '0.01'))
 
-    control_sequence.append(ha.TimeSwitch('GoDown', 'Grasp', duration = 2.0))
-    control_sequence.append(ha.PisaHandForceControlMode(goal=np.array([0.6]), kp=np.array([0.7]), name="Grasp"))
+    control_sequence.append(ha.TimeSwitch('GoDown', 'Grasp', duration = 10.0))
+    control_sequence.append(ha.PisaHandForceControlMode(goal=np.array([0.8]), kp=np.array([0.7]), name="Grasp"))
     control_sequence.append(ha.TimeSwitch('Grasp', 'GoUp', duration = 2.0))
 
 
