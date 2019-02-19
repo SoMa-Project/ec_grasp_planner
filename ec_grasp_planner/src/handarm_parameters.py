@@ -159,7 +159,8 @@ class RBOHandP24WAM(RBOHand2):
 
         # drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
-            [-0.57148, 0.816213, -0.365673, 1.53765, 0.30308, 0.128965, 1.02467])
+            [0.146824, 0.948542, -0.135149, 1.85859, -1.75554, -0.464148, 1.53275])  # in the center of the table
+        #   [-0.57148, 0.816213, -0.365673, 1.53765, 0.30308, 0.128965, 1.02467])    # next to the table
 
         # object hand over configuration - this is system specific!
         self['surface_grasp']['object']['hand_over_config'] = np.array(
@@ -173,15 +174,15 @@ class RBOHandP24WAM(RBOHand2):
 
         # Workaround to prevent joint limits (don't start at view position) TODO get rid of that!
         self['surface_grasp']['object']['initial_goal'] = np.array(
-            [0.387987, 0.638624, -0.361978, 2.10522, -0.101053, -0.497832, -0.487216])
+            [0.457199, 0.506295, -0.268382, 2.34495, 0.168263, 0.149603, -0.332482])  # different for ocado use-case
 
         # time of soft hand closing
         self['surface_grasp']['object']['down_dist'] = 0.5
-        self['surface_grasp']['object']['up_dist'] = 0.25
+        self['surface_grasp']['object']['up_dist'] = 0.12  # This is different compared to ocado use-case
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.06])  # first value: rotational, second translational
 
-        # maximal joint velocities in case a JointController is used (e.g. alternative behavior was genererated)
+        # maximal joint velocities in case a JointController is used (e.g. alternative behavior was generated)
         self['surface_grasp']['object']['pre_grasp_joint_velocity'] = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1])
         self['surface_grasp']['object']['go_down_joint_velocity'] = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1])  #np.ones(7) * 0.2
 
@@ -227,7 +228,7 @@ class RBOHandP24WAM(RBOHand2):
         # Specific Objects: plushtoy, apple, egg, headband, bottle, banana, ticket
         # ----------------------------------------------------------------------------
 
-        self['surface_grasp']['plushtoy'] =  self['surface_grasp']['object'].copy()
+        self['surface_grasp']['plushtoy'] = self['surface_grasp']['object'].copy()
         self['surface_grasp']['plushtoy']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, 0.0]),
             tra.rotation_matrix(math.radians(0.),

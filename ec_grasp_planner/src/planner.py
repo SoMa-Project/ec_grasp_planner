@@ -385,8 +385,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     # Set the directions to use task space controller with
     dirDown = tra.translation_matrix([0, 0, -down_dist])
-    # half the distance we want to achieve since we do two consecutive lifts
-    dirUp_2 = tra.translation_matrix([0, 0, up_dist/2.0])
+
+    dirUp = tra.translation_matrix([0, 0, up_dist])
 
     # force threshold that if reached will trigger the closing of the hand
     if rospy.has_param('/planner/downward_force'):
@@ -587,7 +587,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                epsilon='0.01', goal_is_relative='1', reference_frame='EE'))
 
     # 7. Lift upwards a little bit (half way up)
-    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp_2, controller_name='GoUpHTransform',
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform',
                                                                  name='GoUp_1', goal_is_relative='1',
                                                                  reference_frame="world"))
 
@@ -662,9 +662,10 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.BlockJointControlMode(name='wait_for_handover'))
 
     # 10b.1 Wait until force is exerted by human on EE while taking the object to release object
-    control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open_1_handover', name='human_interaction_handover', goal=np.zeros(6),
-                                                   norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='0', goal_is_relative = '1',
-                                                   epsilon=hand_over_force, negate='1'))
+    control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open_1_handover',
+                                                 name='human_interaction_handover', goal=np.zeros(6),
+                                                 norm_weights=np.array([1, 1, 1, 0, 0, 0]),  jump_criterion='0',
+                                                 goal_is_relative='1', epsilon=hand_over_force, negate='1'))
 
     # 10b.2 Reaction if human is not taking the object in time, robot drops off the object
     control_sequence.append(ha.TimeSwitch('wait_for_handover', 'GoDropOff',
@@ -692,8 +693,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     # 14 Lift hand up (after placing object on the table)
     control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform_2', name='GoUp_2', goal_is_relative='1',
-                                             reference_frame="world"))
+        ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform_2', name='GoUp_2',
+                                             goal_is_relative='1', reference_frame="world"))
 
     # 14b. Switch when lifting goal reached
     control_sequence.append(
