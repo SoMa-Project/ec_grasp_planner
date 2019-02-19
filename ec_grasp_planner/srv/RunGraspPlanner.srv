@@ -4,7 +4,7 @@ string handarm_type
 bool handover
 string object_heuristic_function
 ---
-# Describes the planner succes: true if HA was generated, false otherwise.
+# Describes the planner success: true if HA was generated, false otherwise.
 bool success
 
 # Encodes the HA, if success=true. Otherwise this will contain a reason for failure.

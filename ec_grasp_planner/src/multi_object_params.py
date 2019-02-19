@@ -236,16 +236,48 @@ class multi_object_params:
                 params = handarm_params['surface_grasp'][object['type']]
             else:
                 params = handarm_params['surface_grasp']['object']
-            # Set the initial pose above the object
-            goal_ = np.copy(object_params['frame'])  # TODO: this should be support_surface_frame
-            goal_[:3, 3] = tra.translation_from_matrix(object_params['frame'])
+
+            # TODO needed ----------------------
+            x_flip_transform = tra.concatenate_matrices(
+                tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(180.0), [1, 0, 0]))
+
+            table_frame = ec_frame.dot(x_flip_transform)
+
+            # Since the surface grasp frame is at the object center we have to translate it in z direction
+            table_frame[2, 3] = table_frame[2, 3] - object['bounding_box'].z / 2.0
+
+            #object_frame = object_params['frame'].dot(x_flip_transform)
+            object_frame = object_params['frame']
+
+            print("DBG_FRAME 1", multi_object_params.transform_to_pose_msg(object_frame))
+            # TODO needed ----------------------
+
+            goal_ = np.copy(object_frame)
+            # we rotate the frame to align the hand with the long object axis and the table surface
+            x_axis = object_frame[:3, 0]
+            z_axis = table_frame[:3, 2]
+            y_axis = np.cross(z_axis, x_axis)
+
+            goal_[:3, 0] = x_axis
+            goal_[:3, 1] = y_axis / np.linalg.norm(y_axis)
+            goal_[:3, 2] = z_axis
+
             goal_ = goal_.dot(params['hand_transform'])
+
+            print("DBG_FRAME 2",  multi_object_params.transform_to_pose_msg(goal_))
+
+            # Set the initial pose above the object
+            #goal_ = np.copy(object_params['frame'])  # TODO: this should be support_surface_frame
+            #goal_[:3, 3] = tra.translation_from_matrix(object_params['frame'])
+            #goal_ = goal_.dot(params['hand_transform'])
 
             # the grasp frame is symmetrical - check which side is nicer to reach
             # this is a hacky first version for our WAM
             zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
             if goal_[0][0] < 0:
                 goal_ = goal_.dot(zflip_transform)
+
+            print("DBG_FRAME 3",  multi_object_params.transform_to_pose_msg(goal_))
 
             # hand pose above object
             pre_grasp_pose = goal_.dot(params['pregrasp_transform'])
@@ -298,7 +330,7 @@ class multi_object_params:
                 'pre_grasp': [],
 
                 'go_down': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
-                                             box_id=current_object_idx, terminating=True),
+                                             box_id=current_object_idx, terminating=True, required=True),
                             AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
                                              constraint_name='bottom', terminating=False)],
 
@@ -429,7 +461,7 @@ class multi_object_params:
                                             # Allow all other objects to be touched as well
                                             # (since hand will go through them in simulation) TODO desired behavior?
                                             AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=obj_idx,
-                                                             terminating=False)  # ,required=obj_idx==current_object_idx)
+                                                             terminating=False, required=obj_idx == current_object_idx)
                                             for obj_idx in range(0, len(objects))
                                  ]
                 + [
@@ -454,8 +486,18 @@ class multi_object_params:
         self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
 
         # The pose of the ifco (in base frame) in message format
-        ifco_pose = multi_object_params.transform_to_pose_msg(tra.inverse_matrix(ifco_in_base_transform))
-        print("IFCO_POSE", ifco_pose)
+        # ifco_pose = multi_object_params.transform_to_pose_msg(tra.inverse_matrix(ifco_in_base_transform))
+        # TODO this only works for SurfaceGrasp. EdgeGrasp needs a different table representation.
+
+        x_flip_transform = tra.concatenate_matrices(
+            tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(180.0), [1, 0, 0]))
+
+        if strategy != "SurfaceGrasp":
+            rospy.logerr("This only works for surface grasp right now (since we have the table frame)")
+
+        table_pose = multi_object_params.transform_to_pose_msg(table_frame)  # TODO This only works for surface grasp right now (since we have the table frame)
+        #table_pose = multi_object_params.transform_to_pose_msg(np.copy(ec_frame).dot(x_flip_transform)) # TODO remove copy
+        print("TABLE POSE", table_pose)
 
         # The bounding boxes of all objects in message format
         bounding_boxes = []
@@ -485,7 +527,11 @@ class multi_object_params:
                                                                      z=goal_manifold_orientations[motion][2],
                                                                      w=goal_manifold_orientations[motion][3])
 
-            check_feasibility = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
+            # Ocado use case:
+            # check_feasibility = rospy.ServiceProxy('/check_kinematics', kin_check_srv.CheckKinematics)
+
+            # Disney use case:
+            check_feasibility = rospy.ServiceProxy('/check_kinematics_tabletop', kin_check_srv.CheckKinematicsTabletop)
 
             print("allowed", allowed_collisions[motion])
 
@@ -493,7 +539,7 @@ class multi_object_params:
 
             res = check_feasibility(initial_configuration=curr_start_config,
                                     goal_pose=goal_pose,
-                                    ifco_pose=ifco_pose,
+                                    table_pose=table_pose,
                                     bounding_boxes_with_poses=bounding_boxes,
                                     goal_manifold_frame=goal_manifold_frame,
                                     min_position_deltas=params[manifold_name]['min_position_deltas'],

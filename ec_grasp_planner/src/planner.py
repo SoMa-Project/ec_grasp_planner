@@ -389,31 +389,27 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     dirUp_2 = tra.translation_matrix([0, 0, up_dist/2.0])
 
     # force threshold that if reached will trigger the closing of the hand
-    param_name = rospy.search_param('/planner/downward_force')
-    if param_name == "":
-        force  = np.array([0, 0, downward_force, 0, 0, 0])
-        print("no force set, use default: {}".format(force))
-    else:
-        new_force= rospy.get_param('/planner/downward_force')
+    if rospy.has_param('/planner/downward_force'):
+        new_force = rospy.get_param('/planner/downward_force')
         force = np.array([0, 0, new_force, 0, 0, 0])
         print("force param set: {}".format(force))
-
-	# downward speed that can be defined by ros parameters
-    param_name = rospy.search_param('/planner/downward_speed')
-    if param_name == "":
-        print("no speed set, use default: {}".format(go_down_velocity))
     else:
+        force  = np.array([0, 0, downward_force, 0, 0, 0])
+        print("no force set, use default: {}".format(force))
+
+    # downward speed that can be defined by ros parameters
+    if rospy.has_param('/planner/downward_speed'):
         new_speed= rospy.get_param('/planner/downward_speed')
-        go_down_velocity = np.array(
-            [0.125, new_speed])
-        print("force param set: {}".format(go_down_velocity))
-
-    param_name = rospy.search_param('/planner/downward_joint_speed')
-    if param_name == "":
-        print("no speed set, use default: {}".format(go_down_joint_velocity))
+        go_down_velocity = np.array([0.125, new_speed])
+        print("downward_speed param set: {}".format(go_down_velocity))
     else:
+        print("no downward_speed set, use default: {}".format(go_down_velocity))
+
+    if rospy.has_param('/planner/downward_joint_speed'):
         go_down_joint_velocity = rospy.get_param('/planner/downward_joint_speed')
-        print("force param set: {}".format(go_down_joint_velocity))
+        print("downward_joint_speed set: {}".format(go_down_joint_velocity))
+    else:
+        print("no downward_joint_speed set, use default: {}".format(go_down_joint_velocity))
 
     # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
     # the "1" encodes the grasp type 1 Surface, 2 wall, 3 edge

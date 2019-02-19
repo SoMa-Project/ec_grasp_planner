@@ -233,6 +233,12 @@ class RBOHandP24WAM(RBOHand2):
             tra.rotation_matrix(math.radians(0.),
                                 [0, 1, 0]))
 
+        self['surface_grasp']['plushtoy']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.04, -0.08],
+                                                                        'max_position_deltas': [0.06, 0.04, 0.01],
+                                                                        'min_orientation_deltas': [0, 0, 0],
+                                                                        'max_orientation_deltas': [0, 0, 0]
+                                                                       })
+
         #drop configuration - this is system specific!
         self['surface_grasp']['apple'] = self['surface_grasp']['object'].copy()
         self['surface_grasp']['egg'] = self['surface_grasp']['object'].copy()
