@@ -836,7 +836,11 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
         # Switch when goal is reached to trigger the relative go down further motion
         control_sequence.append(ha.JointConfigurationSwitch('LiftHand', 'SlideToWall', controller='Lift1',
                                                             epsilon=str(math.radians(7.))))
-        # TODO check if this is possible for our WAM (or if we have to implement the TimeSwitch hack again)
+
+        # We also switch after a short time as this allows us to do a small, precise lift motion, in case the
+        # JointConfigurationSwitch above does not trigger.
+        # TODO partners: this can be removed if your robot is able to do small motions precisely
+        control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.2))
 
     else:
         dirLift = tra.translation_matrix([0, 0, lift_dist])

@@ -336,11 +336,11 @@ class multi_object_params:
             # down_dist = params['down_dist']  #  dist lower than ifco bottom: behavior of the high level planner
             # dist = z difference to ifco bottom minus hand frame offset (dist from hand frame to collision point)
             # (more realistic behavior since we have a force threshold when going down to the bottom)
-            bounded_lift_down_dist = pre_approach_pose[2, 3] - tra.inverse_matrix(ifco_in_base_transform)[2, 3]
+            bounded_down_dist = pre_approach_pose[2, 3] - tra.inverse_matrix(ifco_in_base_transform)[2, 3]
             hand_frame_to_bottom_offset = 0.07  # 7cm TODO maybe move to handarm_parameters.py
-            bounded_lift_down_dist = min(params['down_dist'], bounded_lift_down_dist-hand_frame_to_bottom_offset)
+            bounded_down_dist = min(params['down_dist'], bounded_down_dist-hand_frame_to_bottom_offset)
 
-            go_down_pose = tra.translation_matrix([0, 0, -bounded_lift_down_dist]).dot(pre_approach_pose)
+            go_down_pose = tra.translation_matrix([0, 0, -bounded_down_dist]).dot(pre_approach_pose)
 
             # pose after lifting. This is somewhat fake, since the real go_down_pose will be determined by
             # the FT-Switch during go_down and the actual lifted distance by the TimeSwitch (or a pose switch in case
@@ -518,7 +518,7 @@ class multi_object_params:
                 print("FOUND ALTERNATIVE. New Start: ", curr_start_config)
 
             elif res.status == CheckKinematicsResponse.REACHED_INITIAL:
-                # original trajectory is feasible, we don't have to save an alternative TODO update comment & code
+                # original trajectory is feasible, we save the alternative in case a later motion is not possible.
                 self.stored_trajectories[(current_object_idx, current_ec_index)][motion] = AlternativeBehavior(res, curr_start_config)
                 curr_start_config = res.final_configuration
                 print("USE NORMAL. Start: ", curr_start_config)
@@ -529,7 +529,7 @@ class multi_object_params:
 
         if all_steps_okay:
             # if all steps are okay use original trajectory TODO only replace preceding steps!
-            # self.stored_trajectories[(current_object_idx, current_ec_index)] = {} # TODO add again
+            self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
             pass
 
         return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,

@@ -209,7 +209,8 @@ class RBOHandP24WAM(RBOHand2):
         #####################################################################################
         self['wall_grasp']['object']['hand_closing_duration'] = 1.0
         self['wall_grasp']['object']['initial_goal'] = np.array(
-            [0.439999, 0.624437, -0.218715, 1.71695, -0.735594, 0.197093, -0.920799])
+            # [0.439999, 0.624437, -0.218715, 1.71695, -0.735594, 0.197093, -0.920799])
+            [0.258841, 0.823679, -0.00565591, 1.67988, -0.87263, 0.806526, -1.03372])
 
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
@@ -230,7 +231,7 @@ class RBOHandP24WAM(RBOHand2):
         # - fingers pointing downwards
         # - palm facing the object and wall
         self['wall_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.23, 0, -0.13]),  # 23 cm above object, 15 cm behind
+            tra.translation_matrix([-0.23, 0, -0.15]),  # 23 cm above object, 15 cm behind
             tra.concatenate_matrices(
                 tra.rotation_matrix(
                     math.radians(0.), [1, 0, 0]),
@@ -263,7 +264,7 @@ class RBOHandP24WAM(RBOHand2):
         # maximal joint velocities in case a JointController is used (e.g. alternative behavior was generated)
         self['wall_grasp']['object']['max_joint_velocity'] = np.ones(7) * 0.2
         # maximal joint velocities during sliding motion in case a JointController is used.
-        self['wall_grasp']['object']['slide_joint_velocity'] = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1])
+        self['wall_grasp']['object']['slide_joint_velocity'] = np.array([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.15])
 
         # defines the manifold in which alternative goal poses are sampled during feasibility checks
         #self['wall_grasp']['object']['init_joint_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
