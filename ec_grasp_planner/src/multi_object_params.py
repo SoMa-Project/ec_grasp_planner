@@ -184,62 +184,38 @@ class multi_object_params:
             return 0
 
     @staticmethod
+    def tf_dbg_call_to_string(in_transformation, frame_name='dbg'):
+        msgframe = multi_object_params.transform_to_pose_msg(in_transformation)
+        return "rosrun tf static_transform_publisher {0} {1} {2} {3} {4} {5} {6} rlab_origin {7} 100".format(
+            msgframe.position.x, msgframe.position.y, msgframe.position.z, msgframe.orientation.x,
+            msgframe.orientation.y, msgframe.orientation.z, msgframe.orientation.w, frame_name)
+
+    @staticmethod
     def get_matching_ifco_wall(ifco_in_base_transform, ec_frame):
 
-        return 'south'  # TODO remove that after DEMO and fix bug....!!
+        # ec x axis in ifco frame
+        ec_x_axis = ifco_in_base_transform.dot(ec_frame)[0:3, 0]
+        ec_z_axis = ifco_in_base_transform.dot(ec_frame)[0:3, 2]
 
-        #ec_to_world = ifco_in_base_transform.dot(ec_frame)
-        #ec_z_axis_in_world = ec_to_world.dot(np.array([0, 0, 1, 1]))[:3]
-        #ec_x_axis_in_world = ec_to_world.dot(np.array([1, 0, 0, 1]))[:3]
+        # we can't check for zero because of small errors in the frame (due to vision or numerical uncertainty)
+        space_thresh = 0.1
 
-        #ifco_frame = tra.inverse_matrix(ifco_in_base_transform)
-        ec_x_axis = ec_frame[0:3, 0]
-        ec_z_axis = ec_frame[0:3, 2]
-
-        # one could also check for dot-product = 0 instead of using the x-axis but this is prone to numeric errors
-        if ec_z_axis.dot(np.array([1, 0, 0])) > 0 and ec_x_axis.dot(np.array([0, 1, 0])) > 0:
+        # one could also check for dot-product = 0 instead of using the x-axis but this is prone to the same errors
+        if ec_z_axis.dot(np.array([1, 0, 0])) > space_thresh and ec_x_axis.dot(np.array([0, 1, 0])) > space_thresh:
+            # print("GET MATCHING=SOUTH", multi_object_params.tf_dbg_call_to_string(ec_frame, frame_name='ifco_south'))
             return 'south'
-        elif ec_z_axis.dot(np.array([1, 0, 0])) < 0 and ec_x_axis.dot(np.array([0, 1, 0])) < 0:
+        elif ec_z_axis.dot(np.array([1, 0, 0])) < -space_thresh and ec_x_axis.dot(np.array([0, 1, 0])) < -space_thresh:
+            # print("GET MATCHING=NORTH", multi_object_params.tf_dbg_call_to_string(ec_frame, frame_name='ifco_north'))
             return 'north'
-        elif ec_z_axis.dot(np.array([0, 1, 0])) < 0 and ec_x_axis.dot(np.array([1, 0, 0])) > 0:
+        elif ec_z_axis.dot(np.array([0, 1, 0])) < -space_thresh and ec_x_axis.dot(np.array([1, 0, 0])) > space_thresh:
+            # print("GET MATCHING=WEST", multi_object_params.tf_dbg_call_to_string(ec_frame, frame_name='ifco_west'))
             return 'west'
-        elif ec_z_axis.dot(np.array([0, 1, 0])) > 0 and ec_x_axis.dot(np.array([1, 0, 0])) < 0:
+        elif ec_z_axis.dot(np.array([0, 1, 0])) > space_thresh and ec_x_axis.dot(np.array([1, 0, 0])) < -space_thresh:
+            # print("GET MATCHING=EAST", multi_object_params.tf_dbg_call_to_string(ec_frame, frame_name='ifco_east'))
             return 'east'
         else:
             # This should never be reached. Just here to prevent bugs
             raise ValueError("ERROR: Could not identify matching ifco wall. Check frames!")
-
-    # elif ec_x_axis_in_world.dot(np.array([1, 0, 0])) > 0 and ec_z_axis_in_world.dot(np.array([0, 1, 0])) < 0:
-    #    return 'north'
-    # elif ec_z_axis_in_world.dot(np.array([1, 0, 0])) > 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) > 0:
-    #    return 'west'
-    # elif ec_z_axis_in_world.dot(np.array([1, 0, 0])) < 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) < 0:
-    #    return 'east'
-    # else:
-    #    # This should never be reached. Just here to prevent bugs
-    #    raise ValueError("ERROR: Could not identify matching ifco wall. Check frames!")
-
-        # one could also check for dot-product = 0 instead of using the x-axis but this is prone to errors
-        #if ec_x_axis_in_world.dot(np.array([1, 0, 0])) < 0 and ec_z_axis_in_world.dot(np.array([0, 1, 0])) > 0:
-        #    return 'south'
-        #elif ec_x_axis_in_world.dot(np.array([1, 0, 0])) > 0 and ec_z_axis_in_world.dot(np.array([0, 1, 0])) < 0:
-        #    return 'north'
-        #elif ec_z_axis_in_world.dot(np.array([1, 0, 0])) > 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) > 0:
-        #    return 'west'
-        #elif ec_z_axis_in_world.dot(np.array([1, 0, 0])) < 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) < 0:
-        #    return 'east'
-        #else:
-        #    # This should never be reached. Just here to prevent bugs
-        #    raise ValueError("ERROR: Could not identify matching ifco wall. Check frames!")
-
-        #        if ec_z_axis_in_world.dot(np.array([1, 0, 0])) > 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) > 0:
-        #    return 'south'
-        #elif ec_z_axis_in_world.dot(np.array([1, 0, 0])) < 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) < 0:
-        #    return 'north'
-        #elif ec_z_axis_in_world.dot(np.array([0, 1, 0])) < 0:
-        #    return 'west'
-        #else:
-        #    return 'east'
 
     # TODO move that to a separate file?
     def check_kinematic_feasibility(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames,
@@ -348,17 +324,13 @@ class multi_object_params:
 
         elif strategy == "WallGrasp":
 
-            blocked_ecs = [0, 1, 2, 4]  # TODO remove and fix bug
-            if current_ec_index in blocked_ecs:
-                return 0
-
             selected_wall_name = multi_object_params.get_matching_ifco_wall(ifco_in_base_transform, ec_frame)
             print("FOUND_EC: ", selected_wall_name)
 
-            #blocked_ecs = ['north', 'east', 'west']  # TODO remove or move to config file
-            #if selected_wall_name in blocked_ecs:
-            #    rospy.loginfo("Skipped wall " + selected_wall_name + " (Blacklisted)")
-            #    return 0
+            blocked_ecs = ['north', 'east', 'west']  # TODO remove or move to config file
+            if selected_wall_name in blocked_ecs:
+                rospy.loginfo("Skipped wall " + selected_wall_name + " (Blacklisted)")
+                return 0
 
             if object['type'] in handarm_params['wall_grasp']:
                 params = handarm_params['wall_grasp'][object['type']]
