@@ -186,23 +186,60 @@ class multi_object_params:
     @staticmethod
     def get_matching_ifco_wall(ifco_in_base_transform, ec_frame):
 
-        ec_to_world = ifco_in_base_transform.dot(ec_frame)
-        ec_z_axis_in_world = ec_to_world.dot(np.array([0, 0, 1, 1]))[:3]
-        ec_x_axis_in_world = ec_to_world.dot(np.array([1, 0, 0, 1]))[:3]
+        return 'south'  # TODO remove that after DEMO and fix bug....!!
 
-        # one could also check for dot-product = 0 instead of using the x-axis but this is prone to numeric issues.
-        if ec_z_axis_in_world.dot(np.array([1, 0, 0])) > 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) > 0:
-            print("FOUND_EC south")
+        #ec_to_world = ifco_in_base_transform.dot(ec_frame)
+        #ec_z_axis_in_world = ec_to_world.dot(np.array([0, 0, 1, 1]))[:3]
+        #ec_x_axis_in_world = ec_to_world.dot(np.array([1, 0, 0, 1]))[:3]
+
+        #ifco_frame = tra.inverse_matrix(ifco_in_base_transform)
+        ec_x_axis = ec_frame[0:3, 0]
+        ec_z_axis = ec_frame[0:3, 2]
+
+        # one could also check for dot-product = 0 instead of using the x-axis but this is prone to numeric errors
+        if ec_z_axis.dot(np.array([1, 0, 0])) > 0 and ec_x_axis.dot(np.array([0, 1, 0])) > 0:
             return 'south'
-        elif ec_z_axis_in_world.dot(np.array([1, 0, 0])) < 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) < 0:
-            print("FOUND_EC north")
+        elif ec_z_axis.dot(np.array([1, 0, 0])) < 0 and ec_x_axis.dot(np.array([0, 1, 0])) < 0:
             return 'north'
-        elif ec_z_axis_in_world.dot(np.array([0, 1, 0])) < 0:
-            print("FOUND_EC west")
+        elif ec_z_axis.dot(np.array([0, 1, 0])) < 0 and ec_x_axis.dot(np.array([1, 0, 0])) > 0:
             return 'west'
-        else:
-            print("FOUND_EC east")
+        elif ec_z_axis.dot(np.array([0, 1, 0])) > 0 and ec_x_axis.dot(np.array([1, 0, 0])) < 0:
             return 'east'
+        else:
+            # This should never be reached. Just here to prevent bugs
+            raise ValueError("ERROR: Could not identify matching ifco wall. Check frames!")
+
+    # elif ec_x_axis_in_world.dot(np.array([1, 0, 0])) > 0 and ec_z_axis_in_world.dot(np.array([0, 1, 0])) < 0:
+    #    return 'north'
+    # elif ec_z_axis_in_world.dot(np.array([1, 0, 0])) > 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) > 0:
+    #    return 'west'
+    # elif ec_z_axis_in_world.dot(np.array([1, 0, 0])) < 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) < 0:
+    #    return 'east'
+    # else:
+    #    # This should never be reached. Just here to prevent bugs
+    #    raise ValueError("ERROR: Could not identify matching ifco wall. Check frames!")
+
+        # one could also check for dot-product = 0 instead of using the x-axis but this is prone to errors
+        #if ec_x_axis_in_world.dot(np.array([1, 0, 0])) < 0 and ec_z_axis_in_world.dot(np.array([0, 1, 0])) > 0:
+        #    return 'south'
+        #elif ec_x_axis_in_world.dot(np.array([1, 0, 0])) > 0 and ec_z_axis_in_world.dot(np.array([0, 1, 0])) < 0:
+        #    return 'north'
+        #elif ec_z_axis_in_world.dot(np.array([1, 0, 0])) > 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) > 0:
+        #    return 'west'
+        #elif ec_z_axis_in_world.dot(np.array([1, 0, 0])) < 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) < 0:
+        #    return 'east'
+        #else:
+        #    # This should never be reached. Just here to prevent bugs
+        #    raise ValueError("ERROR: Could not identify matching ifco wall. Check frames!")
+
+        #        if ec_z_axis_in_world.dot(np.array([1, 0, 0])) > 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) > 0:
+        #    return 'south'
+        #elif ec_z_axis_in_world.dot(np.array([1, 0, 0])) < 0 and ec_x_axis_in_world.dot(np.array([0, 1, 0])) < 0:
+        #    return 'north'
+        #elif ec_z_axis_in_world.dot(np.array([0, 1, 0])) < 0:
+        #    return 'west'
+        #else:
+        #    return 'east'
 
     # TODO move that to a separate file?
     def check_kinematic_feasibility(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames,
@@ -297,23 +334,31 @@ class multi_object_params:
                 # no collisions are allowed during going to pre_grasp pose
                 'pre_grasp': [],
 
-                'go_down': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
-                                             box_id=current_object_idx, terminating=True),
+                'go_down': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=current_object_idx,
+                                             terminating=True, required=True),
                             AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
                                              constraint_name='bottom', terminating=False)],
 
                 # TODO also account for the additional object in a way?
-                'post_grasp_rot': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
-                                                    box_id=current_object_idx, terminating=True),
+                'post_grasp_rot': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=current_object_idx,
+                                                    terminating=True),
                                    AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
                                                     constraint_name='bottom', terminating=False)]
             }
 
-        elif strategy == "WallGrasp":  # TODO add to planner.py
+        elif strategy == "WallGrasp":
 
-            blocked_ecs = [0, 1, 2,  4] # TODO remove
+            blocked_ecs = [0, 1, 2, 4]  # TODO remove and fix bug
             if current_ec_index in blocked_ecs:
                 return 0
+
+            selected_wall_name = multi_object_params.get_matching_ifco_wall(ifco_in_base_transform, ec_frame)
+            print("FOUND_EC: ", selected_wall_name)
+
+            #blocked_ecs = ['north', 'east', 'west']  # TODO remove or move to config file
+            #if selected_wall_name in blocked_ecs:
+            #    rospy.loginfo("Skipped wall " + selected_wall_name + " (Blacklisted)")
+            #    return 0
 
             if object['type'] in handarm_params['wall_grasp']:
                 params = handarm_params['wall_grasp'][object['type']]
@@ -331,8 +376,6 @@ class multi_object_params:
             #ec_hand_frame = (ec_frame.dot(params['hand_transform']))
             pre_approach_pose = ec_hand_frame.dot(pre_approach_transform)
 
-            # goal pose for go down movement
-
             # down_dist = params['down_dist']  #  dist lower than ifco bottom: behavior of the high level planner
             # dist = z difference to ifco bottom minus hand frame offset (dist from hand frame to collision point)
             # (more realistic behavior since we have a force threshold when going down to the bottom)
@@ -340,6 +383,7 @@ class multi_object_params:
             hand_frame_to_bottom_offset = 0.07  # 7cm TODO maybe move to handarm_parameters.py
             bounded_down_dist = min(params['down_dist'], bounded_down_dist-hand_frame_to_bottom_offset)
 
+            # goal pose for go down movement
             go_down_pose = tra.translation_matrix([0, 0, -bounded_down_dist]).dot(pre_approach_pose)
 
             # pose after lifting. This is somewhat fake, since the real go_down_pose will be determined by
@@ -429,14 +473,12 @@ class multi_object_params:
                                             # Allow all other objects to be touched as well
                                             # (since hand will go through them in simulation) TODO desired behavior?
                                             AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=obj_idx,
-                                                             terminating=False)  # ,required=obj_idx==current_object_idx)
+                                                             terminating=False, required=obj_idx == current_object_idx)
                                             for obj_idx in range(0, len(objects))
                                  ]
                 + [
                                      AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                                      constraint_name=multi_object_params.get_matching_ifco_wall(
-                                                          ifco_in_base_transform, ec_frame),
-                                                      terminating=False),
+                                                      constraint_name=selected_wall_name, terminating=False),
 
                                      AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
                                                       terminating=False),
@@ -489,7 +531,7 @@ class multi_object_params:
 
             print("allowed", allowed_collisions[motion])
 
-            print("Call check kinematics for " + motion + " " + str(curr_goal))#Arguments: \n" + yaml.safe_dump(args))
+            print("Call check kinematics for " + motion + " (" + strategy + ")\nGoal:\n" + str(curr_goal))#Arguments: \n" + yaml.safe_dump(args))
 
             res = check_feasibility(initial_configuration=curr_start_config,
                                     goal_pose=goal_pose,

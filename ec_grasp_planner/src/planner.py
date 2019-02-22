@@ -402,7 +402,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         pre_grasp_velocity = params['pre_grasp_joint_velocity']
         goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
 
-        print("GOAL TRAJ PreGrasp", goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
+        print("Use alternative GOAL_TRAJ PreGrasp Dim", goal_traj.shape)
         control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
                                                     v_max=pre_grasp_velocity,
@@ -460,7 +460,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         go_down_joint_velocity = params['go_down_joint_velocity']
         goal_traj = alternative_behavior['go_down'].get_trajectory()
 
-        print("GOAL_TRAJ GoDown", goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
+        print("Use alternative GOAL_TRAJ GoDown Dim:", goal_traj.shape)  # TODO Check if the dimensions are correct and the via points are as expected
         control_sequence.append(ha.JointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
                                                     goal_is_relative='0',
                                                     v_max=go_down_joint_velocity,
@@ -715,7 +715,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
         pre_grasp_velocity = params['max_joint_velocity']
         goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
 
-        print("GOAL TRAJ PreGrasp", goal_traj)  # TODO remove (output just for debugging)
+        print("Use alternative GOAL_TRAJ PreGrasp Dim", goal_traj.shape)
         control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
                                                     v_max=pre_grasp_velocity,
@@ -771,7 +771,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
         go_down_joint_velocity = params['max_joint_velocity']
         goal_traj = alternative_behavior['go_down'].get_trajectory()
 
-        print("GOAL_TRAJ GoDown", goal_traj)  # TODO remove (only for debugging)
+        print("Use alternative GOAL_TRAJ GoDown Dim:", goal_traj.shape)  # TODO remove (only for debugging)
         control_sequence.append(ha.JointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
                                                     goal_is_relative='0',
                                                     v_max=go_down_joint_velocity,
@@ -826,7 +826,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 
         lift_hand_joint_velocity = params['max_joint_velocity']
         goal_traj = alternative_behavior['lift_hand'].get_trajectory()
-        print("GOAL_TRAJ LiftHand", goal_traj)  # TODO remove (only for debugging)
+        print("Use alternative GOAL_TRAJ LiftHand Dim:", goal_traj.shape)  # TODO remove (only for debugging)
         control_sequence.append(ha.JointControlMode(goal_traj, name='LiftHand', controller_name='Lift1',
                                                     goal_is_relative='0',
                                                     v_max=lift_hand_joint_velocity,
@@ -870,7 +870,7 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
         slide_joint_velocity = params['slide_joint_velocity']
         goal_traj = alternative_behavior['slide_to_wall'].get_trajectory()
 
-        print("GOAL_TRAJ SlideToWall", goal_traj)  # TODO remove (only for debugging)
+        print("Use alternative GOAL_TRAJ SlideToWall Dim:", goal_traj.shape)  # TODO remove (only for debugging)
 
         # Sliding motion in joint space
         control_sequence.append(ha.JointControlMode(goal_traj, name='SlideToWall', controller_name='SlideToWall',

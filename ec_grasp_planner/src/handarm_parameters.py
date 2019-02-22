@@ -150,6 +150,7 @@ class RBOHandP24WAM(RBOHand2):
         # drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
             [-0.57148, 0.816213, -0.365673, 1.53765, 0.30308, 0.128965, 1.02467])
+            #[-0.424437, 1.25995, -0.534438, 1.77507, -0.552945, -0.420105, 0.788053])  # TODO change again?
 
         # synergy type for soft hand closing
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
@@ -452,6 +453,18 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                     math.radians(0.), [1, 0, 0]),
                 tra.rotation_matrix(
                     math.radians(22.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+
+        self['wall_grasp']['mango'] = self['wall_grasp']['object'].copy()
+        self['wall_grasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.23, 0.01, -0.15]),  # 23 cm above object, 15 cm behind, 1cm to the left
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(15.0), [0, 1, 0]),  # hand rotated 15 degrees on y = thumb axis
                 tra.rotation_matrix(  # this makes the fingers point downwards
                     math.radians(0.0), [0, 0, 1]),
             ))
