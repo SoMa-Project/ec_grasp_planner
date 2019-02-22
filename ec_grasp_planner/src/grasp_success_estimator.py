@@ -280,14 +280,22 @@ class MassEstimator(object):
             print("FT_IN_BASE ref:", self.ft_measurement_reference)
             print("FT_IN_BASE est:", current_ft_estimate)
 
+            # basic object distribution (mean gets shifted by number of objects that are checked against)
             object_mean = self.objects_info[self.current_object_name].mass_mean
             object_stddev = self.objects_info[self.current_object_name].mass_stddev
 
-            max_pdf_val = -1.0
-            max_num_obj = -1
-            pdf_val_sum = 0.0
-            pdf_values = []
-            for num_obj in range(0, 5):  # classes (number of detected objects) we perform maximum likelihood on.
+            # robot specific parameters (used to check for no object) # TODO read this from parameter file
+            robot_noise_mean = 0.0323076923077
+            robot_noise_stddev = 0.0151513729597
+
+            # check for no object first (robot specific parameters)
+            max_pdf_val = norm.pdf(mass_diff, robot_noise_mean, robot_noise_stddev)
+            max_num_obj = 0
+            pdf_val_sum = max_pdf_val
+            pdf_values = [max_pdf_val]
+
+            # check for number of objects > 0
+            for num_obj in range(1, 5):  # classes (number of detected objects) we perform maximum likelihood on.
                 pdf_val = norm.pdf(mass_diff, object_mean * num_obj, object_stddev)
                 pdf_values.append(pdf_val)
                 pdf_val_sum += pdf_val
