@@ -12,65 +12,79 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     else:
         params = handarm_params[grasp_type]['object']
 
-    lift_time = params['lift_duration']
-    up_speed = params['up_speed']
-    drop_off_config = handarm_params['drop_off_config']
+    # ############################ #
+    # Get params
+    # ############################ #
+
+    up_dist = params['up_dist']
+    # half the distance we want to achieve since we do two consecutive lifts
+    dirUp_2 = tra.translation_matrix([0, 0, up_dist/2.0])
 
     success_estimator_timeout = handarm_params['success_estimator_timeout']
 
-    # Up speed is positive because it is defined on the world frame
-    up_twist = np.array([0, 0, up_speed, 0, 0, 0])
+    drop_off_config = handarm_params['drop_off_config']
 
-    # assemble controller sequence
+    # ############################ #
+    # Assemble controller sequence
+    # ############################ #
+
     control_sequence = []
 
-    # 1. Lift upwards
-    control_sequence.append(ha.CartesianVelocityControlMode(up_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="world"))
- 
-    # 1b. Switch after half the lift time
-    control_sequence.append(ha.TimeSwitch('GoUp_1', 'EstimationMassMeasurement', duration = lift_time/2))
+    # 1. Lift upwards a little bit (half way up)
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp_2, controller_name='GoUpHTransform',
+                                                                 name='GoUp_1', goal_is_relative='1',
+                                                                 reference_frame="world"))
 
-    # 2. Measure the mass again and estimate number of grasped objects (grasp success estimation)
+    # 1b. Switch when joint configuration (half way up) is reached
+    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'PrepareForMassMeasurement', controller='GoUpHTransform',
+                                               epsilon='0.01', goal_is_relative='1', reference_frame="world"))
+
+    # 2. Hold current joint config 
+    control_sequence.append(ha.BlockJointControlMode(name='PrepareForMassMeasurement'))
+
+    # 2b. Wait for a bit to allow vibrations to attenuate # TODO check if this is required...
+    control_sequence.append(ha.TimeSwitch('PrepareForMassMeasurement', 'ReferenceMassMeasurement', duration=0.5))
+
+    # 3. Measure the mass again and estimate number of grasped objects (grasp success estimation)
     control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
 
-    # 2b. Switches after estimation measurement was done
+    # 3b. Switches after estimation measurement was done
     target_cm_okay = 'GoUp_2'
 
-    # 2b.1 No object was grasped => go to failure mode.
+    # 3b.1 No object was grasped => go to failure mode.
     target_cm_estimation_no_object = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_NO_OBJECT, default=target_cm_okay)
     control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_estimation_no_object,
                                               ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
                                               goal=np.array([RESPONSES.ESTIMATION_RESULT_NO_OBJECT.value]),
                                               ))
 
-    # 2b.2 More than one object was grasped => failure
+    # 3b.2 More than one object was grasped => failure
     target_cm_estimation_too_many = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_TOO_MANY, default=target_cm_okay)
     control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_estimation_too_many,
                                               ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
                                               goal=np.array([RESPONSES.ESTIMATION_RESULT_TOO_MANY.value]),
                                               ))
 
-    # 2b.3 Exactly one object was grasped => success (continue lifting the object and go to drop off)
+    # 3b.3 Exactly one object was grasped => success (continue lifting the object and go to drop off)
     control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_okay,
                                               ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
                                               goal=np.array([RESPONSES.ESTIMATION_RESULT_OKAY.value]),
                                               ))
 
-    # 2b.4 The grasp success estimator module is inactive => directly continue lifting the object and go to drop off
+    # 3b.4 The grasp success estimator module is inactive => directly continue lifting the object and go to drop off
     control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_okay,
                                               ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
                                               goal=np.array([RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE.value]),
                                               ))
 
-    # 2b.5 Timeout (grasp success estimator module not started, an error occurred or it takes too long)
+    # 3b.5 Timeout (grasp success estimator module not started, an error occurred or it takes too long)
     control_sequence.append(ha.TimeSwitch('EstimationMassMeasurement', target_cm_okay,
                                           duration=success_estimator_timeout))
 
-    # 2b.6 There is no special switch for unknown error response (estimator signals ESTIMATION_RESULT_UNKNOWN_FAILURE)
+    # 3b.6 There is no special switch for unknown error response (estimator signals ESTIMATION_RESULT_UNKNOWN_FAILURE)
     #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
 
-
-    # 3. After estimation measurement control modes.
+    # 4. After estimation measurement control modes.
     extra_failure_cms = set()
     if target_cm_estimation_no_object != target_cm_okay:
         extra_failure_cms.add(target_cm_estimation_no_object)
@@ -79,27 +93,30 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
 
     for cm in extra_failure_cms:
         if cm.startswith('failure_rerun'):
-            # 3.1 Failure control mode representing grasping failure, which might be corrected by re-running the plan.
-            control_sequence.append(ha.BlockJointControlMode(name=cm))
+            # 4.1 Failure control mode representing grasping failure, which might be corrected by re-running the plan.
+            control_sequence.append(ha.GravityCompensationMode(name=cm))
         if cm.startswith('failure_replan'):
-            # 3.2 Failure control mode representing grasping failure, which can't be corrected and requires to re-plan.
-            control_sequence.append(ha.BlockJointControlMode(name=cm))
+            # 4.2 Failure control mode representing grasping failure, which can't be corrected and requires to re-plan.
+            control_sequence.append(ha.GravityCompensationMode(name=cm))
 
-    # 3.3 Success control mode. Lift hand even further
-    control_sequence.append(ha.CartesianVelocityControlMode(up_twist, controller_name = 'GoUpHTransform', name = target_cm_okay, reference_frame="world"))
- 
-    # 3b. Switch after half the lift time
-    control_sequence.append(ha.TimeSwitch(target_cm_okay, 'GoDropOff', duration = lift_time/2))
-    
-    # 4. Go to dropOFF location
+    # 4.3 Success control mode. Lift hand even further
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp_2, controller_name='GoUpHTransform',
+                                                                 name=target_cm_okay, goal_is_relative='1',
+                                                                 reference_frame="world"))
+
+    # 4.3b Switch when joint configuration is reached
+    control_sequence.append(ha.FramePoseSwitch(target_cm_okay, 'GoDropOff', controller='GoUpHTransform', epsilon='0.01',
+                                               goal_is_relative='1', reference_frame="world"))
+
+    # 5. Go to dropOFF location
     control_sequence.append(ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig',
                                                 name='GoDropOff'))
 
-    # 4.b  Switch when joint is reached
+    # 5.b  Switch when joint is reached
     control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'finished', controller = 'GoToDropJointConfig',
                                                         epsilon=str(math.radians(7.))))
 
-    # 5. Block joints to finish motion and hold object in air
+    # 6. Block joints to finish motion and hold object in air
     control_sequence.append(ha.BlockJointControlMode(name='finished'))
 
     return control_sequence

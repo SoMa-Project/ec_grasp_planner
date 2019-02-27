@@ -3,7 +3,8 @@ import math
 import hatools.components as ha
 from grasp_success_estimator import RESPONSES
 
-def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, grasp_type):
+
+def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, grasp_type, alternative_behavior=None):
 
     object_type = chosen_object['type']
     # Get the relevant parameters for hand object combination

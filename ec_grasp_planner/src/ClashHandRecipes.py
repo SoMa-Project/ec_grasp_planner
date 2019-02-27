@@ -5,6 +5,7 @@ import math
 import rospy
 import hatools.components as ha
 
+
 def getParam(obj_type_params, obj_params, paramKey):
     param = obj_type_params.get(paramKey)
     if param is None:
@@ -14,7 +15,8 @@ def getParam(obj_type_params, obj_params, paramKey):
     return param
 
 
-def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type, pre_grasp_pose = None):
+def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type, pre_grasp_pose=None,
+                         alternative_behavior=None):
 
     # Get the parameters from the handarm_parameters.py file
     obj_type_params = {}
@@ -166,7 +168,8 @@ def create_surface_grasp(object_frame, bounding_box, handarm_params, object_type
 
 
 # ================================================================================================
-def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, object_type, pre_grasp_pose = None):
+def create_wall_grasp(object_frame, bounding_box, wall_frame, handarm_params, object_type, pre_grasp_pose=None,
+                      alternative_behavior=None):
 
     # Get the parameters from the handarm_parameters.py file
     obj_type_params = {}
