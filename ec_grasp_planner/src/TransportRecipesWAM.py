@@ -1,7 +1,9 @@
 import numpy as np
 import math
 import hatools.components as ha
+from tf import transformations as tra
 from grasp_success_estimator import RESPONSES
+
 
 def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, grasp_type):
 
@@ -17,8 +19,11 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     # ############################ #
 
     up_dist = params['up_dist']
-    # half the distance we want to achieve since we do two consecutive lifts
-    dirUp_2 = tra.translation_matrix([0, 0, up_dist/2.0])
+
+    # split the lifted distance into two consecutive lifts (with success estimation in between)
+    scale_up = 0.7
+    dir_up1 = tra.translation_matrix([0, 0, scale_up * up_dist])
+    dir_up2 = tra.translation_matrix([0, 0, (1.0 - scale_up) * up_dist])
 
     success_estimator_timeout = handarm_params['success_estimator_timeout']
 
@@ -31,7 +36,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     control_sequence = []
 
     # 1. Lift upwards a little bit (half way up)
-    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp_2, controller_name='GoUpHTransform',
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dir_up1, controller_name='GoUpHTransform',
                                                                  name='GoUp_1', goal_is_relative='1',
                                                                  reference_frame="world"))
 
@@ -100,7 +105,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
             control_sequence.append(ha.GravityCompensationMode(name=cm))
 
     # 4.3 Success control mode. Lift hand even further
-    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp_2, controller_name='GoUpHTransform',
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dir_up2, controller_name='GoUpHTransform',
                                                                  name=target_cm_okay, goal_is_relative='1',
                                                                  reference_frame="world"))
 

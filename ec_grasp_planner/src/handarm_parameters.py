@@ -58,7 +58,7 @@ class BaseHandArm(dict):
         self['mesh_file_scale'] = 1.
 
         # The names of the supported strategies
-        self.__strategy_names = ['WallGrasp', 'EdgeGrasp', 'SurfaceGrasp']
+        self.__strategy_names = ['WallGrasp', 'EdgeGrasp', 'SurfaceGrasp', 'CornerGrasp']
 
         for strategy in self.__strategy_names:
             # every strategy defines a default parameter set called 'object'
@@ -93,12 +93,19 @@ class BaseHandArm(dict):
                     if param.endswith("manifold"):
                         self[strategy][obj][param].check_if_valid()
 
+
 # ----------------------------------------------------------------- #
 # --------------- Parameter Definitions for WAM arm --------------- #
 # ----------------------------------------------------------------- #
 class WAM(BaseHandArm):
     def __init__(self):
         super(WAM, self).__init__()
+
+        # This defines the robot noise distribution for the grasp success estimator, as calculated by
+        # calculate_success_estimator_object_params.py. First value is mean, second is standard deviation.
+        # This is mainly robot specific, but depending on the accuracy of the hand models each hand might introduce
+        # additional noise. In that case the values should be updated in their specific classes
+        self['success_estimation_robot_noise'] = np.array([0.0323, 0.0151])
 
 
 class RBOHand2(WAM):
@@ -205,7 +212,7 @@ class RBOHandP24WAM(RBOHand2):
             [0.258841, 0.823679, -0.00565591, 1.67988, -0.87263, 0.806526, -1.03372])
 
         # Maximal joint velocities in case a JointController is used (e.g. alternative behavior was generated)
-        # This is the general maximal velocity for any joint controller during a wall grasp. 
+        # This is the general maximal velocity for any joint controller during a wall grasp.
         # For the sliding motion however, we define different maximal joint velocities (see: slide_joint_velocity)
         self['WallGrasp']['object']['max_joint_velocity'] = np.ones(7) * 0.2
 
@@ -240,7 +247,7 @@ class RBOHandP24WAM(RBOHand2):
                     math.radians(0.0), [0, 0, 1]),
             ))
 
-        # Defines the general manifold for pre_approach in which alternative goal poses are sampled during kinematics 
+        # Defines the general manifold for pre_approach in which alternative goal poses are sampled during kinematics
         # checks. You can also define special manifolds per obejct
         self['WallGrasp']['object']['pre_approach_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.02],
                                                                      'max_position_deltas': [0.01, 0.01, 0.02],
@@ -258,7 +265,7 @@ class RBOHandP24WAM(RBOHand2):
         # Maximum velocity of the EE during the go down movement. First value: rotational, second translational
         self['WallGrasp']['object']['go_down_velocity'] = np.array([0.125, 0.09])
 
-        # Defines the general manifold for go_down in which alternative goal poses are sampled during kinematics 
+        # Defines the general manifold for go_down in which alternative goal poses are sampled during kinematics
         # checks. You can also define special manifolds per obejct
         self['WallGrasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.02, -0.04],
                                                                      'max_position_deltas': [0.01, 0.02, 0.06],
@@ -270,7 +277,7 @@ class RBOHandP24WAM(RBOHand2):
         # Short lift after initial contact with bottom (before slide)
         self['WallGrasp']['object']['corrective_lift_dist'] = 0.1
 
-        # Defines the general manifold for corrective_lift in which alternative goal poses are sampled during kinematics 
+        # Defines the general manifold for corrective_lift in which alternative goal poses are sampled during kinematics
         # checks. You can also define special manifolds per obejct
         self['WallGrasp']['object']['corrective_lift_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.02, -0.04],
                                                                        'max_position_deltas': [0.01, 0.02, 0.04],
@@ -287,7 +294,7 @@ class RBOHandP24WAM(RBOHand2):
         # Maximum velocity of the EE during the sliding movement. First value: rotational, second translational
         self['WallGrasp']['object']['slide_velocity'] = np.array([0.125, 0.30])  # np.array([0.125, 0.12])
 
-        # Defines the general manifold for sliding motion in which alternative goal poses are sampled during kinematics 
+        # Defines the general manifold for sliding motion in which alternative goal poses are sampled during kinematics
         # checks. You can also define special manifolds per obejct
         self['WallGrasp']['object']['slide_to_wall_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
                                                                            'max_position_deltas': [0.01, 0.01, 0.01],
@@ -312,8 +319,87 @@ class RBOHandP24WAM(RBOHand2):
         # Distance that the hand should be lifted after grasping the object
         self['WallGrasp']['object']['up_dist'] = 0.25
 
-        # Maximal joint velocities during sliding motion in case a JointController is used. (e.g. alternative behavior was generated)
+        # Maximal joint velocities during sliding motion in case a JointController is used.
+        # (e.g. alternative behavior was generated)
         self['WallGrasp']['object']['slide_joint_velocity'] = np.array([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.15])
+
+
+        #####################################################################################
+        # below are parameters for corner grasp with P24 fingers (standard RBO hand)
+        #####################################################################################
+
+        self['CornerGrasp']['object']['initial_goal'] = np.array(
+            [0.439999, 0.624437, -0.218715, 1.71695, -0.735594, 0.197093, -0.920799])
+
+        # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
+        # the convention at our lab is: x along the fingers and z normal on the palm.
+        # please follow the same convention
+        self['CornerGrasp']['object']['hand_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, 0.0]),
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(180.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 1, 0]),
+                tra.rotation_matrix(
+                    math.radians(90.0), [0, 0, 1]),
+            ))
+
+        # ---- Pre-approach parameters ----
+        # the pre-approach pose should be:
+        # - floating above and behind the object,
+        # - fingers pointing downwards
+        # - palm facing the object and wall
+        self['CornerGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.23, 0, -0.14]),  # 23 cm above object, 15 cm behind
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(30.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+
+        # ---- Go-Down parameters ----
+        # The maximum allowed force for pushing down (guarding the movement to the ifco bottom)
+        self['CornerGrasp']['object']['downward_force'] = 1.8
+        # Distance that should be moved on guarded move when going behind the object
+        self['CornerGrasp']['object']['down_dist'] = 0.25
+        # Maximum velocity of the EE during the go down movement. First value: rotational, second translational
+        self['CornerGrasp']['object']['go_down_velocity'] = np.array([0.125, 0.09])
+
+        # ---- Sliding parameters ----
+        # Short lift after initial contact with bottom (before slide)
+        self['CornerGrasp']['object']['corrective_lift_dist'] = 0.1
+
+
+        # The maximum allowed force for pushing against the wall (guarding the sliding movement)
+        self['CornerGrasp']['object']['wall_force'] = 12.0
+
+        # Sliding distance. Should be at least half the ifco size
+        self['CornerGrasp']['object']['sliding_dist'] = 0.4
+
+        # Maximum velocity of the EE during the sliding movement. First value: rotational, second translational
+        self['CornerGrasp']['object']['slide_velocity'] = np.array([0.125, 0.20])  # np.array([0.125, 0.12])
+
+
+        # ---- Hand closing ----
+        # synergy type for soft hand closing
+        self['CornerGrasp']['object']['hand_closing_synergy'] = 0
+
+        # time of soft hand closing
+        self['CornerGrasp']['object']['hand_closing_duration'] = 1.0
+
+        # ---- Drop off parameters ----
+        # first motion after grasp, in hand palm frame
+        self['CornerGrasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.01, 0.0, 0.0]),  # nothing right now
+            tra.rotation_matrix(math.radians(-12.0),
+                                [0, 1, 0]))
+
+        # Distance that the hand should be lifted after grasping the object
+        self['CornerGrasp']['object']['up_dist'] = 0.25
 
 
 class RBOHandP11WAM(RBOHandP24WAM):
@@ -321,7 +407,7 @@ class RBOHandP11WAM(RBOHandP24WAM):
         RBOHandP24WAM.__init__(self, **kwargs)
 
 
-class RBOHandP24_opposableThumbWAM(RBOHand2):
+class RBOHandP24_opposableThumbWAM(RBOHandP24WAM):
     def __init__(self, **kwargs):
         RBOHandP24WAM.__init__(self, **kwargs)
 
@@ -344,9 +430,14 @@ class RBOHandO2WAM(RBOHandP24WAM):
         self['SurfaceGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.08, 0.0, 0.0]),
                                                                                     tra.rotation_matrix(math.radians(20.0), [0, 1, 0]))
 
+
 class RBOHandP24_pulpyWAM(RBOHandP24WAM):
     def __init__(self, **kwargs):
         RBOHandP24WAM.__init__(self, **kwargs)
+
+        #####################################################################################
+        # Specific Parameters for Surface Grasp + P24_pulpy
+        #####################################################################################
 
         # Define generic object parameters for surface grasp
         self['SurfaceGrasp']['object']['up_dist'] = 0.30
@@ -410,8 +501,12 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                                                                        'max_orientation_deltas': [0, 0,  np.pi]
                                                                        })
 
+        #####################################################################################
+        # Specific Parameters for Wall Grasp + P24_pulpy
+        #####################################################################################
+
         # object specific parameters for cucumber (wall grasp)
-        self['WallGrasp']['cucumber'] = self['wall_grasp']['object'].copy()
+        self['WallGrasp']['cucumber'] = self['WallGrasp']['object'].copy()
         self['WallGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.23, 0, -0.14]),  # 23 cm above object, 15 cm behind
             tra.concatenate_matrices(
@@ -423,7 +518,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                     math.radians(0.0), [0, 0, 1]),
             ))
 
-        self['WallGrasp']['mango'] = self['wall_grasp']['object'].copy()
+        self['WallGrasp']['mango'] = self['WallGrasp']['object'].copy()
         self['WallGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.23, 0.01, -0.15]),  # 23 cm above object, 15 cm behind, 1cm to the left
             tra.concatenate_matrices(
@@ -435,6 +530,26 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                     math.radians(0.0), [0, 0, 1]),
             ))
 
+        #####################################################################################
+        # Specific Parameters for Corner Grasp + P24_pulpy
+        #####################################################################################
+
+        # Define generic object parameters for surface grasp
+        self['CornerGrasp']['object']['lift_dist'] = 0.13  # short lift after initial contact (before slide)
+
+        self['CornerGrasp']['cucumber'] = self['WallGrasp']['object'].copy()
+        self['CornerGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
+                tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 15 cm behind
+                tra.concatenate_matrices(
+                    tra.rotation_matrix(
+                        math.radians(0.), [1, 0, 0]),
+                    tra.rotation_matrix(
+                        math.radians(22.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
+                    tra.rotation_matrix(                #this makes the fingers point downwards
+                        math.radians(0.0), [0, 0, 1]),
+            ))
+
+
 # ----------------------------------------------------------------- #
 # --------------- Parameter Definitions for KUKA arm -------------- #
 # ----------------------------------------------------------------- #
@@ -442,10 +557,16 @@ class KUKA(BaseHandArm):
     def __init__(self, **kwargs):
         super(KUKA, self).__init__()
 
+        # This defines the robot noise distribution for the grasp success estimator, as calculated by
+        # calculate_success_estimator_object_params.py. First value is mean, second is standard deviation.
+        # This is mainly robot specific, but depending on the accuracy of the hand models each hand might introduce
+        # additional noise. In that case the values should be updated in their specific classes
+        self['success_estimation_robot_noise'] = np.array([-0.0036, 0.04424])
+
 
 class RBOHand2KUKA(KUKA):
     def __init__(self, **kwargs):
-        super(RBOHand2Kuka, self).__init__()
+        super(RBOHand2KUKA, self).__init__()
 
 
 class RBOHandO2KUKA(KUKA):
@@ -676,318 +797,7 @@ class PISAHandKUKA(KUKA):
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
                     tra.rotation_matrix(
-                        math.radians(0.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
+                        math.radians(22.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
                     tra.rotation_matrix(                #this makes the fingers point downwards
                         math.radians(0.0), [0, 0, 1]),
             ))
-
-        self['WallGrasp']['object']['downward_force'] = 1.8
-
-        self['WallGrasp']['object']['down_speed'] = 0.05
-
-        self['WallGrasp']['object']['corrective_lift_duration'] = 1.5
-
-        self['WallGrasp']['object']['up_speed'] = 0.05
-
-        self['WallGrasp']['object']['wall_force'] = 12.0
-
-        self['WallGrasp']['object']['slide_speed'] = 0.05 #sliding speed
-
-        self['WallGrasp']['object']['pre_grasp_twist'] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-
-        self['WallGrasp']['object']['pre_grasp_rotation_duration'] = 0
-
-        self['WallGrasp']['object']['hand_closing_duration'] = 1.0
-        
-        self['WallGrasp']['object']['hand_closing_goal'] = 0.8
-
-        # first motion after grasp, in hand palm frame
-        self['WallGrasp']['object']['post_grasp_twist'] = np.array([-0.05, 0.0, 0.0, 0.0, math.radians(-18.0), 0.0])
-
-        self['WallGrasp']['object']['post_grasp_rotation_duration'] = 2    
-
-        # duration of lifting the object
-        self['WallGrasp']['object']['lift_duration'] = 8   
-        
-
-class PISAGripperKUKA(KUKA):
-    def __init__(self, **kwargs):
-        super(PISAGripperKUKA, self).__init__()
-
-        # Placement pose reachable for the PISA gripper
-
-        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.58436, 0.55982, 0.38793]), tra.quaternion_matrix([0.95586, 0.27163, 0.10991, -0.021844]))
-
-        # duration of placing the object
-        self['place_duration'] = 5
-
-        self['place_down_speed'] = 0.05
-
-
-        ####################################################################################
-        # Params that define the grasping controller
-        ####################################################################################
-
-        self['SimplePositionControl'] = True
-
-        self['ImpedanceControl'] = False
-        self['hand_max_aperture'] = 0.15
-        self['SurfaceGrasp']['object']['kp'] = 0.03
-
-
-        ####################################################################################
-        # PISAGripper specific params
-        ####################################################################################
-
-        self['SurfaceGrasp']['object']['hand_preshape_goal'] = 0.3
-
-        # This should be the same for all objects
-        self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
-                                                                                tra.concatenate_matrices(
-                                                                                    tra.rotation_matrix(
-                                                                                        math.radians(-90.), [0, 0, 1]),
-                                                                                    tra.rotation_matrix(
-                                                                                        math.radians(180.), [1, 0, 0])))
-
-        # transformation between the control frame of the hand and the frame in which the hand transform is defined
-        # this is needed for the PISA hand to enforce the grasping signature
-        # This should be the same for all objects
-        self['SurfaceGrasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.0, 0.0])
-
-        # This is what should be changed per object if needed...
-        self['SurfaceGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.0]),
-                                                                                    tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
-
-        # the maximum allowed force for pushing down
-        self['SurfaceGrasp']['object']['downward_force'] = 4
-
-        # speed of approaching the object
-        self['SurfaceGrasp']['object']['down_speed'] = 0.05
-
-        self['SurfaceGrasp']['object']['up_speed'] = 0.05
-
-        # synergy type for soft hand closing
-        self['SurfaceGrasp']['object']['hand_closing_goal'] = 0.8
-
-        # time of soft hand closing
-        self['SurfaceGrasp']['object']['hand_closing_duration'] = 5
-
-        # duration of lifting the object
-        self['SurfaceGrasp']['object']['lift_duration'] = 8
-
-
-        #####################################################################################
-        # below are parameters for wall grasp 
-        #####################################################################################
-        self['WallGrasp']['object']['hand_preshape_goal'] = 0.3
-
-        # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
-        # the convention at our lab is: x along the fingers and z normal on the palm.
-        # please follow the same convention
-        # This should be the same for all objects
-        self['WallGrasp']['object']['hand_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0.0, 0.0, 0.0]),
-            tra.concatenate_matrices(
-                tra.rotation_matrix(
-                    math.radians(180.), [1, 0, 0]),
-                tra.rotation_matrix(
-                    math.radians(0.0), [0, 1, 0]),
-                tra.rotation_matrix(
-                    math.radians(90.0), [0, 0, 1]),
-            ))
-
-        # the pre-approach pose should be:
-        # - floating above and behind the object,
-        # - fingers pointing downwards
-        # - palm facing the object and wall
-        # This should be changed per object if needed...
-        self['WallGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-                tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 15 cm behind
-                tra.concatenate_matrices(
-                    tra.rotation_matrix(
-                        math.radians(0.), [1, 0, 0]),
-                    tra.rotation_matrix(
-                        math.radians(0.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
-                    tra.rotation_matrix(                #this makes the fingers point downwards
-                        math.radians(0.0), [0, 0, 1]),
-            ))
-
-        self['WallGrasp']['object']['downward_force'] = 1.8
-
-        self['WallGrasp']['object']['down_speed'] = 0.05
-
-        self['WallGrasp']['object']['corrective_lift_duration'] = 1.5
-
-        self['WallGrasp']['object']['up_speed'] = 0.05
-
-        self['WallGrasp']['object']['wall_force'] = 12.0
-
-        self['WallGrasp']['object']['slide_speed'] = 0.05 #sliding speed
-
-        self['WallGrasp']['object']['pre_grasp_twist'] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-
-        self['WallGrasp']['object']['pre_grasp_rotation_duration'] = 0
-
-        self['WallGrasp']['object']['hand_closing_duration'] = 1.0
-        
-        self['WallGrasp']['object']['hand_closing_goal'] = 0.8
-
-        # first motion after grasp, in hand palm frame
-        self['WallGrasp']['object']['post_grasp_twist'] = np.array([-0.05, 0.0, 0.0, 0.0, math.radians(-18.0), 0.0])
-
-        self['WallGrasp']['object']['post_grasp_rotation_duration'] = 2    
-
-        # duration of lifting the object
-        self['WallGrasp']['object']['lift_duration'] = 8  
-
-# class ClashHandKUKA(KUKA):
-#     def __init__(self, **kwargs):
-#         super(ClashHandKUKA, self).__init__()
-
-#         self['WallGrasp']['object']['hand_transform'] = tra.concatenate_matrices(
-#                 tra.rotation_matrix(
-#                     math.radians(180.), [1, 0, 0]),
-#                 tra.rotation_matrix(
-#                     math.radians(90.0), [0, 0, 1]),
-#                 tra.rotation_matrix(
-#                     math.radians(0.0), [0, 1, 0])
-#             )
-
-#         ####################################################################################
-#         # CLASH specific params irrespective of grasp type and/or object type
-#         ####################################################################################
-
-#         # Controller timeouts
-#         self['hand_closing_duration'] = 2
-
-#         self['hand_opening_duration'] = 2
-
-#         self['lift_duration'] = 4
-
-#         self['place_duration'] = 4
-
-#         # TRIK controller speeds
-#         self['down_IFCO_speed'] = 0.02
-
-#         self['up_IFCO_speed'] = 0.03
-
-#         self['down_tote_speed'] = 0.05
-
-
-#         ####################################################################################
-#         # CLASH specific params for surface grasp
-#         ####################################################################################
-
-#         self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0, 0.0]),
-#                                                                                 tra.concatenate_matrices(                                                                                    
-#                                                                                     tra.rotation_matrix(
-#                                                                                         math.radians(180.), [1, 0, 0]),tra.rotation_matrix(
-#                                                                                         math.radians(0.), [0, 0, 1])))
-
-#         self['SurfaceGrasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.005, -0.2])
-
-#         self['SurfaceGrasp']['punnet']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.2])
-
-#         self['SurfaceGrasp']['netbag']['ee_in_goal_frame'] = tra.translation_matrix([0.0, 0.015, -0.2])
-        
-
-#         self['SurfaceGrasp']['object']['downward_force'] = 2.5
-
-#         self['SurfaceGrasp']['salad']['downward_force'] = 3
-
-#         self['SurfaceGrasp']['salad']['thumb_pos_preshape'] = np.array([ 0, 0, 0])
-
-#         self['SurfaceGrasp']['salad']['diff_pos_preshape'] = np.array([0, 0, 0])
-
-#         self['SurfaceGrasp']['punnet']['thumb_pos_preshape'] = np.array([ 0, -30, 0])
-
-#         self['SurfaceGrasp']['punnet']['diff_pos_preshape'] = np.array([-20, -20, 0])
-
-#         self['SurfaceGrasp']['mango']['thumb_pos_preshape'] = np.array([ 0, 10, 0])
-
-#         self['SurfaceGrasp']['mango']['diff_pos_preshape'] = np.array([5, 5, 5])
-
-#         self['SurfaceGrasp']['cucumber']['thumb_pos_preshape'] = np.array([ 0, 10, 10])
-
-#         self['SurfaceGrasp']['cucumber']['diff_pos_preshape'] = np.array([10, 10, 10])
-
-#         self['SurfaceGrasp']['netbag']['thumb_pos_preshape'] = np.array([ 0, 10, 10])
-
-#         self['SurfaceGrasp']['netbag']['diff_pos_preshape'] = np.array([10, 10, 10])
-
-
-
-#         self['SurfaceGrasp']['mango']['short_lift_duration'] = 1.8
-
-#         self['SurfaceGrasp']['mango']['thumb_pos'] = np.array([0, 30, 50])
-
-#         self['SurfaceGrasp']['mango']['diff_pos'] = np.array([30, 30, 50])
-
-
-#         self['SurfaceGrasp']['netbag']['short_lift_duration'] = 1.4
-
-#         self['SurfaceGrasp']['netbag']['thumb_pos'] = np.array([0, 50, 50])
-
-#         self['SurfaceGrasp']['netbag']['diff_pos'] = np.array([50, 50, 60])
-
-
-#         self['SurfaceGrasp']['punnet']['short_lift_duration'] = 2.5
-
-#         self['SurfaceGrasp']['punnet']['thumb_pos'] = np.array([0, 10, 50])
-
-#         self['SurfaceGrasp']['punnet']['diff_pos'] = np.array([10, 10, 60])
-
-#         self['SurfaceGrasp']['cucumber']['short_lift_duration'] = 1.4
-
-#         self['SurfaceGrasp']['cucumber']['thumb_pos'] = np.array([0, 60, 30])
-
-#         self['SurfaceGrasp']['cucumber']['diff_pos'] = np.array([60, 60, 30])
-
-#         self['SurfaceGrasp']['salad']['short_lift_duration'] = 0
-
-#         self['SurfaceGrasp']['salad']['thumb_pos'] = np.array([0, 60, 30])
-
-#         self['SurfaceGrasp']['salad']['diff_pos'] = np.array([50, 50, 30])
-        
-
-#         ####################################################################################
-#         # CLASH specific params for wall grasp
-#         ####################################################################################        
-        
-#         scooping_angle_deg = 30
-
-#         self['WallGrasp']['object']['scooping_angle_deg'] = scooping_angle_deg
-
-#         # self['WallGrasp']['object']['scooping_angle_deg'] = 10
-
-#         # self['WallGrasp']['mango']['scooping_angle_deg'] = 20
-
-#         # self['WallGrasp']['salad']['scooping_angle_deg'] = 30  
-
-#         self['WallGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.2, 0, -0.2]), tra.rotation_matrix(
-#                                                                                         math.radians(scooping_angle_deg), [0, 1, 0]), tra.rotation_matrix(math.radians(90.), [0, 0, 1]), tra.rotation_matrix(math.radians(180.0), [0, 0, 1]))
-
-#         self['WallGrasp']['object']['downward_force'] = 1.
-
-#         self['WallGrasp']['object']['thumb_pos_preshape'] = np.array([ 0, -10, 0])
-        
-#         self['WallGrasp']['punnet']['thumb_pos_preshape'] = np.array([ 0, -25, 0])
-
-#         self['WallGrasp']['object']['slide_speed'] = 0.03
-
-#         self['WallGrasp']['mango']['wall_force'] = 5
-
-#         self['WallGrasp']['cucumber']['wall_force'] = 10
-
-#         self['WallGrasp']['netbag']['wall_force'] = 4
-
-#         self['WallGrasp']['punnet']['wall_force'] = 12
-
-#         self['WallGrasp']['salad']['wall_force'] = 1.5
-        
-#         self['WallGrasp']['object']['post_grasp_transform'] = np.array([0, 0, -0.01, 0, 0, 0])
-        
-#         self['rotate_duration'] = 3
-        
-        
-#         
