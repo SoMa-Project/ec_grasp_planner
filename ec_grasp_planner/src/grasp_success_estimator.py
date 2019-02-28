@@ -7,6 +7,8 @@ import tf.transformations
 from enum import Enum
 from collections import deque
 
+import handarm_parameters
+
 # from std_msgs.msg import Int8 <-- Not used anymore since ROSTopicSensor only supports Float64
 from std_msgs.msg import Float64
 from std_msgs.msg import MultiArrayDimension
@@ -79,20 +81,48 @@ class MassEstimator(object):
 
         return msg
 
+    def load_robot_noise_params(self):
+            hand = rospy.get_param('/planner_gui/hand', default='')
+            robot = rospy.get_param('/planner_gui/robot', default='')
+
+            if hand and robot:
+                handarm_type = hand + robot
+                handarm_params = handarm_parameters.__dict__[handarm_type]()
+
+                mean = handarm_params['success_estimation_robot_noise'][0]
+                stddev = handarm_params['success_estimation_robot_noise'][1]
+
+                self.robot_noise = ObjectModel("robot_noise", mean, stddev)
+                return True  # success
+
+            rospy.logwarn("Could not load robot noise parameters")
+            return False  # failure: params not loaded
+
+    def get_robot_noise_params(self):
+        if self.robot_noise is None:
+            # no params loaded yet
+            if self.load_robot_noise_params():
+                return self.robot_noise
+
+            # no params loaded yet. return default ones
+            return ObjectModel("default_robot_noise", 0, 0.15)
+
+        # return stored robot noise
+        return self.robot_noise
+
     def __init__(self, ft_topic_name, ft_topic_type, object_ros_param_path, path_to_object_parameters, ee_frame):
         rospy.init_node('graspSuccessEstimatorMass', anonymous=True)
 
         self.tf_listener = tf.TransformListener()
 
-        # Stores the last measurement from the ft sensor. # TODO change this to a sliding window?
-        #self.last_ft_measurement = None
-
         # Stores the last measurements from the ft sensor (sliding window)
         self.window_size = 25 # TODO come up with somthing reasonable (depending on frequency of ft-sensor... our sends @ 50Hz)
         self.avg_window_ft_measurements = deque(
-            [Wrench(force=Vector3(0,0,0), torque=Vector3(0,0,0)) for i in range(0, self.window_size)])
-        self.current_wrench_sum = Wrench(force=Vector3(0,0,0), torque=Vector3(0,0,0))
+            [Wrench(force=Vector3(0, 0, 0), torque=Vector3(0, 0, 0)) for i in range(0, self.window_size)])
+        self.current_wrench_sum = Wrench(force=Vector3(0, 0, 0), torque=Vector3(0, 0, 0))
         self.current_received_msgs = 0
+
+        self.robot_noise = None
 
         # This is the ft measurement that is used as the empty hand reference. From this one we can calculate change.
         self.ft_measurement_reference = None
@@ -167,9 +197,10 @@ class MassEstimator(object):
                                 self.current_wrench_sum.force.y / float(self.current_received_msgs),
                                 self.current_wrench_sum.force.z / float(self.current_received_msgs))
 
-            avg_torque = Vector3(self.current_wrench_sum.torque.x / float(self.current_received_msgs), # TODO remove since not used anyway right now...
-                                self.current_wrench_sum.torque.y / float(self.current_received_msgs),
-                                self.current_wrench_sum.torque.z / float(self.current_received_msgs))
+            # TODO remove avg_torque since not used anyway right now...
+            avg_torque = Vector3(self.current_wrench_sum.torque.x / float(self.current_received_msgs),
+                                 self.current_wrench_sum.torque.y / float(self.current_received_msgs),
+                                 self.current_wrench_sum.torque.z / float(self.current_received_msgs))
 
             return Wrench(force=avg_force, torque=avg_torque)
 
@@ -177,9 +208,6 @@ class MassEstimator(object):
             return None
 
     def ft_sensor_callback(self, data):
-        # TODO add a filter that averages a sliding window until all FT measurements in that window have a smaller
-        # variance than a predefined threshold value and the sliding window is completely filled up with messages.
-
         self.add_latest_ft_measurement(data)
 
     def ft_sensor_float_array_callback(self, data):
@@ -198,8 +226,6 @@ class MassEstimator(object):
         new_cm = data.executing_control_mode_name
         if new_cm != self.active_cm:
             self.active_cm = new_cm
-
-        #    print(new_cm)
 
             if rospy.get_param("/graspSuccessEstimator/active", default=True):
                 if new_cm == 'ReferenceMassMeasurement':
@@ -270,8 +296,7 @@ class MassEstimator(object):
             self.publish_status(RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE)
             return  # ignore
 
-        # TODO maybe add some kind of wait here to make sure the force/torque readings are stable (e.g. variance filter)
-        # TODO one good way would be to refactor and move code to a ft getter method...
+        # TODO check even more if force/torque readings are stable (e.g. variance filter)?
         current_ft_estimate = self.get_current_ft_estimation()
 
         if current_ft_estimate is not None:
@@ -286,12 +311,11 @@ class MassEstimator(object):
             object_mean = self.objects_info[self.current_object_name].mass_mean
             object_stddev = self.objects_info[self.current_object_name].mass_stddev
 
-            # robot specific parameters (used to check for no object) # TODO read this from parameter file
-            robot_noise_mean = 0.0323076923077
-            robot_noise_stddev = 0.0151513729597
+            # robot specific parameters (used to check for no object)
+            robot_noise = self.get_robot_noise_params()
 
             # check for no object first (robot specific parameters)
-            max_pdf_val = norm.pdf(mass_diff, robot_noise_mean, robot_noise_stddev)
+            max_pdf_val = norm.pdf(mass_diff, robot_noise.mass_mean, robot_noise.mass_stddev)
             max_num_obj = 0
             pdf_val_sum = max_pdf_val
             pdf_values = [max_pdf_val]
