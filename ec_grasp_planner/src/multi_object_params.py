@@ -248,10 +248,10 @@ class multi_object_params:
 
             # Code duplication from planner.py TODO put at a shared location
 
-            if object['type'] in handarm_params['surface_grasp']:
-                params = handarm_params['surface_grasp'][object['type']]
+            if object['type'] in handarm_params['SurfaceGrasp']:
+                params = handarm_params['SurfaceGrasp'][object['type']]
             else:
-                params = handarm_params['surface_grasp']['object']
+                params = handarm_params['SurfaceGrasp']['object']
             # Set the initial pose above the object
             goal_ = np.copy(object_params['frame'])  # TODO: this should be support_surface_frame
             goal_[:3, 3] = tra.translation_from_matrix(object_params['frame'])
@@ -335,10 +335,10 @@ class multi_object_params:
                 rospy.loginfo("Skipped wall " + selected_wall_name + " (Blacklisted)")
                 return 0
 
-            if object['type'] in handarm_params['wall_grasp']:
-                params = handarm_params['wall_grasp'][object['type']]
+            if object['type'] in handarm_params['WallGrasp']:
+                params = handarm_params['WallGrasp'][object['type']]
             else:
-                params = handarm_params['wall_grasp']['object']
+                params = handarm_params['WallGrasp']['object']
 
             # hand pose above and behind the object
             pre_approach_transform = params['pre_approach_transform']
