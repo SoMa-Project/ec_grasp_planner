@@ -233,7 +233,7 @@ class GraspPlanner:
 
         # TODO we may have to check the rosparam heuristic_type here again, to check if ocado reachability node is used or not
         # TODO (in case of TUB or None we still have to provide the traditional old pregrasp transform, which will be overwritten if not feasible)
-        # TODO The actual reachability node should be called in multi_object_params.py
+        # TODO The actual reachability node should be called from heuristic() function in multi_object_params.py (TODO)
         # This is left here for future compatibility reasons 
         # In the future the reachability node will have already given the pre-grasp pose at this point
         pre_grasp_pose_in_base = get_pre_grasp_transform(self.handarm_params, chosen_object, chosen_node, graph_in_base)

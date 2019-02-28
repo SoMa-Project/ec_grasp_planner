@@ -264,7 +264,7 @@ class multi_object_params:
                 goal_ = goal_.dot(zflip_transform)
 
             # hand pose above object
-            pre_grasp_pose = goal_.dot(params['pregrasp_transform'])
+            pre_grasp_pose = goal_.dot(params['pre_approach_transform'])
 
             # down_dist = params['down_dist']  #  dist lower than ifco bottom: behavior of the high level planner
             # dist = z difference to object centroid (both transformations are w.r.t. to world frame
@@ -276,7 +276,7 @@ class multi_object_params:
 
             post_grasp_pose = params['post_grasp_transform'].dot(go_down_pose)  # TODO it would be better to allow relative motion as goal frames
 
-            checked_motions = ["pre_grasp", "go_down"]#, "post_grasp_rot"] ,go_up, go_drop_off  # TODO what about remaining motions? (see wallgrasp)
+            checked_motions = ["pre_approach", "go_down"]#, "post_grasp_rot"] ,go_up, go_drop_off  # TODO what about remaining motions? (see wallgrasp)
 
             goals = [pre_grasp_pose, go_down_pose]#, post_grasp_pose]
 
@@ -287,7 +287,7 @@ class multi_object_params:
             pre_grasp_pos_manifold[:3, 3] = tra.translation_from_matrix(pre_grasp_pose)
 
             goal_manifold_frames = {
-                'pre_grasp': pre_grasp_pos_manifold,
+                'pre_approach': pre_grasp_pos_manifold,
 
                 # Use object frame for resampling
                 'go_down': np.copy(object_params['frame'])  # TODO change that again to go_down_pose!?
@@ -295,7 +295,7 @@ class multi_object_params:
 
             goal_manifold_orientations = {
                 # use hand orientation
-                'pre_grasp': tra.quaternion_from_matrix(pre_grasp_pose),
+                'pre_approach': tra.quaternion_from_matrix(pre_grasp_pose),
 
                 # Use object orientation
                 'go_down': tra.quaternion_from_matrix(go_down_pose), #tra.quaternion_from_matrix(object_params['frame'])  # TODO use hand orietation instead?
@@ -311,7 +311,7 @@ class multi_object_params:
             # TODO currently we only allow to touch the object to be grasped and the ifco bottom during a surface grasp, is that really desired? (what about a really crowded ifco)
             allowed_collisions = {
                 # no collisions are allowed during going to pre_grasp pose
-                'pre_grasp': [],
+                'pre_approach': [],
 
                 'go_down': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=current_object_idx,
                                              terminating=True, required=True),
@@ -387,7 +387,7 @@ class multi_object_params:
 
             # TODO remove code duplication with planner.py (refactor code snippets to function calls) !!!!!!!
 
-            checked_motions = ['pre_grasp', 'go_down', 'lift_hand', 'slide_to_wall'] # TODO overcome problem of FT-Switch after go_down
+            checked_motions = ['pre_approach', 'go_down', 'lift_hand', 'slide_to_wall'] # TODO overcome problem of FT-Switch after go_down
 
             goals = [pre_approach_pose, go_down_pose, lift_hand_pose, slide_to_wall_pose] # TODO see checked_motions
 
@@ -398,7 +398,7 @@ class multi_object_params:
             slide_pos_manifold = np.copy(slide_to_wall_pose)
 
             goal_manifold_frames = {
-                'pre_grasp': pre_grasp_pos_manifold,
+                'pre_approach': pre_grasp_pos_manifold,
 
                 # Use object frame for sampling
                 'go_down': np.copy(go_down_pose),
@@ -411,7 +411,7 @@ class multi_object_params:
 
             goal_manifold_orientations = {
                 # use hand orientation
-                'pre_grasp': tra.quaternion_from_matrix(pre_approach_pose),
+                'pre_approach': tra.quaternion_from_matrix(pre_approach_pose),
 
                 # Use object orientation
                 'go_down': tra.quaternion_from_matrix(go_down_pose),  # TODO use hand orietation instead?
@@ -432,7 +432,7 @@ class multi_object_params:
                 # 'init_joint': [],
 
                 # no collisions are allowed during going to pre_grasp pose
-                'pre_grasp': [],
+                'pre_approach': [],
 
                 # Only allow touching the bottom of the ifco
                 'go_down': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
@@ -591,12 +591,12 @@ class multi_object_params:
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
 
-        feasibility_checker = rospy.get_param("feasibility_check/active", default="TUB")
-        if feasibility_checker == 'TUB':
+        feasibility_checker = rospy.get_param("planner_gui/heuristic_type", default="tub")
+        if feasibility_checker == 'tub':
             feasibility_fun = partial(self.check_kinematic_feasibility, current_object_idx, objects, current_ec_index,
                                       strategy, all_ec_frames, ifco_in_base_transform, handarm_params)
 
-        elif feasibility_checker == 'Ocado':
+        elif feasibility_checker == 'ocado':
             # TODO integrate ocado
             raise ValueError("Ocado feasibility checker not integrated yet!")
 
@@ -711,7 +711,7 @@ class multi_object_params:
 
         if Q_matrix.max() == 0.0:
             rospy.logwarn("No Suitable Grasp Found - PLEASE REPLAN!!!")
-            if rospy.get_param("feasibility_check/active", default=True):
+            if rospy.get_param("planner_gui/heuristic_type", default='tub'):
                 # If not even the feasibilty checker could find an alternative signal a planner failure
                 return -1, -1
 
