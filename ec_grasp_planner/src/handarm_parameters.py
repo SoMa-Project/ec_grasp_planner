@@ -49,6 +49,10 @@ class Manifold(dict):
         # ensures that every copy is automatically also a deep copy
         return copy.deepcopy(self)
 
+    @staticmethod
+    def deg_to_rad(angles_degree):
+        return [ad * np.pi / 180.0 for ad in angles_degree]
+
 
 class BaseHandArm(dict):
     def __init__(self):
