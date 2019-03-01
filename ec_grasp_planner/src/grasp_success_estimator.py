@@ -5,12 +5,16 @@ import rospy
 import tf
 import tf.transformations
 from enum import Enum
+from collections import deque
+
+import handarm_parameters
 
 # from std_msgs.msg import Int8 <-- Not used anymore since ROSTopicSensor only supports Float64
 from std_msgs.msg import Float64
 from std_msgs.msg import MultiArrayDimension
 from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import WrenchStamped
+from geometry_msgs.msg import Wrench, Vector3
 from hybrid_automaton_msgs.msg import HAMState
 
 from scipy.stats import norm
@@ -77,13 +81,49 @@ class MassEstimator(object):
 
         return msg
 
-    def __init__(self, ft_topic_name, ft_topic_type, object_ros_param_path, path_to_object_parameters):
+    def load_robot_noise_params(self):
+            hand = rospy.get_param('/planner_gui/hand', default='')
+            robot = rospy.get_param('/planner_gui/robot', default='')
+
+            if hand and robot:
+                handarm_type = hand + robot
+                handarm_params = handarm_parameters.__dict__[handarm_type]()
+
+                mean = handarm_params['success_estimation_robot_noise'][0]
+                stddev = handarm_params['success_estimation_robot_noise'][1]
+
+                self.robot_noise = ObjectModel("robot_noise", mean, stddev)
+                return True  # success
+
+            rospy.logwarn("Could not load robot noise parameters")
+            return False  # failure: params not loaded
+
+    def get_robot_noise_params(self):
+        if self.robot_noise is None:
+            # no params loaded yet
+            if self.load_robot_noise_params():
+                return self.robot_noise
+
+            # no params loaded yet. return default ones
+            return ObjectModel("default_robot_noise", 0, 0.15)
+
+        # return stored robot noise
+        return self.robot_noise
+
+    def __init__(self, ft_topic_name, ft_topic_type, object_ros_param_path, path_to_object_parameters, ee_frame):
         rospy.init_node('graspSuccessEstimatorMass', anonymous=True)
 
         self.tf_listener = tf.TransformListener()
 
-        # Stores the last measurement from the ft sensor. # TODO change this to a sliding window?
-        self.last_ft_measurement = None
+        # Stores the last measurements from the ft sensor (sliding window)
+        self.window_size = 25 # TODO come up with somthing reasonable (depending on frequency of ft-sensor... our sends @ 50Hz)
+        self.avg_window_ft_measurements = deque(
+            [Wrench(force=Vector3(0, 0, 0), torque=Vector3(0, 0, 0)) for i in range(0, self.window_size)])
+        self.current_wrench_sum = Wrench(force=Vector3(0, 0, 0), torque=Vector3(0, 0, 0))
+        self.current_received_msgs = 0
+
+        self.robot_noise = None
+
         # This is the ft measurement that is used as the empty hand reference. From this one we can calculate change.
         self.ft_measurement_reference = None
         # The calculated reference mass in kg.
@@ -96,6 +136,8 @@ class MassEstimator(object):
         # during estimation. Used to access object information (e.g. mass probability distribution).
         self.current_object_name = rospy.get_param(self.object_ros_param_path, default=None)
 
+        self.ee_frame = ee_frame
+
         # Create the publishers
         self.estimator_status_pub = rospy.Publisher('/graspSuccessEstimator/status', Float64, queue_size=10)
         self.estimator_number_pub = rospy.Publisher('/graspSuccessEstimator/num_objects', Float64, queue_size=10)
@@ -103,6 +145,8 @@ class MassEstimator(object):
         self.estimator_confidence_all_pub = rospy.Publisher('/graspSuccessEstimator/confidence_all', Float64MultiArray,
                                                             queue_size=10)
         self.estimator_mass_pub = rospy.Publisher('/graspSuccessEstimator/masses', Float64MultiArray, queue_size=10)
+
+        self.estimator_continues_mass_pub = rospy.Publisher('/graspSuccessEstimator/continues_mass', Float64, queue_size=10)
 
         # Stores the last active control mode to ensure we only start estimation once (the moment we enter the state)
         self.active_cm = None
@@ -115,12 +159,56 @@ class MassEstimator(object):
         elif ft_topic_type == "WrenchStamped":
             self.ft_sensor_subscriber = rospy.Subscriber(ft_topic_name, WrenchStamped, self.ft_sensor_callback)
         else:
-            raise ValueError("The given message type {} is not supported.".format(ft_topic_type))
+            raise ValueError("MassEstimator: The given message type {} is not supported.".format(ft_topic_type))
+
+    def add_latest_ft_measurement(self, last_ft_measurement):
+
+        latest_ft_in_base = self.to_base_frame(last_ft_measurement)
+
+        if latest_ft_in_base is None:
+            rospy.logwarn("MassEstimator: Skipped adding ft information. Could not transform to base")
+            return
+
+        oldest_ft_measure = self.avg_window_ft_measurements.popleft()
+
+        # TODO refactor: create wrench class with add function or similar.
+        self.current_wrench_sum.force.x += latest_ft_in_base[0] - oldest_ft_measure.force.x
+        self.current_wrench_sum.force.y += latest_ft_in_base[1] - oldest_ft_measure.force.y
+        self.current_wrench_sum.force.z += latest_ft_in_base[2] - oldest_ft_measure.force.z
+
+        #self.current_wrench_sum.torque.x += latest_ft_in_base.wrench.torque.x - oldest_ft_measure.torque.x
+        #self.current_wrench_sum.torque.y += latest_ft_in_base.wrench.torque.y - oldest_ft_measure.torque.y
+        #self.current_wrench_sum.torque.z += latest_ft_in_base.wrench.torque.z - oldest_ft_measure.torque.z
+
+        latest_wrench = Wrench(force=Vector3(latest_ft_in_base[0], latest_ft_in_base[1], latest_ft_in_base[2]),
+                               torque=Vector3(0, 0, 0))  # TODO remove torque, or qctually compute it...
+
+        self.avg_window_ft_measurements.append(latest_wrench)
+
+        self.current_received_msgs = min(self.current_received_msgs + 1, self.window_size)
+
+        self.estimator_continues_mass_pub.publish(MassEstimator.force2mass(self.get_current_ft_estimation().force.z))
+
+    # calculates the current ft estimation based on the avg window etc.
+    def get_current_ft_estimation(self):
+
+        if self.current_received_msgs > 0:
+            avg_force = Vector3(self.current_wrench_sum.force.x / float(self.current_received_msgs),
+                                self.current_wrench_sum.force.y / float(self.current_received_msgs),
+                                self.current_wrench_sum.force.z / float(self.current_received_msgs))
+
+            # TODO remove avg_torque since not used anyway right now...
+            avg_torque = Vector3(self.current_wrench_sum.torque.x / float(self.current_received_msgs),
+                                 self.current_wrench_sum.torque.y / float(self.current_received_msgs),
+                                 self.current_wrench_sum.torque.z / float(self.current_received_msgs))
+
+            return Wrench(force=avg_force, torque=avg_torque)
+
+        else:
+            return None
 
     def ft_sensor_callback(self, data):
-        # TODO add a filter that averages a sliding window until all FT measurements in that window have a smaller
-        # variance than a predefined threshold value and the sliding window is completely filled up with messages.
-        self.last_ft_measurement = data
+        self.add_latest_ft_measurement(data)
 
     def ft_sensor_float_array_callback(self, data):
         last_ft_measurement = WrenchStamped()
@@ -132,14 +220,12 @@ class MassEstimator(object):
         last_ft_measurement.wrench.torque.y = data.data[4]
         last_ft_measurement.wrench.torque.z = data.data[5]
 
-        self.last_ft_measurement = last_ft_measurement
+        self.add_latest_ft_measurement(last_ft_measurement)
 
     def ham_state_callback(self, data):
         new_cm = data.executing_control_mode_name
         if new_cm != self.active_cm:
             self.active_cm = new_cm
-
-        #    print(new_cm)
 
             if rospy.get_param("/graspSuccessEstimator/active", default=True):
                 if new_cm == 'ReferenceMassMeasurement':
@@ -157,7 +243,7 @@ class MassEstimator(object):
         try:
             # transform ft sensor frame to world frame which makes it easy to identify the gravity component of
             # the ft sensor values as the z-axis (ft_sensor_wrench is in ee frame)
-            (trans, rot) = self.tf_listener.lookupTransform('/base_link', '/ee', rospy.Time(0))
+            (trans, rot) = self.tf_listener.lookupTransform('/base_link', self.ee_frame, rospy.Time(0))
 
             R = tf.transformations.quaternion_matrix(rot)
             T = tf.transformations.translation_matrix(trans)
@@ -169,7 +255,7 @@ class MassEstimator(object):
             # print("4", type(frame_transform), type(ft_measurement))
             return frame_transform.dot(ft_measurement)
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            rospy.logerr("Could not lookup transform from /ee to /base_link")
+            rospy.logerr("MassEstimator: Could not lookup transform from /ee to /base_link")
             # TODO potentially add wait for transform (with timeout)
             return None
 
@@ -177,107 +263,109 @@ class MassEstimator(object):
 
         self.current_object_name = rospy.get_param(self.object_ros_param_path, default=None)
 
-        # print("LAST FT MEASUREMENT", self.last_ft_measurement)
-        # TODO maybe add some kind of wait here to make sure the force/torque readings are stable (e.g. variance filter)
-        if self.last_ft_measurement is not None:
-
-            ft_in_base = self.to_base_frame(self.last_ft_measurement)
-            if ft_in_base is not None:
-                self.ft_measurement_reference = ft_in_base
-                self.reference_mass = MassEstimator.force2mass(ft_in_base[2])  # z-axis
-                print("Reference mass: {}".format(self.reference_mass))
-                self.publish_status(RESPONSES.REFERENCE_MEASUREMENT_SUCCESS)
-                self.estimator_mass_pub.publish(data=[self.reference_mass])
-                return
+        if self.current_received_msgs > 0:
+            self.ft_measurement_reference = self.get_current_ft_estimation().force
+            self.reference_mass = MassEstimator.force2mass(self.ft_measurement_reference.z)  # z-axis
+            print("Reference mass: {}".format(self.reference_mass))
+            self.publish_status(RESPONSES.REFERENCE_MEASUREMENT_SUCCESS)
+            self.estimator_mass_pub.publish(data=[self.reference_mass])
+            return
 
         # In case we weren't able to calculate the reference mass, signal failure
         self.ft_measurement_reference = None
-        rospy.logerr("Reference measurement couldn't be done. Is FT-topic alive?")
+        rospy.logerr("MassEstimator: Reference measurement couldn't be done. Is FT-topic alive?")
         self.publish_status(RESPONSES.REFERENCE_MEASUREMENT_FAILURE)
 
     def estimate_number_of_objects(self):
         if self.ft_measurement_reference is None:
-            rospy.logerr("No reference measurement is present.")
+            rospy.logerr("MassEstimator: No reference measurement is present.")
             self.publish_status(RESPONSES.ESTIMATION_RESULT_UNKNOWN_FAILURE)
             return  # failure
 
         if self.current_object_name is None or self.current_object_name != rospy.get_param(self.object_ros_param_path,
                                                                                            default=None):
-            rospy.logerr("The object name of the reference measurement doesn't match the one of the estimation.")
+            rospy.logerr("MassEstimator: The object name of the reference measurement doesn't match the one of the "
+                         "estimation.")
             self.publish_status(RESPONSES.ESTIMATION_RESULT_UNKNOWN_FAILURE)
             return  # failure
 
         if self.current_object_name not in self.objects_info:
 
-            rospy.logwarn("The current object {0} does not have the required object mass parameter set. Skip it".format(
-                self.current_object_name))
+            rospy.logwarn("MassEstimator: The current object {0} does not have the required object mass parameter set."
+                          " Skip it".format( self.current_object_name))
             self.publish_status(RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE)
             return  # ignore
 
-        # TODO maybe add some kind of wait here to make sure the force/torque readings are stable (e.g. variance filter)
-        # TODO one good way would be to refactor and move code to a ft getter method...
-        if self.last_ft_measurement is not None:
-            ft_in_base = self.to_base_frame(self.last_ft_measurement)
-            if ft_in_base is not None:
-                second_mass = MassEstimator.force2mass(ft_in_base[2])  # z-axis
-                mass_diff = second_mass - self.reference_mass
+        # TODO check even more if force/torque readings are stable (e.g. variance filter)?
+        current_ft_estimate = self.get_current_ft_estimation()
 
-                print("MASSES:", second_mass, self.reference_mass, " diff:", mass_diff)
-                print("FT_IN_BASE ref:", self.ft_measurement_reference)
-                print("FT_IN_BASE est:", ft_in_base)
+        if current_ft_estimate is not None:
+            second_mass = MassEstimator.force2mass(current_ft_estimate.force.z)  # z-axis
+            mass_diff = second_mass - self.reference_mass
 
-                object_mean = self.objects_info[self.current_object_name].mass_mean
-                object_stddev = self.objects_info[self.current_object_name].mass_stddev
+            print("MASSES:", second_mass, self.reference_mass, " diff:", mass_diff)
+            print("FT_IN_BASE ref:", self.ft_measurement_reference)
+            print("FT_IN_BASE est:", current_ft_estimate)
 
-                max_pdf_val = -1.0
-                max_num_obj = -1
-                pdf_val_sum = 0.0
-                pdf_values = []
-                for num_obj in range(0, 5):  # classes (number of detected objects) we perform maximum likelihood on.
-                    pdf_val = norm.pdf(mass_diff, object_mean * num_obj, object_stddev)
-                    pdf_values.append(pdf_val)
-                    pdf_val_sum += pdf_val
-                    if pdf_val > max_pdf_val:
-                        max_pdf_val = pdf_val
-                        max_num_obj = num_obj
+            # basic object distribution (mean gets shifted by number of objects that are checked against)
+            object_mean = self.objects_info[self.current_object_name].mass_mean
+            object_stddev = self.objects_info[self.current_object_name].mass_stddev
 
-                confidence = max_pdf_val / pdf_val_sum
+            # robot specific parameters (used to check for no object)
+            robot_noise = self.get_robot_noise_params()
 
-                if confidence < MassEstimator.CONFIDENCE_THRESHOLD:
-                    rospy.logwarn("Confidence ({0}) is very low! Mass diff was: {1}".format(confidence, mass_diff))
+            # check for no object first (robot specific parameters)
+            max_pdf_val = norm.pdf(mass_diff, robot_noise.mass_mean, robot_noise.mass_stddev)
+            max_num_obj = 0
+            pdf_val_sum = max_pdf_val
+            pdf_values = [max_pdf_val]
 
-                # publish the number of objects with the highest likelihood and the confidence
-                self.estimator_number_pub.publish(max_num_obj)
-                self.estimator_confidence_pub.publish(confidence)
-                confidence_all = map(lambda x: x / pdf_val_sum, pdf_values)
-                self.estimator_confidence_all_pub.publish(MassEstimator.list_to_Float64MultiArrayMsg(confidence_all))
+            # check for number of objects > 0
+            for num_obj in range(1, 5):  # classes (number of detected objects) we perform maximum likelihood on.
+                pdf_val = norm.pdf(mass_diff, object_mean * num_obj, object_stddev)
+                pdf_values.append(pdf_val)
+                pdf_val_sum += pdf_val
+                if pdf_val > max_pdf_val:
+                    max_pdf_val = pdf_val
+                    max_num_obj = num_obj
 
-                # publish the estimated masses
-                self.estimator_mass_pub.publish(MassEstimator.list_to_Float64MultiArrayMsg(
-                    [self.reference_mass, second_mass]))
+            confidence = max_pdf_val / pdf_val_sum
 
-                # publish the corresponding status message
-                if max_num_obj == 0:
-                    self.publish_status(RESPONSES.ESTIMATION_RESULT_NO_OBJECT)
-                elif max_num_obj == 1:
-                    self.publish_status(RESPONSES.ESTIMATION_RESULT_OKAY)
-                else:
-                    self.publish_status(RESPONSES.ESTIMATION_RESULT_TOO_MANY)
-                return  # success
+            if confidence < MassEstimator.CONFIDENCE_THRESHOLD:
+                rospy.logwarn("Confidence ({0}) is very low! Mass diff was: {1}".format(confidence, mass_diff))
+
+            # publish the number of objects with the highest likelihood and the confidence
+            self.estimator_number_pub.publish(max_num_obj)
+            self.estimator_confidence_pub.publish(confidence)
+            confidence_all = map(lambda x: x / pdf_val_sum, pdf_values)
+            self.estimator_confidence_all_pub.publish(MassEstimator.list_to_Float64MultiArrayMsg(confidence_all))
+
+            # publish the estimated masses
+            self.estimator_mass_pub.publish(MassEstimator.list_to_Float64MultiArrayMsg(
+                [self.reference_mass, second_mass]))
+
+            # publish the corresponding status message
+            if max_num_obj == 0:
+                self.publish_status(RESPONSES.ESTIMATION_RESULT_NO_OBJECT)
+            elif max_num_obj == 1:
+                self.publish_status(RESPONSES.ESTIMATION_RESULT_OKAY)
+            else:
+                self.publish_status(RESPONSES.ESTIMATION_RESULT_TOO_MANY)
+            return  # success
 
         # In case we weren't able to calculate the number of objects, signal failure
         self.ft_measurement_reference = None
-        rospy.logerr("Estimation measurement couldn't be done. Is FT-topic alive?")
+        rospy.logerr("MassEstimator: Estimation measurement couldn't be done. Is FT-topic alive?")
         self.publish_status(RESPONSES.ESTIMATION_RESULT_UNKNOWN_FAILURE)
 
 
 if __name__ == '__main__':
 
     my_argv = rospy.myargv(argv=sys.argv)
-    if len(my_argv) < 5:
-        print("usage: grasp_success_estimator.py ft_topic_name ft_topic_type object_ros_param_path path_to_object_parameters")
+    if len(my_argv) < 6:
+        print("usage: grasp_success_estimator.py ft_topic_name ft_topic_type object_ros_param_path path_to_object_parameters ee_frame")
     else:
-        we = MassEstimator(my_argv[1], my_argv[2], my_argv[3], my_argv[4])
+        we = MassEstimator(my_argv[1], my_argv[2], my_argv[3], my_argv[4], my_argv[5])
         rospy.spin()
         # locking between the callbacks not required as long as we use only one spinner. See:
         # https://answers.ros.org/question/48429/should-i-use-a-lock-on-resources-in-a-listener-node-with-multiple-callbacks/

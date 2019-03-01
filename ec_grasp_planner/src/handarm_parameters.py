@@ -49,6 +49,10 @@ class Manifold(dict):
         # ensures that every copy is automatically also a deep copy
         return copy.deepcopy(self)
 
+    @staticmethod
+    def deg_to_rad(angles_degree):
+        return [ad * np.pi / 180.0 for ad in angles_degree]
+
 
 class BaseHandArm(dict):
     def __init__(self):
@@ -118,6 +122,13 @@ class RBOHandP24WAM(RBOHand2):
 
         # max waiting time to trigger hand over, otherwise drop off object
         self['wait_handing_over_duration'] = 8
+
+        # This defines the robot noise distribution for the grasp success estimator, as calculated by
+        # calculate_success_estimator_object_params.py. First value is mean, second is standard deviation.
+        # This is mainly robot specific, but depending on the accuracy of the hand models each hand might introduce
+        # additional noise. In that case the values should be updated in their specific classes
+        self['success_estimation_robot_noise'] = np.array([0.0323, 0.0151])
+
         # SURFACE GRASP
         # ---------------------------
         # Generic Object
