@@ -564,7 +564,7 @@ class multi_object_params:
                 print("FOUND ALTERNATIVE. New Start: ", curr_start_config)
 
             elif res.status == CheckKinematicsResponse.REACHED_INITIAL:
-                # original trajectory is feasible, we don't have to save an alternative TODO update comment & code
+                # original trajectory is feasible, we save the alternative in case a later motion is not possible.
                 self.stored_trajectories[(current_object_idx, current_ec_index)][motion] = AlternativeBehavior(res, curr_start_config)
                 curr_start_config = res.final_configuration
                 print("USE NORMAL. Start: ", curr_start_config)
@@ -575,7 +575,7 @@ class multi_object_params:
 
         if all_steps_okay:
             # if all steps are okay use original trajectory TODO only replace preceding steps!
-            # self.stored_trajectories[(current_object_idx, current_ec_index)] = {} # TODO add again
+            self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
             pass
 
         return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,
