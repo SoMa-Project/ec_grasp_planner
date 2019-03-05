@@ -128,6 +128,36 @@ class multi_object_params:
         else:
             return 0
 
+    def black_list_corners(self, current_ec_index, all_ec_frames, strategy):
+
+        if strategy not in ["CornerGrasp"]:
+            # print("strategy {} not CG".format(strategy))
+            return 1
+        # this function will blacklist all corners except
+        # the one on th right side and further from the robot
+        # y coord is negative and x is greater
+
+        # print("Corner EC: \n {} \n at x: {} \n at y: {}".format(all_ec_frames[current_ec_index],all_ec_frames[current_ec_index][0,3], all_ec_frames[current_ec_index][1,3]))
+
+        if all_ec_frames[current_ec_index][1,3] > 0:
+            # print("==== F1 ========")
+            return 0
+
+        max_x = -10000.0
+        max_x_index = 0
+
+        for i, ec in enumerate(all_ec_frames):
+            if  (max_x < ec[0,3]) and ec[1,3] < 0:
+                max_x = ec[0,3]
+                max_x_index = i
+
+        if max_x_index == current_ec_index:
+            # print("==== true ========")
+            return 1
+        else:
+            # print("==== F2 i={} c={} ========".format(max_x_index, current_ec_index))
+            return 0
+
     def black_list_unreachable_zones(self, object, object_params, ifco_in_base_transform, strategy):
 
         # this function will blacklist out of reach zones for wall and surface grasp
@@ -148,9 +178,109 @@ class multi_object_params:
         else:
             return 0
 
+    def surfaceGrasp_hihgest_object(self, object, objects, strategy):
+        # for surface grasp always prefer the hiehest object on the pile
+        if strategy not in ["SurfaceGrasp"]:
+            print("Not SG!")
+            return 1
+
+        object_HT = object['frame']
+        max_h = -10000
+        epsilon = 0.01
+
+        for o in objects:
+            o_HT = o['frame']
+            print("o_h: {}".format(o_HT[2,3]))
+            if o_HT[2,3] > max_h:
+                max_h = o_HT[2,3]
+        print("o_max: {}".format(max_h))
+
+        if object_HT[2,3]+epsilon < max_h:
+            return 0.2
+
+        return 1.0
+
+    def wallGrasp_distant_object(self, object, objects, strategy, ec_HT):
+        # for surface grasp always prefer the hiehest object on the pile
+        if strategy not in ["WallGrasp", "CornerGrasp"]:
+            return 1
+
+        object_HT = object['frame']
+        max_dist = -10000
+        epsilon = 0.01
+
+        for o in objects:
+            o_HT = o['frame']
+
+            delta = np.linalg.inv(ec_HT).dot(o_HT)
+            # this is the distance between object and EC
+            dist = delta[2, 3]
+
+            if dist > max_dist:
+                max_dist = dist
+
+        delta = np.linalg.inv(ec_HT).dot(object_HT)
+        # this is the distance between object and EC
+        dist = delta[2, 3]
+
+        if dist+epsilon < max_dist:
+            return 0.2
+
+        return 1.0
+
+
+    def cornerGrasp_distant_object(self, object, objects, strategy, ec_HT):
+        # for surface grasp always prefer the hiehest object on the pile
+        if strategy not in ["CornerGrasp"]:
+            return 1
+
+        object_HT = object['frame']
+        max_dist = -10000
+        epsilon = 0.01
+
+        #object_in_EC = np.linalg.inv(ec_HT)*object_HT
+        # angle_of_attack = np.arctan2(object_HT[0,3], object_HT[2,3])
+
+        ##z = z - (np.dot(z, y) * y) project to surface
+        attack_vector =  object_HT[0:2,3] - ec_HT[0:2,3]
+        attack_vector =  attack_vector - (np.dot(attack_vector, ec_HT[0:2,1]) *ec_HT[0:2,1] )
+
+        angle_of_attack = np.arccos(np.dot(ec_HT[0:2,2], attack_vector)/
+                                    (np.linalg.norm(ec_HT[0:2,2]) * np.linalg.norm(attack_vector)))
+
+        # print("angle: {} frame {}, obj {}".format(np.rad2deg(angle_of_attack), ec_HT[0:3,3], object_HT[0:3,3]))
+
+        if angle_of_attack > np.deg2rad(30) or angle_of_attack < np.deg2rad(20):
+            return 0.2
+
+        # for o in objects:
+        #     o_HT = o['frame']
+        #
+        #     attack_vector = o_HT[0:2, 3] - ec_HT[0:2, 3]
+        #     attack_vector = attack_vector - (np.dot(attack_vector, ec_HT[0:2, 1]) * ec_HT[0:2, 1])
+        #     angle_of_attack = np.arccos(np.dot(ec_HT[0:2, 2], attack_vector) / \
+        #                                 (np.linalg.norm(ec_HT[0:2, 2]) * np.linalg.norm(attack_vector)))
+        #
+        #     if angle_of_attack < np.deg2rad(-35) and angle_of_attack > np.deg2rad(-18):
+        #         delta = np.linalg.inv(ec_HT).dot(o_HT)
+        #         # this is the distance between object and EC
+        #         dist = delta[2, 3]
+        #
+        #         if dist > max_dist:
+        #             max_dist = dist
+        #
+        # delta = np.linalg.inv(ec_HT).dot(object_HT)
+        # # this is the distance between object and EC
+        # dist = delta[2, 3]
+        #
+        # if dist+epsilon < max_dist:
+        #     return 0.2
+
+        return 1.0
+
 ## --------------------------------------------------------- ##
     # object-environment-hand based heuristic, q_value for grasping
-    def heuristic(self, object, current_ec_index, strategy, all_ec_frames, ifco_in_base_transform):
+    def heuristic(self, object, objects, current_ec_index, strategy, all_ec_frames, ifco_in_base_transform):
 
         ec_frame = all_ec_frames[current_ec_index]
         object_params = self.data[object['type']][strategy]
@@ -158,10 +288,46 @@ class multi_object_params:
         q_val = 1
         q_val = q_val * \
                 self.pdf_object_strategy(object_params) * \
-                self.pdf_object_ec(object_params, ec_frame, strategy) * \
-                self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)* \
-                self.black_list_walls(current_ec_index, all_ec_frames, strategy)
+                self.black_list_corners(current_ec_index, all_ec_frames, strategy) * \
+                self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy) * \
+                self.black_list_walls(current_ec_index, all_ec_frames, strategy) * \
+                self.pdf_object_ec(object_params, ec_frame, strategy)
 
+        ##-----------------------------------ECE-------------------
+                ## used for ECE - can be active for all ECE & OCE strategies
+                # self.pdf_object_strategy(object_params) * \
+                ## used for ECE and OCE
+                # self.black_list_corners(current_ec_index, all_ec_frames, strategy) * \
+                ## used for ECE only!
+                # self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy) * \
+                ## used for ECE and OCE
+                # self.black_list_walls(current_ec_index, all_ec_frames, strategy) * \
+                ## used for ECE - can be active for all ECE strategies
+                # self.pdf_object_ec(object_params, ec_frame, strategy)
+
+                # self.pdf_object_strategy(object_params) * \
+                # self.black_list_corners(current_ec_index, all_ec_frames, strategy) * \
+                # self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy) * \
+                # self.black_list_walls(current_ec_index, all_ec_frames, strategy) * \
+                # self.pdf_object_ec(object_params, ec_frame, strategy)
+
+                ##-----------------------------------OCE-------------------
+                ## used for ECE and OCE
+                # self.black_list_walls(current_ec_index, all_ec_frames, strategy) * \
+                ## used for ECE and OCE
+                # self.black_list_corners(current_ec_index, all_ec_frames, strategy) * \
+                ## used for OCE only @ corner - can be active for all OCE strategies
+                #self.cornerGrasp_distant_object(object, objects, strategy, ec_frame) * \
+                ## used for OCE only @ corenr & wall - can be active for all OCE strategies
+                #self.wallGrasp_distant_object(object, objects, strategy, ec_frame) * \
+                ## used for OCE only @ surface - can be active for all OCE strategies
+                #self.surfaceGrasp_hihgest_object(object, objects, strategy)
+
+                #self.black_list_walls(current_ec_index, all_ec_frames, strategy) * \
+                #self.black_list_corners(current_ec_index, all_ec_frames, strategy) * \
+                #self.cornerGrasp_distant_object(object, objects, strategy, ec_frame) * \
+                #self.wallGrasp_distant_object(object, objects, strategy, ec_frame) * \
+                #self.surfaceGrasp_hihgest_object(object, objects, strategy)
 
         #print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
         return q_val
@@ -251,12 +417,12 @@ class multi_object_params:
             all_ec_frames = []
             for j, ec in enumerate(ecs):
                 all_ec_frames.append(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform)))
-                print("ecs:{}".format(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))))
+                # print("ecs:{}".format(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))))
 
             for j,ec in enumerate(ecs):
                 # the ec frame must be in the same reference frame as the object
                 ec_frame_in_base = graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))
-                Q_matrix[i,j] = self.heuristic(o, j, ec.label, all_ec_frames, ifco_in_base_transform)
+                Q_matrix[i,j] = self.heuristic(o, objects, j, ec.label, all_ec_frames, ifco_in_base_transform)
 
         # print (" ** h_mx = {}".format(Q_matrix))
 

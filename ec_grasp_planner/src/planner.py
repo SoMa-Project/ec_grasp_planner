@@ -920,12 +920,12 @@ def create_corner_grasp(object_frame, support_surface_frame, corner_frame, handa
         ha.JointControlMode(initial_jointConf, name='InitialJointConfig', controller_name='initialJointCtrl'))
 
     # 0b. Joint config switch
-    control_sequence.append(ha.JointConfigurationSwitch('InitialJointConfig', 'softhand_preshape_2_1',
+    control_sequence.append(ha.JointConfigurationSwitch('InitialJointConfig', 'softhand_preshape_3_1',
                                                         controller='initialJointCtrl', epsilon=str(math.radians(7.))))
 
     # 0.5 trigger pre-shaping the hand (if there is a synergy). The 2 in the name represents a wall grasp.
-    control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_2_1'))
-    control_sequence.append(ha.TimeSwitch('softhand_preshape_2_1', 'PreGrasp', duration=0.5))  # time for pre-shape
+    control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_3_1'))
+    control_sequence.append(ha.TimeSwitch('softhand_preshape_3_1', 'PreGrasp', duration=0.5))  # time for pre-shape
 
     # 1. Go above the object
     control_sequence.append(
@@ -991,7 +991,9 @@ def create_corner_grasp(object_frame, support_surface_frame, corner_frame, handa
 
     # 4b. We switch after a short time as this allows us to do a small, precise lift motion
     # TODO partners: this can be replaced by a frame pose switch if your robot is able to do small motions precisely
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.2))
+    control_sequence.append(#ha.FramePoseSwitch('LiftHand', 'SlideToWall', controller='Lift1',
+                            #                   epsilon='0.0001', goal_is_relative='1', reference_frame='world'))
+                            ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.2))
 
     # 5. Go towards the wall to slide object to wall
     dirWall = tra.translation_matrix([0, 0, -sliding_dist])
@@ -1012,7 +1014,7 @@ def create_corner_grasp(object_frame, support_surface_frame, corner_frame, handa
     force = np.array([0, 0, wall_force, 0, 0, 0])
     # The 2 in softhand_close_2 represents a wall grasp. This way the strategy is encoded in the HA.
     # The 0 encodes the synergy id
-    mode_name_hand_closing = 'softhand_close_2_0'
+    mode_name_hand_closing = 'softhand_close_3_0'
 
     # EDITED
     control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, 'ForceSwitch', goal=force,
@@ -1044,8 +1046,8 @@ def create_corner_grasp(object_frame, support_surface_frame, corner_frame, handa
     # 7. Move hand after closing and before lifting it up
     # relative to current hand pose
     control_sequence.append(
-        ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate',
-                                 goal_is_relative='1', ))
+        ha.InterpolatedHTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate',
+                                 goal_is_relative='1', v_max=slide_velocity ))
 
     # 7b. Switch when hand reaches post grasp pose
     control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp_1', controller='PostGraspRotate',
