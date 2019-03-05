@@ -47,7 +47,13 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller = 'GoAboveObject', epsilon = '0.01'))
     
     # 1c. Switch to finished if no plan is found
-    control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'softhand_open', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'softhand_open_after_preshape', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
+    # 1d. Open hand
+    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_after_preshape', synergy = 1))
+
+    # 1e. Wait for a bit and finish
+    control_sequence.append(ha.TimeSwitch('softhand_open_after_preshape', 'finished', duration = 0.5))
 
     # 2. Go to gravity compensation 
     control_sequence.append(ha.BlockJointControlMode(name = 'PrepareForMassMeasurement'))
@@ -97,7 +103,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
                                                  frame_id = 'world'))
 
     # 4c. Switch to recovery if the cartesian velocity fails due to joint limits
-    control_sequence.append(ha.RosTopicSwitch('GoDown', 'recovery_GoDownSG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('GoDown', 'softhand_open_recovery_SurfaceGrasp', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 6. Call hand controller
     if handarm_params['SimplePositionControl']:
@@ -176,7 +182,13 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller = 'GoAboveObject', epsilon = '0.01'))
     
     # 1c. Switch to finished if no plan is found
-    control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'softhand_open', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'softhand_open_after_preshape', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
+    # 1d. Open hand
+    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_after_preshape', synergy = 1))
+
+    # 1e. Wait for a bit and finish
+    control_sequence.append(ha.TimeSwitch('softhand_open_after_preshape', 'finished', duration = 0.5))
 
     # 2. Go to gravity compensation 
     control_sequence.append(ha.BlockJointControlMode(name = 'PrepareForMassMeasurement'))
@@ -226,7 +238,13 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  frame_id='world'))
 
     # 4c. Switch to recovery if the cartesian velocity fails due to joint limits
-    control_sequence.append(ha.RosTopicSwitch('GoDown', 'recovery_GoDownWG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('GoDown', 'softhand_open_after_going_down', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
+    # 4d. Open hand
+    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_after_going_down', synergy = 1))
+
+    # 4e. Wait for a bit and continue recovery
+    control_sequence.append(ha.TimeSwitch('softhand_open_after_going_down', 'recovery_GoDownWG', duration = 0.5))
 
     # 5. Lift upwards so the hand doesn't slide on table surface
     control_sequence.append(
@@ -249,7 +267,13 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  frame_id='world', frame=wall_frame))
 
     # 6c. Switch to recovery if the cartesian velocity fails due to joint limits
-    control_sequence.append(ha.RosTopicSwitch('SlideToWall', 'recovery_SlideWG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('SlideToWall', 'softhand_open_after_sliding', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
+    # 6d. Open hand
+    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_after_sliding', synergy = 1))
+
+    # 6e. Wait for a bit and continue recovery
+    control_sequence.append(ha.TimeSwitch('softhand_open_after_sliding', 'recovery_SlideWG', duration = 0.5))
 
     # 7. Go back a bit to allow the hand to inflate
     control_sequence.append(

@@ -251,11 +251,11 @@ class RBOHandO2KUKA(KUKA):
         self['SurfaceGrasp']['object']['downward_force'] = 4
 
         # speed of approaching the object
-        self['SurfaceGrasp']['object']['down_speed'] = 0.05
+        self['SurfaceGrasp']['object']['down_speed'] = 0.03
 
         self['SurfaceGrasp']['object']['corrective_lift_duration'] = 1.5
 
-        self['SurfaceGrasp']['object']['up_speed'] = 0.05
+        self['SurfaceGrasp']['object']['up_speed'] = 0.03
 
         # synergy type for soft hand closing
         self['SurfaceGrasp']['object']['hand_closing_synergy'] = 1
@@ -304,15 +304,15 @@ class RBOHandO2KUKA(KUKA):
 
         self['WallGrasp']['object']['downward_force'] = 1.8
 
-        self['WallGrasp']['object']['down_speed'] = 0.05
+        self['WallGrasp']['object']['down_speed'] = 0.03
 
         self['WallGrasp']['object']['corrective_lift_duration'] = 1.5
 
-        self['WallGrasp']['object']['up_speed'] = 0.05
+        self['WallGrasp']['object']['up_speed'] = 0.03
 
         self['WallGrasp']['object']['wall_force'] = 12.0
 
-        self['WallGrasp']['object']['slide_speed'] = 0.05 #sliding speed
+        self['WallGrasp']['object']['slide_speed'] = 0.03 #sliding speed
 
         self['WallGrasp']['object']['pre_grasp_twist'] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
@@ -350,7 +350,7 @@ class PISAHandKUKA(KUKA):
     def __init__(self, **kwargs):
         super(PISAHandKUKA, self).__init__()
 
-        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.40392, -0.65228, 0.11258]), tra.quaternion_matrix([-0.6846, 0.72715, 0.018816, 0.047258]))
+        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.40392, -0.65228, 0.21258]), tra.quaternion_matrix([-0.6846, 0.72715, 0.018816, 0.047258]))
         
 
         ####################################################################################
@@ -388,19 +388,22 @@ class PISAHandKUKA(KUKA):
         self['SurfaceGrasp']['object']['downward_force'] = 4
 
         # speed of approaching the object
-        self['SurfaceGrasp']['object']['down_speed'] = 0.05
+        self['SurfaceGrasp']['object']['down_speed'] = 0.03
 
-        self['SurfaceGrasp']['object']['up_speed'] = 0.05
+        self['SurfaceGrasp']['object']['up_speed'] = 0.03
 
         # synergy type for soft hand closing
-        self['SurfaceGrasp']['object']['hand_closing_goal'] = 0.8
+        self['SurfaceGrasp']['object']['hand_closing_goal'] = 0.9
 
         # time of soft hand closing
-        self['SurfaceGrasp']['object']['hand_closing_duration'] = 5
+        self['SurfaceGrasp']['object']['hand_closing_duration'] = 1
 
         # duration of lifting the object
-        self['SurfaceGrasp']['object']['lift_duration'] = 8
+        self['SurfaceGrasp']['object']['lift_duration'] = 11
 
+        self['SurfaceGrasp']['cucumber'] = self['SurfaceGrasp']['object'].copy()
+        self['SurfaceGrasp']['cucumber']['hand_preshape_goal'] = 0.55
+        self['SurfaceGrasp']['cucumber']['hand_closing_goal'] = 1
 
         #####################################################################################
         # below are parameters for wall grasp 
@@ -440,15 +443,15 @@ class PISAHandKUKA(KUKA):
 
         self['WallGrasp']['object']['downward_force'] = 1.8
 
-        self['WallGrasp']['object']['down_speed'] = 0.05
+        self['WallGrasp']['object']['down_speed'] = 0.03
 
         self['WallGrasp']['object']['corrective_lift_duration'] = 1.5
 
-        self['WallGrasp']['object']['up_speed'] = 0.05
+        self['WallGrasp']['object']['up_speed'] = 0.03
 
         self['WallGrasp']['object']['wall_force'] = 12.0
 
-        self['WallGrasp']['object']['slide_speed'] = 0.05 #sliding speed
+        self['WallGrasp']['object']['slide_speed'] = 0.03 #sliding speed
 
         self['WallGrasp']['object']['pre_grasp_twist'] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
@@ -493,7 +496,7 @@ class PISAGripperKUKA(KUKA):
         self['SurfaceGrasp']['object']['hand_preshape_goal'] = 0
 
         # This should be the same for all objects
-        self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
+        self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.15]),
                                                                                 tra.concatenate_matrices(
                                                                                     tra.rotation_matrix(
                                                                                         math.radians(-90.), [0, 0, 1]),
@@ -513,18 +516,23 @@ class PISAGripperKUKA(KUKA):
         self['SurfaceGrasp']['object']['downward_force'] = 4
 
         # speed of approaching the object
-        self['SurfaceGrasp']['object']['down_speed'] = 0.05
+        self['SurfaceGrasp']['object']['down_speed'] = 0.03
 
-        self['SurfaceGrasp']['object']['up_speed'] = 0.05
+        self['SurfaceGrasp']['object']['up_speed'] = 0.03
 
         # synergy type for soft hand closing
-        self['SurfaceGrasp']['object']['hand_closing_goal'] = 0.8
+        self['SurfaceGrasp']['object']['hand_closing_goal'] = 0.6
 
         # time of soft hand closing
-        self['SurfaceGrasp']['object']['hand_closing_duration'] = 5
+        self['SurfaceGrasp']['object']['hand_closing_duration'] = 1
 
         # duration of lifting the object
-        self['SurfaceGrasp']['object']['lift_duration'] = 8
+        self['SurfaceGrasp']['object']['lift_duration'] = 11
+
+        self['SurfaceGrasp']['cucumber'] = self['SurfaceGrasp']['object'].copy()
+        self['SurfaceGrasp']['cucumber']['hand_preshape_goal'] = 0.15
+        self['SurfaceGrasp']['cucumber']['downward_force'] = 10
+
 
 
         #####################################################################################
@@ -568,15 +576,15 @@ class PISAGripperKUKA(KUKA):
 
         self['WallGrasp']['object']['downward_force'] = 1.8
 
-        self['WallGrasp']['object']['down_speed'] = 0.05
+        self['WallGrasp']['object']['down_speed'] = 0.03
 
         self['WallGrasp']['object']['corrective_lift_duration'] = 1.5
 
-        self['WallGrasp']['object']['up_speed'] = 0.05
+        self['WallGrasp']['object']['up_speed'] = 0.03
 
         self['WallGrasp']['object']['wall_force'] = 12.0
 
-        self['WallGrasp']['object']['slide_speed'] = 0.05 #sliding speed
+        self['WallGrasp']['object']['slide_speed'] = 0.03 #sliding speed
 
         self['WallGrasp']['object']['pre_grasp_twist'] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 

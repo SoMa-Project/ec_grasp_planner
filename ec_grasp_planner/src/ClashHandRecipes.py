@@ -77,7 +77,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # 1d. Open hand goal
     control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_open, behaviour='GotoPos',  name='softhand_open_after_preshape'))
 
-    # 1e. Wait for a bit to allow vibrations to attenuate
+    # 1e. Wait for a bit and finish
     control_sequence.append(ha.TimeSwitch('softhand_open_after_preshape', 'finished', duration = 0.5))
 
     # 2. Go to gravity compensation 
@@ -128,7 +128,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
                                                  frame_id = 'world'))
 
     # 4c. Switch to recovery if the cartesian velocity fails due to joint limits
-    control_sequence.append(ha.RosTopicSwitch('GoDown', 'recovery_GoDownSG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('GoDown', 'softhand_open_recovery_SurfaceGrasp', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 5. Lift upwards so the hand can close
     control_sequence.append(

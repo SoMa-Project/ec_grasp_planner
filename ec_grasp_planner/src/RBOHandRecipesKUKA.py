@@ -47,7 +47,13 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller = 'GoAboveObject', epsilon = '0.01'))
     
     # 1c. Switch to finished if no plan is found
-    control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'softhand_open', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'softhand_open_after_preshape', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
+    # 1d. Open hand
+    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_after_preshape', synergy = 1))
+
+    # 1e. Wait for a bit and finish
+    control_sequence.append(ha.TimeSwitch('softhand_open_after_preshape', 'finished', duration = 0.5))
 
     # 2. Go to gravity compensation 
     control_sequence.append(ha.BlockJointControlMode(name = 'PrepareForMassMeasurement'))
