@@ -40,7 +40,8 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alte
     
     # Pre-Grasp modification end TODO get rid of it
 
-    pre_grasp_velocity = params['pre_grasp_velocity']
+    pre_grasp_velocity = params['pre_approach_velocity']
+    pre_grasp_joint_velocity = params['pre_approach_joint_velocity']
 
     # force threshold that if reached will trigger the closing of the hand
     downward_force_thresh = np.array([0, 0, params['downward_force'], 0, 0, 0])
@@ -91,13 +92,12 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alte
     if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
 
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
-        pre_grasp_velocity = params['pre_grasp_joint_velocity']
         goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
 
         print("Use alternative GOAL_TRAJ PreGrasp Dim", goal_traj.shape)
         control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
-                                                    v_max=pre_grasp_velocity,
+                                                    v_max=pre_grasp_joint_velocity,
                                                     # for the close trajectory points linear interpolation works best.
                                                     interpolation_type='linear'))
 

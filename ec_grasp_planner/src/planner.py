@@ -187,7 +187,7 @@ class GraspPlanner:
         if self.grasp_type == "Any":
             goal_node_labels = ['SurfaceGrasp', 'WallGrasp', 'EdgeGrasp']
             robot_name = rospy.get_param('/planner_gui/robot')
-            if robot_name == 'WAM':
+            if robot_name == 'WAM':  # TODO remove if CornerGrasp is integrated to KUKA as well
                 goal_node_labels.append('CornerGrasp')           
         else:
             goal_node_labels = [self.grasp_type]
