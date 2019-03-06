@@ -7,7 +7,7 @@ from tf import transformations as tra
 from geometry_graph_msgs.msg import Node, geometry_msgs
 from tub_feasibility_check import srv as kin_check_srv
 from tub_feasibility_check.msg import BoundingBoxWithPose, AllowedCollision
-from tub_feasibility_check.srv import CheckKinematicsResponse
+from tub_feasibility_check.srv import CheckKinematicsTabletopResponse
 from shape_msgs.msg import SolidPrimitive
 import rospy
 from functools import partial
@@ -539,7 +539,8 @@ class multi_object_params:
 
             res = check_feasibility(initial_configuration=curr_start_config,
                                     goal_pose=goal_pose,
-                                    table_pose=table_pose,
+                                    table_surface_pose=table_pose,
+                                    table_from_edges=False,
                                     bounding_boxes_with_poses=bounding_boxes,
                                     goal_manifold_frame=goal_manifold_frame,
                                     min_position_deltas=params[manifold_name]['min_position_deltas'],
@@ -552,18 +553,18 @@ class multi_object_params:
 
             print("check feasibility result was: " + str(res.status))
 
-            if res.status == CheckKinematicsResponse.FAILED:
+            if res.status == CheckKinematicsTabletopResponse.FAILED:
                 # trajectory is not feasible and no alternative was found, directly return 0
                 return 0
 
-            elif res.status == CheckKinematicsResponse.REACHED_SAMPLED:
+            elif res.status == CheckKinematicsTabletopResponse.REACHED_SAMPLED:
                 # original trajectory is not feasible, but alternative was found => save it
                 self.stored_trajectories[(current_object_idx, current_ec_index)][motion] = AlternativeBehavior(res, curr_start_config)
                 curr_start_config = res.final_configuration
                 all_steps_okay = False
                 print("FOUND ALTERNATIVE. New Start: ", curr_start_config)
 
-            elif res.status == CheckKinematicsResponse.REACHED_INITIAL:
+            elif res.status == CheckKinematicsTabletopResponse.REACHED_INITIAL:
                 # original trajectory is feasible, we don't have to save an alternative TODO update comment & code
                 self.stored_trajectories[(current_object_idx, current_ec_index)][motion] = AlternativeBehavior(res, curr_start_config)
                 curr_start_config = res.final_configuration
