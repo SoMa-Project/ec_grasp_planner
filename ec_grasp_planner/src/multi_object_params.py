@@ -584,7 +584,7 @@ class multi_object_params:
                 'go_down': tra.quaternion_from_matrix(go_down_pose),  # TODO use hand orietation instead?
 
                 # use wall orientation
-                'slide_to_edge': tra.quaternion_from_matrix(wall_frame),
+                'slide_to_edge': tra.quaternion_from_matrix(edge_frame),
             }
 
             # override initial robot configuration
@@ -880,10 +880,8 @@ class multi_object_params:
                 print("The given object {} has no parameters set in the yaml {}".format(o["type"], self.file_name))
                 return -1, -1
 
-            #all_ec_frames = []
             all_ecs = []
             for j, ec in enumerate(ecs):
-            #    all_ec_frames.append(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform)))
                 all_ecs.append(
                     EnvironmentalConstraint(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform)),
                                             ec.label))

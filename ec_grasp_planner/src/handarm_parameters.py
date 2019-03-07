@@ -348,6 +348,26 @@ class RBOHandP24WAM(RBOHand2):
         self['edge_grasp']['object']['slide_velocity'] = np.array([0.125, 0.03])
         self['edge_grasp']['object']['palm_edge_offset'] = 0
 
+        self['edge_grasp']['object']['pre_grasp_manifold'] = Manifold(
+            {'min_position_deltas': [-0.05, -0.05, -0.05],
+             'max_position_deltas': [0.05, 0.05, 0.05],
+             'min_orientation_deltas': [0, 0, 0],
+             'max_orientation_deltas': [0, 0, 0],
+             })
+
+        self['edge_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.04, -0.05],
+                                                                        'max_position_deltas': [0.06, 0.04, 0.01],
+                                                                        'min_orientation_deltas': [0, 0, 0],
+                                                                        'max_orientation_deltas': [0, 0, 0]
+                                                                        })
+
+        self['edge_grasp']['object']['slide_to_edge_manifold'] = Manifold(
+            {'min_position_deltas': [-0.04, -0.04, -0.01],
+             'max_position_deltas': [0.04,  0.04,  0.01],
+             'min_orientation_deltas': [0, 0, 0],
+             'max_orientation_deltas': [0, 0, 0]
+             })
+
 
         # EDGE GRASP
         # ----------------------------------------------------------------------------
