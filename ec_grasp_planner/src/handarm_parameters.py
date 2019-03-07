@@ -268,7 +268,7 @@ class RBOHandO2KUKA(KUKA):
 
 
         #####################################################################################
-        # below are parameters for wall grasp with P24 fingers (standard RBO hand)
+        # below are parameters for wall grasp with O2 fingers (Ocado RBO hand)
         #####################################################################################
         
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
@@ -335,6 +335,85 @@ class RBOHandO2KUKA(KUKA):
         # TODO: This is just an example...
         self['WallGrasp']['cucumber'] = self['WallGrasp']['object'].copy()
         self['WallGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.23, 0, -0.1]), #23 cm above object, 10 cm behind
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(                #this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+        ))
+
+
+        #####################################################################################
+        # below are parameters for corner grasp with O2 fingers (Ocado RBO hand)
+        #####################################################################################
+        
+        # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
+        # the convention at our lab is: x along the fingers and z normal on the palm.
+        # please follow the same convention
+        # This should be the same for all objects
+        self['CornerGrasp']['object']['hand_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, 0.0]),
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(180.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 1, 0]),
+                tra.rotation_matrix(
+                    math.radians(90.0), [0, 0, 1]),
+            ))
+
+        # the pre-approach pose should be:
+        # - floating above and behind the object,
+        # - fingers pointing downwards
+        # - palm facing the object and wall
+        # This is what should be changed per object if needed...
+        self['CornerGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
+                tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 14 cm behind
+                tra.concatenate_matrices(
+                    tra.rotation_matrix(
+                        math.radians(0.), [1, 0, 0]),
+                    tra.rotation_matrix(
+                        math.radians(0.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
+                    tra.rotation_matrix(                #this makes the fingers point downwards
+                        math.radians(0.0), [0, 0, 1]),
+            ))
+
+        self['CornerGrasp']['object']['downward_force'] = 1.8
+
+        self['CornerGrasp']['object']['down_speed'] = 0.03
+
+        self['CornerGrasp']['object']['corrective_lift_duration'] = 1.5
+
+        self['CornerGrasp']['object']['up_speed'] = 0.03
+
+        self['CornerGrasp']['object']['wall_force'] = 12.0
+
+        self['CornerGrasp']['object']['slide_speed'] = 0.03 #sliding speed
+
+        self['CornerGrasp']['object']['pre_grasp_twist'] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+        self['CornerGrasp']['object']['pre_grasp_rotation_duration'] = 0
+
+        self['CornerGrasp']['object']['hand_closing_duration'] = 5.0
+        
+
+        self['CornerGrasp']['object']['hand_preshaping_duration'] = 0.0
+        
+        # first motion after grasp, in hand palm frame
+        self['CornerGrasp']['object']['post_grasp_twist'] = np.array([-0.05, 0.0, 0.0, 0.0, math.radians(-18.0), 0.0])
+
+        self['CornerGrasp']['object']['post_grasp_rotation_duration'] = 2    
+
+        # duration of lifting the object
+        self['CornerGrasp']['object']['lift_duration'] = 8
+
+        # modify grasp parameters for cuucumber
+        # TODO: This is just an example...
+        self['CornerGrasp']['cucumber'] = self['CornerGrasp']['object'].copy()
+        self['CornerGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.23, 0, -0.1]), #23 cm above object, 10 cm behind
             tra.concatenate_matrices(
                 tra.rotation_matrix(
@@ -545,7 +624,7 @@ class PISAGripperKUKA(KUKA):
         #####################################################################################
         self['WallGrasp']['object']['hand_preshape_goal'] = 0
         self['WallGrasp']['object']['hand_preshaping_duration'] = 0
-        
+
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
         # please follow the same convention

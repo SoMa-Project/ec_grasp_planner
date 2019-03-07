@@ -3,7 +3,15 @@ string grasp_type
 string handarm_type
 string object_heuristic_function
 ---
+# Describes the planner succes: true if HA was generated, false otherwise.
+bool success
+
+# Encodes the HA, if success=true. Otherwise this will contain a reason for failure.
 string hybrid_automaton_xml
+
+# The index of the object that the planner decided to grasp
 int32 chosen_object_idx
+
+# The goal node in the ec_graph that was selected by the planner
 geometry_graph_msgs/Node chosen_node
 

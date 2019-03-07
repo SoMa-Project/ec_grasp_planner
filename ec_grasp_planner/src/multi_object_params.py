@@ -43,6 +43,33 @@ def convert_transform_msg_to_homogenous_tf(msg):
     return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]),
                       tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
 
+# CODE DUPLICATION... 
+# TODO: DEAL WITH THIS
+# ================================================================================================
+def get_derived_corner_grasp_frames(corner_frame, object_pose):
+
+    ec_frame = np.copy(corner_frame)
+    ec_frame[:3, 3] = tra.translation_from_matrix(object_pose)
+    # y-axis stays the same, lets norm it just to go sure
+    y = ec_frame[:3, 1] / np.linalg.norm(ec_frame[:3, 1])
+    # z-axis is (roughly) the vector from corner to object
+    z = ec_frame[:3, 3] - corner_frame[:3, 3]
+    # z-axis should lie in the y-plane, so we subtract the part that is perpendicular to the y-plane
+    z = z - (np.dot(z, y) * y)
+    z = z / np.linalg.norm(z)
+    # x-axis is perpendicular to y- and z-axis, again normed to go sure
+    x = np.cross(y, z)
+    x = x / np.linalg.norm(x)
+    # the rotation part is overwritten with the new axis
+    ec_frame[:3, :3] = np.hstack((x, y, z))
+
+    corner_frame_alpha_zero = np.copy(corner_frame)
+    corner_frame_alpha_zero[:3, :3] = np.copy(ec_frame[:3, :3])
+
+    return ec_frame, corner_frame_alpha_zero
+
+
+
 class multi_object_params:
     def __init__(self, file_name="object_param.yaml"):
         self.file_name = file_name
@@ -65,7 +92,7 @@ class multi_object_params:
 
 ## --------------------------------------------------------- ##
     # return 0 or 1 if strategy is applicable on the object
-    # if there is a list of possible outcomes thant the strategy is applicable
+    # if there is a list of possible outcomes then the strategy is applicable
     def pdf_object_strategy(self, object):
         if isinstance(object['success'][self.hand_name], list):
             return 1
@@ -138,7 +165,7 @@ class multi_object_params:
         else:
             return 0
 
-    def black_list_unreachable_zones(self, object, object_params, ifco_in_base_transform, strategy):
+    def black_list_unreachable_zones(self, object, object_params, base_in_ifco_transform, strategy):
 
         # this function will blacklist out of reach zones for wall and surface grasp
         if strategy not in ["WallGrasp", "SurfaceGrasp"]:
@@ -148,7 +175,7 @@ class multi_object_params:
         object_max = object_params['max']
         object_frame = object['frame']
 
-        object_in_ifco_frame  = ifco_in_base_transform.dot(object_frame)
+        object_in_ifco_frame  = base_in_ifco_transform.dot(object_frame)
 
         if object_in_ifco_frame[0,3] > object_min[0]  \
             and object_in_ifco_frame[0,3] < object_max[0] \
@@ -160,7 +187,7 @@ class multi_object_params:
 
 ## --------------------------------------------------------- ##
     # object-environment-hand based heuristic, q_value for grasping
-    def heuristic(self, object, current_ec_index, strategy, all_ec_frames, ifco_in_base_transform):
+    def heuristic(self, object, current_ec_index, strategy, all_ec_frames, base_in_ifco_transform):
 
         ec_frame = all_ec_frames[current_ec_index]
         object_params = self.data[object['type']][strategy]
@@ -169,7 +196,7 @@ class multi_object_params:
         q_val = q_val * \
                 self.pdf_object_strategy(object_params) * \
                 self.pdf_object_ec(object_params, ec_frame, strategy) * \
-                self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)* \
+                self.black_list_unreachable_zones(object, object_params, base_in_ifco_transform, strategy)* \
                 self.black_list_walls(current_ec_index, all_ec_frames, strategy)
 
 
@@ -261,7 +288,7 @@ class multi_object_params:
     #   chosen_object (dict with key 'frame', 'bounding_box', 'type', 'index')
     #   chosen_node the chosen ec node from the geometry graph
     #   pre_grasp_pose_in_base_frame the initial pre-grasp pose in the robot frame for the chosen grasp
-    def process_objects_ecs(self, object_type, ecs, graph_in_base, ifco_in_base_transform,  SG_pre_grasp_in_object_frame = tra.identity_matrix(), WG_pre_grasp_in_object_frame = tra.identity_matrix(), h_process_type = "Deterministic", grasp_type = "Any", object_list_msg = []):
+    def process_objects_ecs(self, object_type, ecs, graph_in_base, ifco_in_base_transform,  SG_pre_grasp_in_object_frame = tra.identity_matrix(), WG_pre_grasp_in_object_frame = tra.identity_matrix(), CG_pre_grasp_in_object_frame = tra.identity_matrix(), h_process_type = "Deterministic", grasp_type = "Any", object_list_msg = []):
 
         # print("object: {}, \n ecs: {} \n graphTF: {}, h_process: {}".format(objects, ecs, graph_in_base, h_process_type))
         # print("ec type: {}".format(type(ecs[0])))
@@ -274,6 +301,7 @@ class multi_object_params:
             object_data = self.data[object_type] #using the first object, in theory in the ocado use case we work with the same objects
             SG_success_rate = object_data['SurfaceGrasp']['success'][self.hand_name]
             WG_success_rate = object_data['WallGrasp']['success'][self.hand_name]
+            CG_success_rate = object_data['CornerGrasp']['success'][self.hand_name]
             graspable_with_any_hand_orientation = object_data['graspable_with_any_hand_orientation']
 
             # currently camera_in_base = graph_in_base
@@ -282,9 +310,10 @@ class multi_object_params:
 
             SG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(SG_pre_grasp_in_object_frame)
             WG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(WG_pre_grasp_in_object_frame)
+            CG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(CG_pre_grasp_in_object_frame)
             ifco_in_base_msg = convert_homogenous_tf_to_pose_msg(ifco_in_base_transform)
 
-            res = srv(grasp_type, object_list_msg, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate)
+            res = srv(grasp_type, object_list_msg, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, CG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate)
             Q_list = res.Q_mat.data
             number_of_columns = len(ecs)
             Q_matrix = np.array(Q_list).reshape((len(object_list_msg.objects), number_of_columns))
@@ -302,7 +331,7 @@ class multi_object_params:
 
                 if not self.data[o["type"]]:
                     print("The given object {} has no parameters set in the yaml {}".format(o["type"], self.file_name))
-                    return -1
+                    return -1, -1
 
                 all_ec_frames = []
                 for j, ec in enumerate(ecs):
@@ -312,7 +341,7 @@ class multi_object_params:
                 for j,ec in enumerate(ecs):
                     # the ec frame must be in the same reference frame as the object
                     ec_frame_in_base = graph_in_base.dot(convert_transform_msg_to_homogenous_tf(ec.transform))
-                    Q_matrix[i,j] = self.heuristic(o, j, ec.label, all_ec_frames, ifco_in_base_transform)
+                    Q_matrix[i,j] = self.heuristic(o, j, ec.label, all_ec_frames, tra.inverse(ifco_in_base_transform))
 
         # print (" ** h_mx = {}".format(Q_matrix))
 
@@ -350,6 +379,10 @@ class multi_object_params:
                 object_pos_with_ec_orientation = graph_in_base.dot(convert_transform_msg_to_homogenous_tf(chosen_node.transform))
                 object_pos_with_ec_orientation[:3,3] = tra.translation_from_matrix(object_pose)
                 pre_grasp_pose_in_base_frame = object_pos_with_ec_orientation.dot(WG_pre_grasp_in_object_frame)
+            elif chosen_node.label == 'CornerGrasp':
+                corner_frame = graph_in_base.dot(convert_transform_msg_to_homogenous_tf(chosen_node.transform))
+                ec_frame = get_derived_corner_grasp_frames(corner_frame, object_pose)[0]
+                pre_grasp_pose_in_base_frame = ec_frame.dot(CG_pre_grasp_in_object_frame)
             else:
                 raise ValueError("Unknown grasp type: {}".format(chosen_node.label))       
         
