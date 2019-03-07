@@ -30,6 +30,12 @@ def angle_between(v1, v2):
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 
+class EnvironmentalConstraint:
+    def __init__(self, transform, label):
+        self.transform = transform
+        self.label = label
+
+
 class AlternativeBehavior:
     # TODO this class should be adapted if return value of the feasibility check changes (e.g. switch conditions)
     def __init__(self, feasibility_check_result, init_conf):
@@ -205,11 +211,13 @@ class multi_object_params:
             return 'east'
 
     # TODO move that to a separate file?
-    def check_kinematic_feasibility(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames,
+    def check_kinematic_feasibility(self, current_object_idx, objects, current_ec_index, all_ecs,
                                     ifco_in_base_transform, handarm_params):
 
+        strategy = all_ecs[current_ec_index].label
+        ec_frame = all_ecs[current_ec_index].transform
+
         object = objects[current_object_idx]
-        ec_frame = all_ec_frames[current_ec_index]
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
 
@@ -220,9 +228,15 @@ class multi_object_params:
         # The collisions that are allowed in message format per motion
         allowed_collisions = {}
 
-        # The initial joint configuration (goToView config)
-        curr_start_config = [0.457929, 0.295013, -0.232804, 2.0226, 0.0, 1.50907, 1.0]  # TODO use line below!
-        # curr_start_config = rospy.get_param('planner_gui/robot_view_position') # TODO use current joint state instead?
+        # The initial joint configuration (goToView config) This is not used right know, since view->init is not checked
+        # curr_start_config = rospy.get_param('planner_gui/robot_view_position') # TODO check view->init config
+
+        # The edges in the scene
+        edges = [e for e in all_ecs if e.label == "EdgeGrasp"]
+
+        # The backup table frame that is used in case we don't create the table from edges
+        table_frame = None
+        table_pose = geometry_msgs.msg.Pose()
 
         # TODO maybe move the kinematic stuff to separate file
 
@@ -238,19 +252,24 @@ class multi_object_params:
                 params = handarm_params['surface_grasp']['object']
 
             # TODO needed ----------------------
-            x_flip_transform = tra.concatenate_matrices(
-                tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(180.0), [1, 0, 0]))
+            #x_flip_transform = tra.concatenate_matrices(
+            #    tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(180.0), [1, 0, 0]))
 
-            table_frame = ec_frame.dot(x_flip_transform)
+            # TODO needed ----------------------
+
+            #table_frame = ec_frame.dot(x_flip_transform)
+            table_frame = ec_frame
 
             # Since the surface grasp frame is at the object center we have to translate it in z direction
             table_frame[2, 3] = table_frame[2, 3] - object['bounding_box'].z / 2.0
+
+            # Convert table frame to pose message
+            table_pose = multi_object_params.transform_to_pose_msg(table_frame)
 
             #object_frame = object_params['frame'].dot(x_flip_transform)
             object_frame = object_params['frame']
 
             print("DBG_FRAME 1", multi_object_params.transform_to_pose_msg(object_frame))
-            # TODO needed ----------------------
 
             goal_ = np.copy(object_frame)
             # we rotate the frame to align the hand with the long object axis and the table surface
@@ -332,13 +351,13 @@ class multi_object_params:
                 'go_down': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
                                              box_id=current_object_idx, terminating=True, required=True),
                             AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                             constraint_name='bottom', terminating=False)],
+                                             constraint_name='table', terminating=False)],
 
                 # TODO also account for the additional object in a way?
                 'post_grasp_rot': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
                                                     box_id=current_object_idx, terminating=True),
                                    AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                                    constraint_name='bottom', terminating=False)]
+                                                    constraint_name='table', terminating=False)]
             }
 
         elif strategy == "WallGrasp":
@@ -476,28 +495,159 @@ class multi_object_params:
 
             }
 
+        elif strategy == "EdgeGrasp":  # TODO get rid of code redundancy
+
+            if object['type'] in handarm_params['edge_grasp']:
+                params = handarm_params['edge_grasp'][object['type']]
+            else:
+                params = handarm_params['edge_grasp']['object']
+
+            hand_transform = params['hand_transform']
+            pre_approach_transform = params['pre_approach_transform']
+            palm_edge_offset = params['palm_edge_offset']
+
+            # This is the frame of the edge we are going for
+            edge_frame = np.copy(ec_frame)
+
+            # this is the EC frame. It is positioned like object and oriented to the edge?
+            initial_slide_frame = np.copy(edge_frame)
+            initial_slide_frame[:3, 3] = tra.translation_from_matrix(object_params['frame'])
+            # apply hand transformation
+            # hand on object fingers pointing toward the edge
+            initial_slide_frame = (initial_slide_frame.dot(hand_transform))
+
+            # the pre-approach pose should be:
+            # - floating above the object
+            # -- position above the object depend the relative location of the edge to the object and the object bounding box
+            #   TODO define pre_approach_transform(egdeTF, objectTF, objectBB)
+            # - fingers pointing toward the edge (edge x-axis orthogonal to palm frame x-axis)
+            # - palm normal perpendicualr to surface normal
+            pre_approach_pose = initial_slide_frame.dot(pre_approach_transform)
+
+            # down_dist = params['down_dist']  #  dist lower than ifco bottom: behavior of the high level planner
+            # dist = z difference to object centroid (both transformations are w.r.t. to world frame
+            # (more realistic behavior since we have to touch the object for a successful grasp)
+            down_dist = pre_approach_pose[2, 3] - object_params['frame'][2, 3]  # get z-translation difference
+
+            # goal pose for go down movement
+            go_down_pose = tra.translation_matrix([0, 0, -down_dist]).dot(pre_approach_pose)
+
+            # goal pose for sliding
+            # 4. Go towards the edge to slide object to edge
+            # this is the tr from initial_slide_frame to edge frame in initial_slide_frame
+            delta = np.linalg.inv(edge_frame).dot(initial_slide_frame)
+
+            # this is the distance to the edge, given by the z axis of the edge frame
+            # add some extra forward distance to avoid grasping the edge of the table palm_edge_offset
+            dist = delta[2, 3] + np.sign(delta[2, 3]) * palm_edge_offset
+
+            # handPalm pose on the edge right before grasping
+            hand_on_edge_pose = initial_slide_frame.dot(tra.translation_matrix([dist, 0, 0]))
+
+            # direction toward the edge and distance without any rotation in worldFrame
+            dir_edge = np.identity(4)
+            # relative distance from initial slide position to final hand on the edge position
+            distance_to_edge = hand_on_edge_pose - initial_slide_frame
+            # TODO might need tuning based on object and palm frame
+            dir_edge[:3, 3] = tra.translation_from_matrix(distance_to_edge)
+            # no lifting motion applied while sliding
+            dir_edge[2, 3] = 0
+
+            slide_to_edge_pose = dir_edge.dot(go_down_pose)
+
+            checked_motions = ['pre_grasp', 'go_down',
+                               'slide_to_edge']  # TODO overcome problem of FT-Switch after go_down
+
+            goals = [pre_approach_pose, go_down_pose, slide_to_edge_pose]  # TODO see checked_motions
+
+            # Take orientation of object but translation of pre grasp pose
+            pre_grasp_pos_manifold = np.copy(object_params['frame'])
+            pre_grasp_pos_manifold[:3, 3] = tra.translation_from_matrix(pre_approach_pose)
+
+            slide_pos_manifold = np.copy(slide_to_edge_pose)
+
+            goal_manifold_frames = {
+                'pre_grasp': pre_grasp_pos_manifold,
+
+                # Use object frame for sampling
+                'go_down': np.copy(go_down_pose),
+
+                # Use wall frame for sampling. Keep in mind that the wall frame has different orientation, than world.
+                'slide_to_edge': slide_pos_manifold,
+            }
+
+            goal_manifold_orientations = {
+                # use hand orientation
+                'pre_grasp': tra.quaternion_from_matrix(pre_approach_pose),
+
+                # Use object orientation
+                'go_down': tra.quaternion_from_matrix(go_down_pose),  # TODO use hand orietation instead?
+
+                # use wall orientation
+                'slide_to_edge': tra.quaternion_from_matrix(wall_frame),
+            }
+
+            # override initial robot configuration
+            # TODO also check gotToView -> params['initial_goal'] (requires forward kinematics, or change to op-space)
+            curr_start_config = params['initial_goal']
+
+            allowed_collisions = {
+
+                # 'init_joint': [],
+
+                # no collisions are allowed during going to pre_grasp pose
+                'pre_grasp': [],
+
+                # Only allow touching the bottom of the ifco
+                'go_down': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='table',
+                                             terminating=False),
+                            ],
+
+                'slide_to_edge': [
+                                     # Allow all other objects to be touched as well
+                                     # (since hand will go through them in simulation) TODO desired behavior?
+                                     AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=obj_idx,
+                                                      terminating=False, required=obj_idx == current_object_idx)
+                                     for obj_idx in range(0, len(objects))
+                                 ]
+                                 + [
+                                     AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='table',
+                                                      terminating=False),
+                                 ],
+
+            }
+
         else:
             # TODO implement other strategies
             raise ValueError("Kinematics checks are currently only supported for surface grasps and wall grasps, "
                              "but strategy was " + strategy)
-            #return 0
 
         # initialize stored trajectories for the given object
         self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
 
-        # The pose of the ifco (in base frame) in message format
-        # ifco_pose = multi_object_params.transform_to_pose_msg(tra.inverse_matrix(ifco_in_base_transform))
-        # TODO this only works for SurfaceGrasp. EdgeGrasp needs a different table representation.
+        # Try to create the table from edges. As fall back use SurfaceGrasp frame (which might have a wrong orientation)
+        table_from_edges = True
+        if len(edges) < 2 and table_frame is None:
 
-        x_flip_transform = tra.concatenate_matrices(
-            tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(180.0), [1, 0, 0]))
+                table_from_edges = False
+                # The potential SurfaceGrasp frames that can be used as a backup for table frames
+                pot_table_frames = [e.transform for e in all_ecs if all_ecs.label == 'SurfaceGrasp']
 
-        if strategy != "SurfaceGrasp":
-            rospy.logerr("This only works for surface grasp right now (since we have the table frame)")
+                if len(pot_table_frames) > 0:
+                    table_frame = pot_table_frames[0]
 
-        table_pose = multi_object_params.transform_to_pose_msg(table_frame)  # TODO This only works for surface grasp right now (since we have the table frame)
-        #table_pose = multi_object_params.transform_to_pose_msg(np.copy(ec_frame).dot(x_flip_transform)) # TODO remove copy
-        print("TABLE POSE", table_pose)
+                    # Since the surface grasp frame is at the object center we have to translate it in z direction
+                    table_frame[2, 3] = table_frame[2, 3] - object['bounding_box'].z / 2.0
+
+                    # Convert table frame to pose message
+                    table_pose = multi_object_params.transform_to_pose_msg(table_frame)
+
+                else:
+                    # TODO limitation of the feasibility checker which needs at least two edges to create a table
+                    raise ValueError("Planning for {}, but not enough edges/table frames found".format(strategy))
+
+        if table_frame is not None:
+            print("TABLE POSE", table_pose)
 
         # The bounding boxes of all objects in message format
         bounding_boxes = []
@@ -547,7 +697,9 @@ class multi_object_params:
                                     goal_manifold_orientation=goal_manifold_orientation,
                                     min_orientation_deltas=params[manifold_name]['min_orientation_deltas'],
                                     max_orientation_deltas=params[manifold_name]['max_orientation_deltas'],
-                                    allowed_collisions=allowed_collisions[motion]
+                                    allowed_collisions=allowed_collisions[motion],
+                                    edge_frames=edges,
+                                    table_from_edges=table_from_edges
                                     )
 
             print("check feasibility result was: " + str(res.status))
@@ -612,18 +764,19 @@ class multi_object_params:
 
     # ------------------------------------------------------------- #
     # object-environment-hand based heuristic, q_value for grasping
-    def heuristic(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames, ifco_in_base_transform, handarm_params):
+    def heuristic(self, current_object_idx, objects, current_ec_index, all_ecs, ifco_in_base_transform, handarm_params):
 
         object = objects[current_object_idx]
+        strategy = all_ecs[current_ec_index].label
 
-        ec_frame = all_ec_frames[current_ec_index]
+        ec_frame = all_ecs[current_ec_index].transform
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
 
         feasibility_checker = rospy.get_param("feasibility_check/active", default="TUB")
         if feasibility_checker == 'TUB':
             feasibility_fun = partial(self.check_kinematic_feasibility, current_object_idx, objects, current_ec_index,
-                                      strategy, all_ec_frames, ifco_in_base_transform, handarm_params)
+                                      all_ecs, ifco_in_base_transform, handarm_params)
 
         elif feasibility_checker == 'Ocado':
             # TODO integrate ocado
@@ -631,6 +784,7 @@ class multi_object_params:
 
         else:
             # Since we are in disney use case, only black list wall, but not regions.
+            all_ec_frames = [ec.transform for ec in all_ecs]
             feasibility_fun = partial(self.black_list_walls, current_ec_index, all_ec_frames, strategy)
 
         q_val = 1
@@ -726,15 +880,19 @@ class multi_object_params:
                 print("The given object {} has no parameters set in the yaml {}".format(o["type"], self.file_name))
                 return -1, -1
 
-            all_ec_frames = []
+            #all_ec_frames = []
+            all_ecs = []
             for j, ec in enumerate(ecs):
-                all_ec_frames.append(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform)))
+            #    all_ec_frames.append(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform)))
+                all_ecs.append(
+                    EnvironmentalConstraint(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform)),
+                                            ec.label))
                 print("ecs:{}".format(graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))))
 
-            for j, ec in enumerate(ecs):
+            for curr_ec_idx, ec in enumerate(ecs):
                 # the ec frame must be in the same reference frame as the object
                 ec_frame_in_base = graph_in_base.dot(self.transform_msg_to_homogenous_tf(ec.transform))
-                Q_matrix[i,j] = self.heuristic(i, objects, j, ec.label, all_ec_frames, ifco_in_base_transform,
+                Q_matrix[i,curr_ec_idx] = self.heuristic(i, objects, curr_ec_idx, all_ecs, ifco_in_base_transform,
                                                handarm_parameters)
 
         # print (" ** h_mx = {}".format(Q_matrix))
