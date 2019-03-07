@@ -15,6 +15,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # Approach phase
     downward_force = params['downward_force']
     down_speed = params['down_speed']
+    hand_preshaping_time = params['hand_preshaping_duration']
     hand_preshape_goal = params['hand_preshape_goal']
 
     # Grasping phase
@@ -38,7 +39,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_preshape_goal]), name  = 'softhand_preshape', synergy = '1'))
     
     # 0b. Time to trigger pre-shape
-    control_sequence.append(ha.TimeSwitch('softhand_preshape', 'PreGrasp', duration = hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('softhand_preshape', 'PreGrasp', duration = hand_preshaping_time))
 
     # 1. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pregrasp_transform, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'PreGrasp'))
@@ -139,6 +140,8 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     downward_force = params['downward_force']
     down_speed = params['down_speed']
     hand_preshape_goal = params['hand_preshape_goal']
+    hand_preshaping_time = params['hand_preshaping_duration']
+
 
     lift_time = params['corrective_lift_duration']
     up_speed = params['up_speed']
@@ -173,7 +176,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_preshape_goal]), name  = 'softhand_preshape', synergy = '1'))
     
     # 0b. Time to trigger pre-shape
-    control_sequence.append(ha.TimeSwitch('softhand_preshape', 'PreGrasp', duration = hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('softhand_preshape', 'PreGrasp', duration = hand_preshaping_time))
 
     # 1. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pregrasp_transform, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'PreGrasp'))
@@ -238,14 +241,9 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  frame_id='world'))
 
     # 4c. Switch to recovery if the cartesian velocity fails due to joint limits
-    control_sequence.append(ha.RosTopicSwitch('GoDown', 'softhand_open_after_going_down', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('GoDown', 'softhand_open_recovery_WallGrasp', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
-    # 4d. Open hand
-    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_after_going_down', synergy = 1))
-
-    # 4e. Wait for a bit and continue recovery
-    control_sequence.append(ha.TimeSwitch('softhand_open_after_going_down', 'recovery_GoDownWG', duration = 0.5))
-
+    
     # 5. Lift upwards so the hand doesn't slide on table surface
     control_sequence.append(
         ha.CartesianVelocityControlMode(up_twist, controller_name='Lift1', name="LiftHand",
@@ -267,13 +265,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  frame_id='world', frame=wall_frame))
 
     # 6c. Switch to recovery if the cartesian velocity fails due to joint limits
-    control_sequence.append(ha.RosTopicSwitch('SlideToWall', 'softhand_open_after_sliding', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
-
-    # 6d. Open hand
-    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open_after_sliding', synergy = 1))
-
-    # 6e. Wait for a bit and continue recovery
-    control_sequence.append(ha.TimeSwitch('softhand_open_after_sliding', 'recovery_SlideWG', duration = 0.5))
+    control_sequence.append(ha.RosTopicSwitch('SlideToWall', 'recovery_SlideWG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 7. Go back a bit to allow the hand to inflate
     control_sequence.append(

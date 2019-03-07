@@ -257,8 +257,8 @@ class RBOHandO2KUKA(KUKA):
 
         self['SurfaceGrasp']['object']['up_speed'] = 0.03
 
-        # synergy type for soft hand closing
-        self['SurfaceGrasp']['object']['hand_closing_synergy'] = 1
+        # time of soft hand preshape
+        self['SurfaceGrasp']['object']['hand_preshaping_duration'] = 0
 
         # time of soft hand closing
         self['SurfaceGrasp']['object']['hand_closing_duration'] = 5
@@ -318,10 +318,11 @@ class RBOHandO2KUKA(KUKA):
 
         self['WallGrasp']['object']['pre_grasp_rotation_duration'] = 0
 
-        self['WallGrasp']['object']['hand_closing_duration'] = 1.0
+        self['WallGrasp']['object']['hand_closing_duration'] = 5.0
         
-        self['WallGrasp']['object']['hand_closing_synergy'] = 1
 
+        self['WallGrasp']['object']['hand_preshaping_duration'] = 0.0
+        
         # first motion after grasp, in hand palm frame
         self['WallGrasp']['object']['post_grasp_twist'] = np.array([-0.05, 0.0, 0.0, 0.0, math.radians(-18.0), 0.0])
 
@@ -372,6 +373,8 @@ class PISAHandKUKA(KUKA):
 
         self['SurfaceGrasp']['object']['hand_preshape_goal'] = 0
 
+        self['SurfaceGrasp']['object']['hand_preshaping_duration'] = 0
+
         # This should be the same for all objects
         self['SurfaceGrasp']['object']['hand_transform'] = tra.translation_matrix([0.0, 0.0, 0.2])
 
@@ -409,6 +412,7 @@ class PISAHandKUKA(KUKA):
         # below are parameters for wall grasp 
         #####################################################################################
         self['WallGrasp']['object']['hand_preshape_goal'] = 0
+        self['WallGrasp']['object']['hand_preshaping_duration'] = 0
 
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
@@ -494,6 +498,7 @@ class PISAGripperKUKA(KUKA):
         ####################################################################################
 
         self['SurfaceGrasp']['object']['hand_preshape_goal'] = 0
+        self['SurfaceGrasp']['object']['hand_preshaping_duration'] = 0
 
         # This should be the same for all objects
         self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.15]),
@@ -539,7 +544,8 @@ class PISAGripperKUKA(KUKA):
         # below are parameters for wall grasp 
         #####################################################################################
         self['WallGrasp']['object']['hand_preshape_goal'] = 0
-
+        self['WallGrasp']['object']['hand_preshaping_duration'] = 0
+        
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
         # please follow the same convention

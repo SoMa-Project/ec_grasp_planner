@@ -290,7 +290,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  frame_id='world'))
 
     # 4c. Switch to recovery if the cartesian velocity fails due to joint limits
-    control_sequence.append(ha.RosTopicSwitch('GoDown', 'recovery_GoDownWG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('GoDown', 'softhand_open_recovery_WallGrasp', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 5. Lift upwards so the hand doesn't slide on table surface
     control_sequence.append(
