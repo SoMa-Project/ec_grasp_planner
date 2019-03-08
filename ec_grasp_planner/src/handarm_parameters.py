@@ -18,6 +18,7 @@ class BaseHandArm(dict):
         self['WallGrasp'] = {}        
         self['SurfaceGrasp'] = {}
         self['EdgeGrasp'] = {}
+        self['CornerGrasp'] = {}
 
         # surface grasp parameters for different objects
         # 'object' is the default parameter set
@@ -27,6 +28,8 @@ class BaseHandArm(dict):
         self['WallGrasp']['object'] = {}
 
         self['EdgeGrasp']['object'] = {}
+
+        self['CornerGrasp']['object'] = {}
 
         self['success_estimator_timeout'] = 10
 
@@ -218,6 +221,15 @@ class KUKA(BaseHandArm):
         self['place_duration'] = 5
 
         self['place_speed'] = 0.05
+
+        # This defines the robot noise distribution for the grasp success estimator, as calculated by
+        # calculate_success_estimator_object_params.py. First value is mean, second is standard deviation.
+        # This is mainly robot specific, but depending on the accuracy of the hand models each hand might introduce
+        # additional noise. In that case the values should be updated in their specific classes
+        # THESE ARE DUMMY VALUES
+        self['success_estimation_robot_noise'] = np.array([-0.0036, 0.04424])
+
+
 
 
 class RBOHandO2KUKA(KUKA):
