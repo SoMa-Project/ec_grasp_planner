@@ -243,6 +243,7 @@ class MassEstimator(object):
         try:
             # transform ft sensor frame to world frame which makes it easy to identify the gravity component of
             # the ft sensor values as the z-axis (ft_sensor_wrench is in ee frame)
+            self.tf_listener.waitForTransform("/base_link", self.ee_frame, rospy.Time(), rospy.Duration(4.0))
             (trans, rot) = self.tf_listener.lookupTransform('/base_link', self.ee_frame, rospy.Time(0))
 
             R = tf.transformations.quaternion_matrix(rot)

@@ -107,6 +107,146 @@ class RBOHand2(BaseHandArm):
 
 # This map defines all grasp parameter such as poses and configurations for a specific robot system
 
+class RBOHand2Prob(RBOHand2):
+    def __init__(self, **kwargs):
+        super(RBOHand2Prob, self).__init__()
+
+        # use null space controller to avoid joint limits during execution
+        self['use_null_space_posture'] = False  # TODO Disney: implement this controller or set to False
+
+        # self['null_space_goal_is_relative'] = False # ??
+        # self['surface_grasp']['object']['null_space_goal_is_relative'] = False
+
+        # max waiting time to trigger hand over, otherwise drop off object
+        self['wait_handing_over_duration'] = 8
+
+        ##################  ADDED CODE NICOLAS ###################################
+        # Generic Object
+        # ---------------------------
+
+        # you can define a default strategy for all objects by setting the second field to  'object'
+        # for object-specific strategies set it to the object label
+
+        # transformation (only rotation) between object frame and hand palm frame
+        # the convention at our lab is: x along the fingers and z normal on the palm.
+        # please follow the same convention
+        self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, 0.3]),
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(90.), [0, 0, 1]),
+                tra.rotation_matrix(
+                    math.radians(180.), [1, 0, 0])))
+
+        # above the object, in hand palm frame
+        self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
+            # tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(25.0), [0, 1, 0]))
+            # tra.translation_matrix([-0.04, 0, 0.0]), tra.rotation_matrix(math.radians(15.0), [0, 1, 0]))
+            tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(15.0), [0, 1, 0]))
+
+        # first motion after grasp, in hand palm frame only rotation
+        self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, 0.0]),
+            tra.rotation_matrix(math.radians(-10.),
+                                [0, 1, 0]))
+
+        # second motion after grasp, in hand palm frame
+        self['surface_grasp']['object']['go_up_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.03, 0, -0.3]),
+            tra.rotation_matrix(math.radians(-20.),
+                                [0, 1, 0]))
+
+        # the maximum allowed force for pushing down
+        self['surface_grasp']['object']['downward_force'] = 4  # might be +10/-7 ??
+
+        # drop configuration - this is system specific!
+        self['surface_grasp']['object']['drop_off_config'] = np.array(
+            # [0.600302, 0.690255, 0.00661675, 2.08453, -0.0533508, -0.267344]
+            # [0.7854, 1.31186037, 1.676474819907, 0, -1.242999972232, 0])
+            # [-1.0176, 1.7704, 0.5843, -1.8478, -1.9554, 0.8829])
+            # this one is a bit close to the table: [-0.6847175734248546, 1.7276625360604194, 0.6593835433017187, 1.941366596533726, 1.396833792691509,
+            # -2.335144021162548])
+            [-0.6495122379513302, 1.0513008704056004, 1.1102978297770616, 1.8614173404205574, 1.2087920487824781,
+             -2.2430899859608164])
+
+        # object hand over configuration - this is system specific!
+        self['surface_grasp']['object']['hand_over_config'] = np.array(
+            # [0.650919, 1.04026, -0.940386, 1.30763, 0.447859, 0.517442]
+            [-0.1745, -0.3491, 1.92, -1.222, 0.5236, 0]) # added by simon
+
+        # synergy type for soft hand closing
+        self['surface_grasp']['object']['hand_closing_synergy'] = 1
+
+        # time of soft hand closing
+        self['surface_grasp']['object']['hand_closing_duration'] = 5
+
+        # time of soft hand closing
+        self['surface_grasp']['object']['down_speed'] = 0.5
+        self['surface_grasp']['object']['up_speed'] = 0.25
+
+        self['surface_grasp']['object']['down_dist'] = 0.28
+        self['surface_grasp']['object']['up_dist'] = 0.25
+        self['surface_grasp']['object']['go_down_velocity'] = np.array(
+            [0.125, 0.06])  # first value: rotational, second translational
+        self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
+
+        #########################################################################################################
+
+        # the force with which the person pulls the object out of the hand
+        self['surface_grasp']['object']['hand_over_force'] = 2.5
+        self['surface_grasp']['v_max'] = np.array([10] * 6)
+        self['surface_grasp']['k_p'] = np.array([200, 150, 20, 10, 10, 5])
+        self['surface_grasp']['k_v'] = np.array([10] * 6)
+        self['surface_grasp']['initial_goal'] = np.array([-0.01, 0.4118988657714642, 1.32, 0.01, -0.4, 0])
+        self['surface_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.2])
+        self['surface_grasp']['hand_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0]),
+                                                                      tra.rotation_matrix(math.radians(0.), [0, 0, 1]))
+        self['surface_grasp']['downward_force'] = 7.
+        self['surface_grasp']['valve_pattern'] = (
+        np.array([[0., 4.1], [0., 0.1], [0., 5.], [0., 5.], [0., 2.], [0., 3.5]]), np.array([[1, 0]] * 6))
+
+        self['wall_grasp']['v_max'] = np.array([10] * 6)
+        self['wall_grasp']['k_p'] = np.array([200, 150, 20, 10, 10, 5])
+        self['wall_grasp']['k_v'] = np.array([10] * 6)
+        self['wall_grasp']['pregrasp_pose'] = tra.translation_matrix([0.05, 0, -0.2])
+        self['wall_grasp']['table_force'] = 7.
+        self['wall_grasp']['sliding_speed'] = 0.1
+        self['wall_grasp']['up_speed'] = 0.1
+        self['wall_grasp']['down_speed'] = 0.1
+        self['wall_grasp']['wall_force'] = 10.0
+        self['wall_grasp']['angle_of_attack'] = 1.0  # radians
+        self['wall_grasp']['object_lift_time'] = 4.5
+
+        self['wall_grasp']['sliding_speed'] += 0
+
+        self['edge_grasp']['v_max'] = np.array([10] * 6)
+        self['edge_grasp']['k_p'] = np.array([200, 150, 20, 10, 10, 5])
+        self['edge_grasp']['k_v'] = np.array([10] * 6)
+        self['edge_grasp']['initial_goal'] = np.array([-0.01, 0.4118988657714642, 1.32, 0.01, -0.4, 0])
+        self['edge_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.3])
+        self['edge_grasp']['hand_object_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0.05]),
+                                                                          tra.rotation_matrix(math.radians(10.),
+                                                                                              [1, 0, 0]),
+                                                                          tra.euler_matrix(0, 0, -math.pi / 2.))
+        self['edge_grasp']['grasp_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, -0.05, 0]),
+                                                                    tra.rotation_matrix(math.radians(10.), [1, 0, 0]),
+                                                                    tra.euler_matrix(0, 0, -math.pi / 2.))
+        self['edge_grasp']['postgrasp_pose'] = tra.translation_matrix([0, 0, -0.1])
+        self['edge_grasp']['downward_force'] = 4.0
+        self['edge_grasp']['sliding_speed'] = 0.04
+        self['edge_grasp']['valve_pattern'] = (
+        np.array([[0, 0], [0, 0], [1, 0], [1, 0], [1, 0], [1, 0]]), np.array([[0, 3.0]] * 6))
+
+
+##################  ADDED CODE NICOLAS ###################################
+
+class RBOHandP24_pulpyPROB(RBOHand2Prob):
+    def __init__(self, **kwargs):
+        RBOHand2Prob.__init__(self, **kwargs)
+
+
+######################################################################
+
 
 # Define this map for your system if you want to port the planner
 # Rbo hand 2 (P24 fingers and rotated palm) mounted on WAM.

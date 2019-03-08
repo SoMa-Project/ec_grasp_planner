@@ -64,6 +64,8 @@ import handarm_parameters
 
 import multi_object_params as mop
 
+from std_msgs.msg import ColorRGBA
+
 markers_rviz = MarkerArray()
 frames_rviz = []
 
@@ -169,7 +171,9 @@ class GraspPlanner:
         # load hand arm parameters set in handarm_parameters.py
         self.handarm_params = handarm_parameters.__dict__[req.handarm_type]()
         # check if the handarm parameters aren't containing any contradicting information or bugs because of non-copying
-        self.handarm_params.checkValidity()
+
+        # TODO: commented this out for the time being, needs to be fixed via pull request
+        # self.handarm_params.checkValidity()
 
         try:
             print('Wait for vision service')
@@ -206,6 +210,34 @@ class GraspPlanner:
         graph.header.stamp = time
         object_frame.header.stamp = time # TODO why do we need to change the time in the header?
         bounding_box = objects[0].boundingbox
+
+        # visualize bounding box
+        marker = Marker()
+        marker.header.frame_id = "object_static"
+        marker.header.stamp = rospy.Time.now()
+        marker.type = Marker.CUBE
+        marker.action = Marker.ADD
+        marker.scale.x = bounding_box.x
+        marker.scale.y = bounding_box.y
+        marker.scale.z = bounding_box.z
+        marker.color = ColorRGBA(r=1., g=1., b=0., a=0.5)
+        marker.lifetime = rospy.Duration()
+        pub = rospy.Publisher("object_bb", Marker, queue_size=100, latch=True)
+        pub.publish(marker)
+
+        # visualize table
+        marker = Marker()
+        marker.header.frame_id = "table_static"
+        marker.header.stamp = rospy.Time.now()
+        marker.type = Marker.CUBE
+        marker.action = Marker.ADD
+        marker.scale.x = 0.3
+        marker.scale.y = 0.3
+        marker.scale.z = 0.01
+        marker.color = ColorRGBA(r=0., g=0., b=1., a=0.8)
+        marker.lifetime = rospy.Duration()
+        pub = rospy.Publisher("table_bb", Marker, queue_size=100, latch=True)
+        pub.publish(marker)
 
         # build list of objects
         object_list = []
@@ -303,15 +335,16 @@ class GraspPlanner:
 
         print("generated grasping ha")
 
+        # Write to a xml file
+        if self.args.file_output:
+            with open('/home/soma/Desktop/HA_Tests/full_runthroughs/hybrid_automaton.xml', 'w') as outfile:
+                outfile.write(ha.xml())
+
         # Call update_hybrid_automaton service to communicate with a hybrid automaton manager (kuka or rswin)
         if self.args.ros_service_call:
             call_ha = rospy.ServiceProxy('update_hybrid_automaton', ha_srv.UpdateHybridAutomaton)
             call_ha(ha.xml())
 
-        # Write to a xml file
-        if self.args.file_output:
-            with open('hybrid_automaton.xml', 'w') as outfile:
-                outfile.write(ha.xml())
 
         # Publish rviz markers
         if self.args.rviz:
@@ -433,7 +466,10 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                         controller='initialJointCtrl', epsilon=str(math.radians(7.))))
 
     # 1. trigger pre-shaping the hand (if there is a synergy). The first 1 in the name represents a surface grasp.
-    control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_1_1'))
+    # control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_1_1'))
+
+    # open hand at the beginning
+    control_sequence.append(ha.SimpleRBOHandControlMode(goal=np.array([0.0]), name='softhand_preshape_1_1'))
 
     # 1.b switch when presahping is terminated
     control_sequence.append(ha.TimeSwitch('softhand_preshape_1_1', 'PreGrasp',
@@ -672,7 +708,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                           duration=wait_handing_over_duration))
 
     # 11. open hand (handover)
-    control_sequence.append(ha.ControlMode(name='softhand_open_1_handover'))
+    # control_sequence.append(ha.ControlMode(name='softhand_open_1_handover'))
+    control_sequence.append(ha.SimpleRBOHandControlMode(goal=np.array([0.0]), name='softhand_open_1_handover'))
 
     # 11b. Go to final CM after hand was opened
     control_sequence.append(ha.TimeSwitch('softhand_open_1_handover', 'finished', duration=hand_closing_duration))
@@ -686,7 +723,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                         controller = 'GoToDropJointConfig',
                                                         epsilon = str(math.radians(7.))))
     # 13. open hand (drop off)
-    control_sequence.append(ha.ControlMode(name='softhand_open_1_dropoff'))
+    # control_sequence.append(ha.ControlMode(name='softhand_open_1_dropoff'))
+    control_sequence.append(ha.SimpleRBOHandControlMode(goal=np.array([0.0]), name='softhand_open_1_dropoff'))
 
     # 13b. Switch to lift hand after drop off
     control_sequence.append(ha.TimeSwitch('softhand_open_1_dropoff', 'GoUp_2', duration=hand_closing_duration))
@@ -1669,7 +1707,7 @@ if __name__ == '__main__':
 
     r = rospy.Rate(5)
 
-    marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
+    marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=True)
     br = tf.TransformBroadcaster()
 
     while not rospy.is_shutdown():

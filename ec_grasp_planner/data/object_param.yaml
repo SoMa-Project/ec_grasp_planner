@@ -16,8 +16,8 @@
       reactions: 
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
-    EdgeGrasp: {'success': 0}
-    mass: {'mean': 0.28052, 'stddev': 0.05958} # values for fake apples (with small EE/FT noise)
+    EdgeGrasp: {'success': 0.01}
+    mass: {'mean': 0.057, 'stddev': 0.02648} # values for fake apples (with small EE/FT noise)
 
   plushtoy:
     SurfaceGrasp:
@@ -36,13 +36,13 @@
       reactions:
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
-    mass: {'mean': 0.1327, 'stddev': 0.0166} # values for teddy (with small EE/FT noise)
+    mass: {'mean': 0.125, 'stddev': 0.0166} # values for teddy (with small EE/FT noise)
 
   banana:
     SurfaceGrasp: {'success': 1,'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': 1, 'min': [0, 0], 'max': [0, 0]}
     EdgeGrasp: {'success': 0}
-    mass: {'mean': 0.0385, 'stddev': 0.01660} # values for fake banana (with small EE/FT noise)
+    mass: {'mean': 0.055, 'stddev': 0.01660} # values for fake banana (with small EE/FT noise)
   
   bottle:
     SurfaceGrasp: {'success': 1, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
