@@ -308,6 +308,7 @@ class GraspPlanner:
             self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
             graph_in_base = self.tf_listener.asMatrix(robot_base_frame, graph.header)
 
+
             # Get the object frame in robot base frame
             object_in_base = chosen_object['frame']
 
@@ -328,23 +329,25 @@ class GraspPlanner:
         ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
                                                                      self.handarm_params, self.object_type,
                                                                      frame_convention, self.handover,
-                                                                     self.multi_object_handler.get_object_params())
+                                                                     self.multi_object_handler.get_object_params(),
+                                                                     self.multi_object_handler.get_alternative_behavior(
+                                                                         chosen_object_idx, chosen_node_idx)
+                                                                     )
 
         # --------------------------------------------------------
         # Output the hybrid automaton
 
         print("generated grasping ha")
 
-        # Write to a xml file
-        if self.args.file_output:
-            with open('/home/soma/Desktop/HA_Tests/full_runthroughs/hybrid_automaton.xml', 'w') as outfile:
-                outfile.write(ha.xml())
-
         # Call update_hybrid_automaton service to communicate with a hybrid automaton manager (kuka or rswin)
         if self.args.ros_service_call:
             call_ha = rospy.ServiceProxy('update_hybrid_automaton', ha_srv.UpdateHybridAutomaton)
             call_ha(ha.xml())
 
+        # Write to a xml file
+        if self.args.file_output:
+            with open('hybrid_automaton.xml', 'w') as outfile:
+                outfile.write(ha.xml())
 
         # Publish rviz markers
         if self.args.rviz:
@@ -366,8 +369,10 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # Get the relevant parameters for hand object combination
     if object_type in handarm_params['surface_grasp']:
         params = handarm_params['surface_grasp'][object_type]
+        #print("object found: {}".format(object_type))
     else:
         params = handarm_params['surface_grasp']['object']
+        #print("object NOT found: {}".format(object_type))
 
     reaction = Reaction(object_type, 'SurfaceGrasp', object_params)
 
@@ -388,6 +393,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     hand_over_config = params['hand_over_config']
     hand_over_force = params['hand_over_force']
     hand_synergy = params['hand_closing_synergy']
+    pre_grasp_velocity = params['pre_grasp_velocity']
 
     use_null_space_posture = handarm_params['use_null_space_posture']
 
@@ -418,7 +424,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     # Set the directions to use task space controller with
     dirDown = tra.translation_matrix([0, 0, -down_dist])
-
+    # half the distance we want to achieve since we do two consecutive lifts
     dirUp = tra.translation_matrix([0, 0, up_dist])
 
     # force threshold that if reached will trigger the closing of the hand
@@ -468,7 +474,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 1. trigger pre-shaping the hand (if there is a synergy). The first 1 in the name represents a surface grasp.
     # control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_1_1'))
 
-    # open hand at the beginning
+    # 1. open hand at the beginning
     control_sequence.append(ha.SimpleRBOHandControlMode(goal=np.array([0.0]), name='softhand_preshape_1_1'))
 
     # 1.b switch when presahping is terminated
@@ -483,11 +489,12 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
 
         print("GOAL TRAJ PreGrasp", goal_traj) 
-        control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
+        control_sequence.append(ha.InterpolatedJointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
                                                     v_max=pre_grasp_velocity,
                                                     # for the close trajectory points linear interpolation works best.
-                                                    interpolation_type='linear'))
+                                                    interpolation_type='linear',
+                                                    completion_times=np.array([0.1]*goal_traj.shape[1]).reshape(1,goal_traj.shape[1])))
 
         # 2b. Switch when hand reaches the goal configuration
         control_sequence.append(ha.JointConfigurationSwitch('PreGrasp', 'ReferenceMassMeasurement',
@@ -540,15 +547,16 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         goal_traj = alternative_behavior['go_down'].get_trajectory()
 
         print("GOAL_TRAJ GoDown", goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
-        control_sequence.append(ha.JointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
+        control_sequence.append(ha.InterpolatedJointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
                                                     goal_is_relative='0',
                                                     v_max=go_down_joint_velocity,
                                                     # for the close trajectory points linear interpolation works best.
-                                                    interpolation_type='linear'))
+                                                    interpolation_type='linear',
+                                                    completion_times=np.array([0.1]*goal_traj.shape[1]).reshape(1, goal_traj.shape[1])))
 
         # Relative motion that ensures that the actual force/torque threshold is reached
         control_sequence.append(
-            ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, -10]),
+            ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, -0.05]),
                                                  controller_name='GoDownFurther',
                                                  goal_is_relative='1',
                                                  name="GoDownFurther",
@@ -557,7 +565,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
         # Switch when goal is reached to trigger the relative go down further motion
         control_sequence.append(ha.JointConfigurationSwitch('GoDown', 'GoDownFurther', controller='GoDown',
-                                                            epsilon=str(math.radians(7.))))
+                                                            epsilon=str(math.radians(7.)),
+                                                            norm_weights=np.zeros(6)))
 
         # Force/Torque switch for the additional relative go down further
         control_sequence.append(ha.ForceTorqueSwitch('GoDownFurther',
@@ -589,7 +598,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                  frame_id='world',
                                                  port='2'))
 
-    # 5. Maintain the position
+    # 4. Maintain the position
     desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0],
                                      [0.0, 1.0, 0.0, 0.0],
                                      [0.0, 0.0, 1.0, 0.0],
@@ -692,7 +701,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 9.3b Switch when joint configuration is reached
     control_sequence.append(ha.JointConfigurationSwitch('Handover', 'wait_for_handover',
                                                         controller='GoToHandoverJointConfig',
-                                                        epsilon=str(math.radians(7.))))
+                                                        epsilon=str(math.radians(7.)),
+                                                        norm_weights=np.zeros(6)))
 
     # 10. Block joints to hold object in air util human takes over
     control_sequence.append(ha.BlockJointControlMode(name='wait_for_handover'))
@@ -721,8 +731,10 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 12b.  Switch when joint is reached
     control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'softhand_open_1_dropoff',
                                                         controller = 'GoToDropJointConfig',
-                                                        epsilon = str(math.radians(7.))))
+                                                        epsilon = str(math.radians(7.)),
+                                                        norm_weights=np.zeros(6)))
     # 13. open hand (drop off)
+    ## TODO
     # control_sequence.append(ha.ControlMode(name='softhand_open_1_dropoff'))
     control_sequence.append(ha.SimpleRBOHandControlMode(goal=np.array([0.0]), name='softhand_open_1_dropoff'))
 
@@ -809,6 +821,9 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     rviz_frames.append(pre_approach_pose)
     rviz_frames.append(ec_frame)
     rviz_frames.append(wall_frame)
+    rviz_frames.append(ec_frame)
+    #rviz_frames.append(position_behind_object)
+    rviz_frames.append(pre_approach_pose)
 
     # use the default synergy
     hand_synergy = 1
@@ -979,6 +994,10 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 
     # slide direction is given by the normal of the wall
     dirWall[:3, 3] = wall_frame[:3, :3].dot(dirWall[:3, 3])
+    control_sequence.append(
+        ha.InterpolatedHTransformControlMode(dirWall, controller_name='SlideToWall', goal_is_relative='1',
+                                             name="SlideToWall", reference_frame="world",
+                                             v_max=slide_velocity))
 
     if alternative_behavior is not None and 'slide_to_wall' in alternative_behavior:
         # TODO
@@ -1086,7 +1105,6 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
     control_sequence.append(ha.BlockJointControlMode(name='finished'))
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
-
 
 # ================================================================================================
 def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_params, object_type, handover,
@@ -1439,7 +1457,6 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
-
 # ================================================================================================
 def transform_msg_to_homogeneous_tf(msg):
     return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]),
@@ -1455,7 +1472,6 @@ def homogeneous_tf_to_pose_msg(htf):
 # ================================================================================================
 def get_node_from_actions(actions, action_name, graph):
     return graph.nodes[[int(m.sig[1][1:]) for m in actions if m.name == action_name][0]]
-
 
 # ================================================================================================
 def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_frame, T_object_in_base, handarm_params,
@@ -1609,7 +1625,6 @@ def find_a_path(hand_start_node_id, object_start_node_id, graph, goal_node_list,
 
     return plan
 
-
 # ================================================================================================
 def publish_rviz_markers(frames, frame_id, handarm_params):
 
@@ -1657,8 +1672,6 @@ def publish_rviz_markers(frames, frame_id, handarm_params):
         markers_rviz.markers.append(msg)
 
     frames_rviz = frames
-
-
 # ================================================================================================
 if __name__ == '__main__':
 

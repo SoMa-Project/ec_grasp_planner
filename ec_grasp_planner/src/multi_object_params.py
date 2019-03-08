@@ -371,8 +371,8 @@ class multi_object_params:
             bounded_lift_down_dist = pre_approach_pose[2, 3] - tra.inverse_matrix(ifco_in_base_transform)[2, 3]
             hand_frame_to_bottom_offset = 0.07  # 7cm TODO maybe move to handarm_parameters.py
             bounded_lift_down_dist = min(params['down_dist'], bounded_lift_down_dist-hand_frame_to_bottom_offset)
-
-            go_down_pose = tra.translation_matrix([0, 0, -bounded_lift_down_dist]).dot(pre_approach_pose)
+            ## TODO add back bounded_lift_down_dist when HA_mnager can stop jont trajectory with FT
+            go_down_pose = tra.translation_matrix([0, 0, -0.1]).dot(pre_approach_pose)
 
             # pose after lifting. This is somewhat fake, since the real go_down_pose will be determined by
             # the FT-Switch during go_down and the actual lifted distance by the TimeSwitch (or a pose switch in case

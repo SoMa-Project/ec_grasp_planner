@@ -120,12 +120,23 @@ class RBOHand2Prob(RBOHand2):
         # max waiting time to trigger hand over, otherwise drop off object
         self['wait_handing_over_duration'] = 8
 
+
+        # This defines the robot noise distribution for the grasp success estimator, as calculated by
+        # calculate_success_estimator_object_params.py. First value is mean, second is standard deviation.
+        # This is mainly robot specific, but depending on the accuracy of the hand models each hand might introduce
+        # additional noise. In that case the values should be updated in their specific classes
+        ##TODO tune it
+        self['success_estimation_robot_noise'] = np.array([0.0323, 0.0151])
+
         ##################  ADDED CODE NICOLAS ###################################
         # Generic Object
         # ---------------------------
 
         # you can define a default strategy for all objects by setting the second field to  'object'
         # for object-specific strategies set it to the object label
+
+        self['surface_grasp']['object']['initial_goal'] = np.array([-0.13344680071507892, 0.3188774472606212, 0.8505352980103672, 0.1860369373347768, 1.866702739571019, -1.3398638725395275])
+                #[-0.01, 0.4118988657714642, 1.32, 0.01, -0.4, 0]) without box, only table
 
         # transformation (only rotation) between object frame and hand palm frame
         # the convention at our lab is: x along the fingers and z normal on the palm.
@@ -144,10 +155,17 @@ class RBOHand2Prob(RBOHand2):
             # tra.translation_matrix([-0.04, 0, 0.0]), tra.rotation_matrix(math.radians(15.0), [0, 1, 0]))
             tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(15.0), [0, 1, 0]))
 
+        self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
+
+        # maximal joint velocities in case a JointController is used (e.g. alternative behavior was generated)
+        self['surface_grasp']['object']['pre_grasp_joint_velocity'] = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.1])
+        self['surface_grasp']['object']['go_down_joint_velocity'] = np.array(
+            [0.2, 0.2, 0.2, 0.2, 0.2, 0.1])  # np.ones(7) * 0.2
+
         # first motion after grasp, in hand palm frame only rotation
         self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, 0.0]),
-            tra.rotation_matrix(math.radians(-10.),
+            tra.rotation_matrix(math.radians(0.),
                                 [0, 1, 0]))
 
         # second motion after grasp, in hand palm frame
@@ -174,6 +192,11 @@ class RBOHand2Prob(RBOHand2):
             # [0.650919, 1.04026, -0.940386, 1.30763, 0.447859, 0.517442]
             [-0.1745, -0.3491, 1.92, -1.222, 0.5236, 0]) # added by simon
 
+        # the force with which the person pulls the object out of the hand
+        self['surface_grasp']['object']['hand_over_force'] = 2.5
+
+
+
         # synergy type for soft hand closing
         self['surface_grasp']['object']['hand_closing_synergy'] = 1
 
@@ -190,6 +213,51 @@ class RBOHand2Prob(RBOHand2):
             [0.125, 0.06])  # first value: rotational, second translational
         self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
 
+        # defines the manifold in which alternative goal poses are sampled during kinematic checks
+        # for object specific ones look further down.
+        self['surface_grasp']['object']['pre_grasp_manifold'] = Manifold(
+            {'min_position_deltas': [-0.05, -0.05, -0.05],  # [-0.01, -0.01, -0.01],
+             'max_position_deltas': [0.05, 0.05, 0.05],  # [0.01, 0.01, 0.01],
+             'min_orientation_deltas': [0, 0, 0],  # -1.5],
+             'max_orientation_deltas': [0, 0, 0],  # 1.5]
+             })
+
+        self['surface_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.04, -0.05],
+                                                                        'max_position_deltas': [0.06, 0.04, 0.01],
+                                                                        'min_orientation_deltas': [0, 0, 0],
+                                                                        'max_orientation_deltas': [0, 0, 0]
+                                                                        })
+
+        self['surface_grasp']['object']['post_grasp_rot_manifold'] = Manifold(
+            {'min_position_deltas': [-0.01, -0.04, -0.05],
+             'max_position_deltas': [0.06, 0.04, 0.01],
+             'min_orientation_deltas': [0, 0, 0],
+             'max_orientation_deltas': [0, 0, 0]
+             })
+
+        self['surface_grasp']['object']['go_up_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.04, -0.05],
+                                                                      'max_position_deltas': [0.06, 0.04, 0.01],
+                                                                      'min_orientation_deltas': [0, 0, 0],
+                                                                      'max_orientation_deltas': [0, 0, 0]
+                                                                      })
+
+        self['surface_grasp']['object']['go_drop_off_manifold'] = Manifold(
+            {'min_position_deltas': [-0.01, -0.04, -0.05],
+             'max_position_deltas': [0.06, 0.04, 0.01],
+             'min_orientation_deltas': [0, 0, 0],
+             'max_orientation_deltas': [0, 0, 0]
+             })
+
+        self['surface_grasp']['apple'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['bottle'] = self['surface_grasp']['object'].copy()
+
+        self['surface_grasp']['apple']['pre_grasp_manifold'] = Manifold(
+            {'min_position_deltas': [-0.05, -0.05, -0.05],  # [-0.01, -0.01, -0.01],
+             'max_position_deltas': [0.05, 0.05, 0.05],  # [0.01, 0.01, 0.01],
+             'min_orientation_deltas': [0, 0, -np.pi],  # -1.5],
+             'max_orientation_deltas': [0, 0, np.pi],  # 1.5]
+             })
+
         #########################################################################################################
 
         # the force with which the person pulls the object out of the hand
@@ -197,7 +265,7 @@ class RBOHand2Prob(RBOHand2):
         self['surface_grasp']['v_max'] = np.array([10] * 6)
         self['surface_grasp']['k_p'] = np.array([200, 150, 20, 10, 10, 5])
         self['surface_grasp']['k_v'] = np.array([10] * 6)
-        self['surface_grasp']['initial_goal'] = np.array([-0.01, 0.4118988657714642, 1.32, 0.01, -0.4, 0])
+
         self['surface_grasp']['pregrasp_pose'] = tra.translation_matrix([0, 0, -0.2])
         self['surface_grasp']['hand_pose'] = tra.concatenate_matrices(tra.translation_matrix([0, 0, 0]),
                                                                       tra.rotation_matrix(math.radians(0.), [0, 0, 1]))
@@ -243,6 +311,52 @@ class RBOHand2Prob(RBOHand2):
 class RBOHandP24_pulpyPROB(RBOHand2Prob):
     def __init__(self, **kwargs):
         RBOHand2Prob.__init__(self, **kwargs)
+
+
+##################  PISA HAND  ###################################
+
+class PisaIITHandProb(RBOHand2Prob):
+    def __init__(self, **kwargs):
+        RBOHand2Prob.__init__(self, **kwargs)
+
+        self['success_estimation_robot_noise'] = np.array([0.91242, 0.019029])
+
+        # above the object, in hand palm frame
+        self['surface_grasp']['apple']['pregrasp_transform'] = tra.concatenate_matrices(
+            # tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(25.0), [0, 1, 0]))
+            # tra.translation_matrix([-0.04, 0, 0.0]), tra.rotation_matrix(math.radians(15.0), [0, 1, 0]))
+            tra.translation_matrix([-0.00, 0, 0.0]), tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
+
+        self['surface_grasp']['bottle']['pregrasp_transform'] = tra.concatenate_matrices(
+            # tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(25.0), [0, 1, 0]))
+            # tra.translation_matrix([-0.04, 0, 0.0]), tra.rotation_matrix(math.radians(15.0), [0, 1, 0]))
+            tra.translation_matrix([-0.05, 0, 0.0]), tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
+
+        self['surface_grasp']['apple']['pre_grasp_manifold'] = Manifold(
+            {'min_position_deltas': [-0.05, -0.05, -0.05],  # [-0.01, -0.01, -0.01],
+             'max_position_deltas': [0.05, 0.05, 0.05],  # [0.01, 0.01, 0.01],
+             'min_orientation_deltas': [0, 0, -np.pi],  # -1.5],
+             'max_orientation_deltas': [0, 0, np.pi],  # 1.5]
+             })
+
+        self['surface_grasp']['bottle']['pre_grasp_manifold'] = Manifold(
+            {'min_position_deltas': [-0.07, -0.03, -0.05],  # [-0.01, -0.01, -0.01],
+             'max_position_deltas': [0.07, 0.03, 0.05],  # [0.01, 0.01, 0.01],
+             'min_orientation_deltas': [0, 0, -np.pi/16.0],  # -1.5],
+             'max_orientation_deltas': [0, 0, np.pi/16.0],  # 1.5]
+             })
+
+        self['surface_grasp']['apple']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.06, -0.04, -0.05],
+                                                                       'max_position_deltas': [0.06, 0.04, 0.01],
+                                                                       'min_orientation_deltas': [0, 0, -np.pi],
+                                                                       'max_orientation_deltas': [0, 0, np.pi]
+                                                                       })
+
+        self['surface_grasp']['bottle']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.07, -0.03, -0.05],
+                                                                       'max_position_deltas': [0.07, 0.03, 0.01],
+                                                                       'min_orientation_deltas': [0, 0, -np.pi/16.0],
+                                                                       'max_orientation_deltas': [0, 0, np.pi/16.0]
+                                                                       })
 
 
 ######################################################################
