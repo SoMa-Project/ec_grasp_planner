@@ -1,7 +1,7 @@
 import numpy as np
 import hatools.components as ha
 
-def get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_frame = np.array([])):
+def get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_or_corner_frame = np.array([])):
 
     recovery_speed = handarm_params['recovery_speed']
     recovery_time = handarm_params['recovery_duration']
@@ -52,7 +52,7 @@ def get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_frame = n
                                                      frame_id = 'world'))
 
 
-    elif grasp_type == 'WallGrasp':
+    elif grasp_type == 'WallGrasp' or grasp_type == 'CornerGrasp':
 
 
         # Release SKU
@@ -84,13 +84,13 @@ def get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_frame = n
 
 
         # If no plan to placement was found, start going down again to place the object back where it was grasped
-        control_sequence.append(ha.CartesianVelocityControlMode(down_world_twist, controller_name = 'GoUpHTransform', name = 'recovery_NoPlanFoundWallGrasp', reference_frame="world"))
+        control_sequence.append(ha.CartesianVelocityControlMode(down_world_twist, controller_name = 'GoUpHTransform', name = 'recovery_NoPlanFound'+grasp_type, reference_frame="world"))
 
         # force threshold that if reached will trigger the closing of the hand
         force = np.array([0, 0, downward_force, 0, 0, 0])
         
         # Switch when force-torque sensor is triggered
-        control_sequence.append(ha.ForceTorqueSwitch('recovery_NoPlanFoundWallGrasp',
+        control_sequence.append(ha.ForceTorqueSwitch('recovery_NoPlanFound'+grasp_type,
                                                      'slide_back_recovery',
                                                      goal = force,
                                                      norm_weights = np.array([0, 0, 1, 0, 0, 0]),
@@ -101,7 +101,7 @@ def get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_frame = n
 
         # Calculate the twist to slide back in the world frame
         # This is done because EE frame sliding back is no longer safe because of possible pre/post grasping rotations
-        slide_back_linear_velocity = wall_frame[:3,:3].dot(np.array([0, 0, recovery_speed]))
+        slide_back_linear_velocity = wall_or_corner_frame[:3,:3].dot(np.array([0, 0, recovery_speed]))
         slide_back_world_twist = np.array([slide_back_linear_velocity[0], slide_back_linear_velocity[1], slide_back_linear_velocity[2], 0, 0, 0])
 
         # Slide back towards the IFCO center

@@ -13,12 +13,10 @@ import tf_conversions.posemath as pm
 import rospkg
 from tornado.concurrent import return_future
 
-heuristic_type = rospy.get_param('/planner_gui/heuristic_type', default = 'tub')
-
-USE_OCADO_HEURISTIC = heuristic_type == 'ocado'
-
-if USE_OCADO_HEURISTIC:
+try:
     from target_selection_in_ifco import srv as target_selection_srv
+except ImportError:
+    rospy.logwarn('The Ocado target selection module was not loaded. This means it cannot be used')
 
 rospack = rospkg.RosPack()
 pkg_path = rospack.get_path('ec_grasp_planner')
@@ -295,6 +293,9 @@ class multi_object_params:
         # load parameter file
         self.load_object_params()
         self.hand_name = rospy.get_param('/planner_gui/hand', default = 'RBOHandP24_pulpy')
+        heuristic_type = rospy.get_param('/planner_gui/heuristic_type', default = 'tub')
+
+        USE_OCADO_HEURISTIC = heuristic_type == 'ocado'
 
         if USE_OCADO_HEURISTIC:
             srv = rospy.ServiceProxy('generate_q_matrix', target_selection_srv.GenerateQmatrix)

@@ -358,6 +358,7 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
                                                                                          corner_frame_alpha_zero,
                                                                                          handarm_params,
                                                                                          pre_grasp_pose)
+        recovery_recipe = RecoveryRecipesKUKA.get_recovery_recipe(handarm_params, handarm_type, grasp_type, corner_frame_alpha_zero)
         rviz_frames.append(corner_frame)
         rviz_frames.append(corner_frame_alpha_zero)
 

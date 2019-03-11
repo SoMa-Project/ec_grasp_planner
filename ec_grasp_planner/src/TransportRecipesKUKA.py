@@ -31,7 +31,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     # 1. Lift upwards
     if grasp_type == 'SurfaceGrasp':
         control_sequence.append(ha.CartesianVelocityControlMode(up_EE_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="EE"))
-    elif grasp_type == 'WallGrasp':
+    elif grasp_type == 'WallGrasp' or grasp_type == 'CornerGrasp':
         control_sequence.append(ha.CartesianVelocityControlMode(up_world_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="world"))
     
     # 1b. Switch after the lift time
@@ -111,7 +111,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
         
     
     # 4. Go above the object - Pregrasp
-    control_sequence.append(ha.InterpolatedHTransformControlMode(drop_off_pose, controller_name = 'GoToDropPose', goal_is_relative='0', name = target_cm_okay))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(drop_off_pose, controller_name = 'GoToDropPose', goal_is_relative='0', name = target_cm_okay, reference_frame = 'world'))
  
     # 4b. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch(target_cm_okay, 'PlaceInTote', controller = 'GoToDropPose', epsilon = '0.01'))
