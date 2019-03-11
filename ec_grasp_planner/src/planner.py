@@ -191,6 +191,7 @@ class GraspPlanner:
         # print(" *** goal node labels: {} ".format(goal_node_labels))
 
         node_list = [n for i, n in enumerate(graph.nodes) if n.label in goal_node_labels] 
+        # print node_list
 
         # Get the geometry graph frame in robot base frame
         self.tf_listener.waitForTransform(robot_base_frame, graph.header.frame_id, time, rospy.Duration(2.0))
@@ -212,7 +213,7 @@ class GraspPlanner:
                                                                                     object_list_msg
                                                                                     )           
         
-        if chosen_object['index'] < 0:
+        if pre_grasp_pose_in_base is None:
             #No grasp found
             return plan_srv.RunGraspPlannerResponse(success=False,
                                                     hybrid_automaton_xml="No feasible trajectory was found",
@@ -353,6 +354,7 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
         recovery_recipe = RecoveryRecipesKUKA.get_recovery_recipe(handarm_params, handarm_type, grasp_type)
     elif grasp_type == 'CornerGrasp':
         corner_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))
+        # ec_frame = get_derived_corner_grasp_frames(corner_frame, chosen_object['frame'])[0]
         corner_frame_alpha_zero = get_derived_corner_grasp_frames(corner_frame, chosen_object['frame'])[1]
         grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_corner_grasp(chosen_object,
                                                                                          corner_frame_alpha_zero,
@@ -360,6 +362,7 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
                                                                                          pre_grasp_pose)
         recovery_recipe = RecoveryRecipesKUKA.get_recovery_recipe(handarm_params, handarm_type, grasp_type, corner_frame_alpha_zero)
         rviz_frames.append(corner_frame)
+        # rviz_frames.append(ec_frame)
         rviz_frames.append(corner_frame_alpha_zero)
 
     else:

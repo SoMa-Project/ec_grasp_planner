@@ -314,7 +314,7 @@ class multi_object_params:
             CG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(CG_pre_grasp_in_object_frame)
             ifco_in_base_msg = convert_homogenous_tf_to_pose_msg(ifco_in_base_transform)
 
-            res = srv(grasp_type, object_list_msg, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, CG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate)
+            res = srv(grasp_type, object_list_msg, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, CG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate, CG_success_rate)
             Q_list = res.Q_mat.data
             number_of_columns = len(ecs)
             Q_matrix = np.array(Q_list).reshape((len(object_list_msg.objects), number_of_columns))
