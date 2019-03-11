@@ -286,7 +286,7 @@ def get_derived_corner_grasp_frames(corner_frame, object_pose):
     x = np.cross(y, z)
     x = x / np.linalg.norm(x)
     # the rotation part is overwritten with the new axis
-    ec_frame[:3, :3] = np.hstack((x, y, z))
+    ec_frame[:3, :3] = tra.inverse_matrix(np.vstack((x, y, z)))
 
     corner_frame_alpha_zero = np.copy(corner_frame)
     corner_frame_alpha_zero[:3, :3] = np.copy(ec_frame[:3, :3])
