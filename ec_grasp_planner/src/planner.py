@@ -891,15 +891,15 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
                                                  reference_frame="world",
                                                  v_max=go_down_velocity))
 
-        # 3b. Switch when force threshold is exceeded
-        control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                     'LiftHand',
-                                                     goal=go_down_force,
-                                                     norm_weights=np.array([0, 0, 1, 0, 0, 0]),
-                                                     jump_criterion="THRESH_UPPER_BOUND",
-                                                     goal_is_relative='1',
-                                                     frame_id='world',
-                                                     port='2'))
+    # 3b. Switch when force threshold is exceeded (in both cases joint trajectory or op-space control)
+    control_sequence.append(ha.ForceTorqueSwitch('GoDown',
+                                                 'LiftHand',
+                                                 goal=go_down_force,
+                                                 norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                 jump_criterion="THRESH_UPPER_BOUND",
+                                                 goal_is_relative='1',
+                                                 frame_id='world',
+                                                 port='2'))
 
     # 4. Lift upwards so the hand doesn't slide on table surface
     # TODO: remove 4 and 4b if hand should slide on surface OR set duration=0.0 (latter only if joint control not used)
@@ -1052,8 +1052,8 @@ def create_wall_grasp(object_frame, support_surface_frame, wall_frame, handarm_p
 
 # ================================================================================================
 def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_params, object_type, handover,
-                      object_params):
-    #TODO add mass estimation
+                      object_params, alternative_behavior):
+
     # Get the parameters from the handarm_parameters.py file
     if object_type in handarm_params['edge_grasp']:
         params = handarm_params['edge_grasp'][object_type]
@@ -1138,17 +1138,35 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                                         epsilon=str(math.radians(7.))))
 
     # 1. Go above the object
-    # TODO hand pose relative to object should depend on bounding box size and edge location
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(pre_approach_pose, controller_name='GoAboveObject', goal_is_relative='0',
-                                             name="PreGrasp",
-                                             ))
-                                             # null_space_posture=False#use_null_space_posture,
-                                             # null_space_goal_is_relative='1',
+    if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
 
-    # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
-                                               epsilon='0.01'))
+        # we can not use the initially generated plan, but have to include the result of the feasibility checks
+        pre_grasp_velocity = params['max_joint_velocity']
+        goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
+
+        print("GOAL TRAJ PreGrasp", goal_traj)  # TODO remove (output just for debugging)
+        control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
+                                                    goal_is_relative='0',
+                                                    v_max=pre_grasp_velocity,
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear'))
+
+        # 1b. Switch when hand reaches the goal configuration
+        control_sequence.append(ha.JointConfigurationSwitch('PreGrasp', 'ReferenceMassMeasurement',
+                                                            controller='GoAboveObject', epsilon=str(math.radians(7.))))
+
+    else:
+        # TODO hand pose relative to object should depend on bounding box size and edge location
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(pre_approach_pose, controller_name='GoAboveObject',
+                                                 goal_is_relative='0', name="PreGrasp",
+                                                 ))
+                                                 # null_space_posture=False#use_null_space_posture,
+                                                 # null_space_goal_is_relative='1',
+
+        # 1b. Switch when hand reaches the goal pose
+        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
+                                                   epsilon='0.01'))
 
     # TODO add a time switch and short waiting time before the reference measurement is actually done?
     # 2. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
@@ -1175,20 +1193,60 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
 
     # 3. Go down onto the object/table, in world frame
-    dirDown = tra.translation_matrix([0, 0, -down_dist])
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirDown,
-                                             controller_name='GoDown',
-                                             goal_is_relative='1',
-                                             name="GoDown",
-                                             reference_frame="world",
-                                             v_max=go_down_velocity))
+    go_down_force = np.array([0, 0, downward_force, 0, 0, 0])  # force threshold for guarded go down motion
 
-    # 3b. Switch when force threshold is exceeded
-    force = np.array([0, 0, downward_force, 0, 0, 0])
+    if alternative_behavior is not None and 'go_down' in alternative_behavior:
+        # we can not use the initially generated plan, but have to include the result of the feasibility checks
+        # Go down onto the object (joint controller + relative world frame motion)
+
+        go_down_velocity = params['go_down_velocity']
+        go_down_joint_velocity = params['max_joint_velocity']
+        goal_traj = alternative_behavior['go_down'].get_trajectory()
+
+        print("GOAL_TRAJ GoDown", goal_traj)  # TODO remove (only for debugging)
+        control_sequence.append(ha.JointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
+                                                    goal_is_relative='0',
+                                                    v_max=go_down_joint_velocity,
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear'))
+
+        # Relative motion that ensures that the actual force/torque threshold is reached
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, -10]),
+                                                 controller_name='GoDownFurther',
+                                                 goal_is_relative='1',
+                                                 name="GoDownFurther",
+                                                 reference_frame="world",
+                                                 v_max=go_down_velocity))
+
+        # Switch when goal is reached to trigger the relative go down further motion
+        control_sequence.append(ha.JointConfigurationSwitch('GoDown', 'GoDownFurther', controller='GoDown',
+                                                            epsilon=str(math.radians(7.))))
+
+        # Force/Torque switch for the additional relative go down further
+        control_sequence.append(ha.ForceTorqueSwitch('GoDownFurther',
+                                                     'Pause_1',
+                                                     goal=go_down_force,
+                                                     norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                     jump_criterion="THRESH_UPPER_BOUND",
+                                                     goal_is_relative='1',
+                                                     frame_id='world',
+                                                     port='2'))
+
+    else:
+        dirDown = tra.translation_matrix([0, 0, -down_dist])
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(dirDown,
+                                                 controller_name='GoDown',
+                                                 goal_is_relative='1',
+                                                 name="GoDown",
+                                                 reference_frame="world",
+                                                 v_max=go_down_velocity))
+
+    # 3b. Switch when force threshold is exceeded (in both cases joint trajectory or op-space control)
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                  'Pause_1',
-                                                 goal=force,
+                                                 goal=go_down_force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND",
                                                  goal_is_relative='1',
@@ -1204,38 +1262,58 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     control_sequence.append(ha.TimeSwitch('Pause_1', 'SlideToEdge', duration=0.02))
 
     # 4. Go towards the edge to slide object to edge
-    #this is the tr from initial_slide_frame to edge frame in initial_slide_frame
-    delta = np.linalg.inv(edge_frame).dot(initial_slide_frame)
 
-    # this is the distance to the edge, given by the z axis of the edge frame
-    # add some extra forward distance to avoid grasping the edge of the table palm_edge_offset
-    dist = delta[2,3] + np.sign(delta[2,3])*palm_edge_offset
+    if alternative_behavior is not None and 'slide_to_edge' in alternative_behavior:
+        # TODO
+        slide_joint_velocity = params['slide_joint_velocity']
+        goal_traj = alternative_behavior['slide_to_edge'].get_trajectory()
 
-    # handPalm pose on the edge right before grasping
-    hand_on_edge_pose = initial_slide_frame.dot(tra.translation_matrix([dist, 0, 0]))
+        print("GOAL_TRAJ SlideToEdge", goal_traj)  # TODO remove (only for debugging)
 
-    # direction toward the edge and distance without any rotation in worldFrame
-    dirEdge = np.identity(4)
-    # relative distance from initial slide position to final hand on the edge position
-    distance_to_edge = hand_on_edge_pose - initial_slide_frame
-    # TODO might need tuning based on object and palm frame
-    dirEdge[:3, 3] = tra.translation_from_matrix(distance_to_edge)
-    # no lifting motion applied while sliding
-    dirEdge[2, 3] = 0
+        # Sliding motion in joint space
+        control_sequence.append(ha.JointControlMode(goal_traj, name='SlideToEdge', controller_name='SlideToEdge',
+                                                    goal_is_relative='0',
+                                                    v_max=slide_joint_velocity,
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear'))
 
-    # slide direction is given by the x-axis of the edge
-    rviz_frames.append(hand_on_edge_pose)
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirEdge, controller_name='SlideToEdge', goal_is_relative='1',
-                                             name="SlideToEdge", reference_frame="world",
-                                             v_max=slide_velocity))
+        # Switch when goal is reached to trigger the relative slide further motion
+        control_sequence.append(ha.JointConfigurationSwitch('SlideToEdge', mode_name_hand_closing,
+                                                            controller='SlideToEdge', epsilon=str(math.radians(7.))))
 
-    # 4b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('SlideToEdge', mode_name_hand_closing,
-                                               controller='SlideToEdge',
-                                               epsilon='0.01',
-                                               reference_frame="world",
-                                               goal_is_relative='1'))
+    else:
+        # this is the tr from initial_slide_frame to edge frame in initial_slide_frame
+        delta = np.linalg.inv(edge_frame).dot(initial_slide_frame)
+
+        # this is the distance to the edge, given by the z axis of the edge frame
+        # add some extra forward distance to avoid grasping the edge of the table palm_edge_offset
+        dist = delta[2,3] + np.sign(delta[2,3])*palm_edge_offset
+
+        # handPalm pose on the edge right before grasping
+        hand_on_edge_pose = initial_slide_frame.dot(tra.translation_matrix([dist, 0, 0]))
+
+        # direction toward the edge and distance without any rotation in worldFrame
+        dirEdge = np.identity(4)
+        # relative distance from initial slide position to final hand on the edge position
+        distance_to_edge = hand_on_edge_pose - initial_slide_frame
+        # TODO might need tuning based on object and palm frame
+        dirEdge[:3, 3] = tra.translation_from_matrix(distance_to_edge)
+        # no lifting motion applied while sliding
+        dirEdge[2, 3] = 0
+
+        # slide direction is given by the x-axis of the edge
+        rviz_frames.append(hand_on_edge_pose)
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(dirEdge, controller_name='SlideToEdge', goal_is_relative='1',
+                                                 name="SlideToEdge", reference_frame="world",
+                                                 v_max=slide_velocity))
+
+        # 4b. Switch when hand reaches the goal pose
+        control_sequence.append(ha.FramePoseSwitch('SlideToEdge', mode_name_hand_closing,
+                                                   controller='SlideToEdge',
+                                                   epsilon='0.01',
+                                                   reference_frame="world",
+                                                   goal_is_relative='1'))
 
     # 5. Maintain contact while closing the hand
     if handarm_params['isForceControllerAvailable']:
