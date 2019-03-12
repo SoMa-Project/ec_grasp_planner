@@ -265,7 +265,7 @@ class RBOHandO2KUKA(KUKA):
         # speed of approaching the object
         self['SurfaceGrasp']['object']['down_speed'] = 0.03
 
-        self['SurfaceGrasp']['object']['corrective_lift_duration'] = 1.5
+        self['SurfaceGrasp']['object']['corrective_lift_duration'] = 0.0
 
         self['SurfaceGrasp']['object']['up_speed'] = 0.03
 
@@ -277,7 +277,10 @@ class RBOHandO2KUKA(KUKA):
 
         # duration of lifting the object
         self['SurfaceGrasp']['object']['lift_duration'] = 8
-
+        
+        # Object specific params
+        self['SurfaceGrasp']['cucumber'] = self['SurfaceGrasp']['object'].copy()
+        self['SurfaceGrasp']['cucumber']['corrective_lift_duration'] = 1.5
 
         #####################################################################################
         # below are parameters for wall grasp with O2 fingers (Ocado RBO hand)
