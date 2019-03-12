@@ -193,7 +193,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alte
                                                  reference_frame="world",
                                                  v_max=go_down_velocity))
 
-    # 5b. Force/Torque switch for GoDown
+    # 5b. Force/Torque switch for GoDown (in both cases joint trajectory or op-space control)
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                  mode_name_hand_closing,
                                                  goal=downward_force_thresh,
@@ -442,15 +442,15 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  reference_frame="world",
                                                  v_max=go_down_velocity))
 
-        # 5b. Switch when force threshold is exceeded
-        control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                     'LiftHand',
-                                                     goal=downward_force_thresh,
-                                                     norm_weights=np.array([0, 0, 1, 0, 0, 0]),
-                                                     jump_criterion="THRESH_UPPER_BOUND",
-                                                     goal_is_relative='1',
-                                                     frame_id='world',
-                                                     port='2'))
+    # 5b. Switch when force threshold is exceeded (in both cases joint trajectory or op-space control)
+    control_sequence.append(ha.ForceTorqueSwitch('GoDown',
+                                                 'LiftHand',
+                                                 goal=downward_force_thresh,
+                                                 norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                 jump_criterion="THRESH_UPPER_BOUND",
+                                                 goal_is_relative='1',
+                                                 frame_id='world',
+                                                 port='2'))
 
     # 6. Lift upwards so the hand doesn't slide directly on table surface
     lift_duration = 0.2  # timeout for the TimeSwitch-hack
@@ -528,6 +528,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  v_max=slide_velocity))
 
     # 7b. Switch when the f/t sensor is triggered with normal force from wall
+    #     (in both cases joint trajectory or op-space control)
     control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, name='ForceSwitch',
                                                  goal=wall_force_threshold,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
