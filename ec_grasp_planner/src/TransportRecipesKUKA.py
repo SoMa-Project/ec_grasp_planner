@@ -38,7 +38,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     control_sequence.append(ha.TimeSwitch('GoUp_1', 'GoStiff', duration = lift_time))
 
     # 1c. Change arm -mode - stiffen 
-    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', joint_stiffness = np.array([1500, 1000, 1000, 1000, 1000, 500, 500]), 
+    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', joint_stiffness = np.array([1500, 1500, 1000, 1000, 1000, 500, 500]), 
                 joint_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), cartesian_stiffness = np.array([1000, 1000, 1000, 300, 300, 300]),
                 cartesian_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), nullspace_stiffness = "100", nullspace_damping = "0.7"))
 
@@ -122,7 +122,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     control_sequence.append(ha.InterpolatedHTransformControlMode(drop_off_pose, controller_name = 'GoToDropPose', goal_is_relative='0', name = target_cm_okay, reference_frame = 'world'))
  
     # 4b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch(target_cm_okay, 'PlaceInTote', controller = 'GoToDropPose', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch(target_cm_okay, 'PlaceInTote', controller = 'GoToDropPose', epsilon = '0.05'))
 
     # 4c. Switch to recovery if no plan is found
     control_sequence.append(ha.RosTopicSwitch(target_cm_okay, 'recovery_NoPlanFound' + grasp_type, ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
