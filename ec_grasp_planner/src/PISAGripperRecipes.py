@@ -286,7 +286,6 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # 6e. We switch after a short time 
     control_sequence.append(ha.TimeSwitch('GoSoft', 'SlideBackFromWall', duration=1.0))
 
-
     # 7. Go back a bit to allow the hand to inflate
     control_sequence.append(
         ha.CartesianVelocityControlMode(pre_grasp_twist, controller_name='SlideBackFromWall',
