@@ -310,11 +310,11 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     
     return control_sequence
 
-    def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, pregrasp_transform):
+def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, pregrasp_transform):
     # Get robot specific params
     soft_joint_stiffness = handarm_params['soft_joint_stiffness']
     joint_damping = handarm_params['joint_damping']
-    
+
     object_type = chosen_object['type']
     # Get the relevant parameters for hand object combination
     if object_type in handarm_params['WallGrasp']:
