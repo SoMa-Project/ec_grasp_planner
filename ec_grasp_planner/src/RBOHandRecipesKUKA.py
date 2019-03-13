@@ -116,7 +116,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # 5b. We switch after a short time 
     control_sequence.append(ha.TimeSwitch('LiftHand', 'GoSoft', duration=lift_time))
 
-    # 5c. Change arm -mode - soften
+    # 5c. Change arm mode - soften
     control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'joint_impedance', joint_stiffness = np.array([1500, 1000, 1000, 1000, 20, 20, 20]), 
                 joint_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), cartesian_stiffness = np.array([1000, 1000, 1000, 300, 300, 300]),
                 cartesian_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), nullspace_stiffness = "100", nullspace_damping = "0.7"))

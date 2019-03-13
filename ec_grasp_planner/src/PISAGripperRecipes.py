@@ -98,7 +98,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     
     # 4b. Switch when force-torque sensor is triggered
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'softhand_close',
+                                                 'GoSoft',
                                                  goal = force,
                                                  norm_weights = np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion = "THRESH_UPPER_BOUND",
@@ -108,6 +108,14 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # 4c. Switch to recovery if the cartesian velocity fails due to joint limits
     control_sequence.append(ha.RosTopicSwitch('GoDown', 'softhand_open_recovery_SurfaceGrasp', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
+    # 4d. Change arm mode - soften
+    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'joint_impedance', joint_stiffness = np.array([1500, 1000, 1000, 1000, 20, 20, 20]), 
+                joint_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), cartesian_stiffness = np.array([1000, 1000, 1000, 300, 300, 300]),
+                cartesian_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), nullspace_stiffness = "100", nullspace_damping = "0.7"))
+
+    # 4e. We switch after a short time 
+    control_sequence.append(ha.TimeSwitch('GoSoft', 'softhand_close', duration=1.0))
+
     # 5. Call hand controller
     if handarm_params['SimplePositionControl']:
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_closing_goal]), name = 'softhand_close', synergy = '1'))
@@ -115,7 +123,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
         control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([hand_closing_goal]), kp=np.array([params['kp']]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = 'softhand_close', 
             bounding_box=np.array([chosen_object['bounding_box'].x, chosen_object['bounding_box'].y, chosen_object['bounding_box'].z]), object_weight=np.array([0.4]), object_type=object_type, object_pose=chosen_object['frame']))
     else:
-        raise Exception("No grasping controller selected for PISA/IIT hand")
+        raise Exception("No grasping controller selected for PISA gripper hand")
 
     # 5b. Switch when hand closing time ends
     control_sequence.append(ha.TimeSwitch('softhand_close', 'GoUp_1', duration = hand_closing_time))
