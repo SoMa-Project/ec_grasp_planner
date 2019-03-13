@@ -4,6 +4,9 @@ import hatools.components as ha
 from grasp_success_estimator import RESPONSES
 
 def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, grasp_type, handarm_type):
+    # Get object specific params    
+    stiff_joint_stiffness = handarm_params['stiff_joint_stiffness']
+    joint_damping = handarm_params['joint_damping']
 
     object_type = chosen_object['type']
     # Get the relevant parameters for hand object combination
@@ -38,9 +41,8 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     control_sequence.append(ha.TimeSwitch('GoUp_1', 'GoStiff', duration = lift_time))
 
     # 1c. Change arm -mode - stiffen 
-    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', joint_stiffness = np.array([1500, 1500, 1000, 1000, 1000, 500, 500]), 
-                joint_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), cartesian_stiffness = np.array([1000, 1000, 1000, 300, 300, 300]),
-                cartesian_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), nullspace_stiffness = "100", nullspace_damping = "0.7"))
+    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', 
+                                                        joint_stiffness = stiff_joint_stiffness, joint_damping = joint_damping))
 
     # 1d. We switch after a short time 
     control_sequence.append(ha.TimeSwitch('GoStiff', 'EstimationMassMeasurement', duration=1.0))
