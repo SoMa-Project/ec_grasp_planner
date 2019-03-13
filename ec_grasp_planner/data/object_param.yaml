@@ -1,3 +1,44 @@
+  dummy_object:
+    SurfaceGrasp: 
+      success:        
+        RBOHandP24_pulpy: 1.0
+        RBOHandO2: 1.0
+        PISAHand: 1.0
+        PISAGripper: 1.0
+        ClashHand: 0.66      
+      min: [-0.14, -0.1]
+      max: [0.14, 0.05]
+      reactions: 
+        mass_estimation_no_object: REPLAN
+        mass_estimation_too_many: CONTINUE
+    CornerGrasp:
+      success:
+        RBOHandP24_pulpy: 1.0
+        RBOHandO2: 1.0
+        PISAHand: 1.0
+        PISAGripper: 1.0
+        ClashHand: 0.66 
+      min: [-1000.0, -0.075]
+      max: [-0.05, 0.045]
+      reactions:
+        mass_estimation_no_object: REPLAN
+        mass_estimation_too_many: REPLAN
+    WallGrasp: 
+      success: 
+        RBOHandP24_pulpy: 1.0
+        RBOHandO2: 1.0
+        PISAHand: 1.0
+        PISAGripper: 1.0
+        ClashHand: 0.66
+      min: [-1000.0, -0.075]
+      max: [-0.05, 0.045]
+      reactions: 
+        mass_estimation_no_object: REPLAN
+        mass_estimation_too_many: CONTINUE
+    EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
+    mass: {'mean': 0.2025, 'stddev': 0.0374} # artificial values, since no fake mangos available. TODO get params as soon as we have the fake mangos again!
+    graspable_with_any_hand_orientation: False
+
   apple:
     SurfaceGrasp:
       success: 
