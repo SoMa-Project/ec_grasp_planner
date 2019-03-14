@@ -102,7 +102,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alte
                                                     interpolation_type='linear'))
 
         # 2b. Switch when hand reaches the goal configuration
-        control_sequence.append(ha.JointConfigurationSwitch('PreGrasp', 'PrepareForMassMeasurement',
+        control_sequence.append(ha.JointConfigurationSwitch('PreGrasp', 'PrepareForReferenceMassMeasurement',
                                                             controller='GoAboveObject', epsilon=str(math.radians(7.))))
 
     else:
@@ -114,14 +114,15 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alte
                                                                      v_max=pre_grasp_velocity))
 
         # 1b. Switch when hand reaches the goal pose
-        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller='GoAboveObject',
-                                                   epsilon='0.01'))
+        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForReferenceMassMeasurement',
+                                                   controller='GoAboveObject', epsilon='0.01'))
 
     # 3. Hold current joint config 
-    control_sequence.append(ha.BlockJointControlMode(name='PrepareForMassMeasurement'))
+    control_sequence.append(ha.BlockJointControlMode(name='PrepareForReferenceMassMeasurement'))
 
     # 3b. Wait for a bit to allow vibrations to attenuate
-    control_sequence.append(ha.TimeSwitch('PrepareForMassMeasurement', 'ReferenceMassMeasurement', duration=0.5))
+    control_sequence.append(ha.TimeSwitch('PrepareForReferenceMassMeasurement', 'ReferenceMassMeasurement',
+                                          duration=0.5))
 
     # 4. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
     control_sequence.append(ha.BlockJointControlMode(name='ReferenceMassMeasurement'))
@@ -354,7 +355,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                     interpolation_type='linear'))
 
         # 2b. Switch when hand reaches the goal configuration
-        control_sequence.append(ha.JointConfigurationSwitch('PreGrasp', 'PrepareForMassMeasurement',
+        control_sequence.append(ha.JointConfigurationSwitch('PreGrasp', 'PrepareForReferenceMassMeasurement',
                                                             controller='GoAboveObject', epsilon=str(math.radians(7.))))
 
     else:
@@ -364,14 +365,15 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  goal_is_relative='0', name="PreGrasp"))
 
         # 2b. Switch when hand reaches the goal pose
-        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller='GoAboveObject',
-                                                   epsilon='0.01'))
+        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForReferenceMassMeasurement',
+                                                   controller='GoAboveObject', epsilon='0.01'))
 
     # 3. Hold current joint config 
-    control_sequence.append(ha.BlockJointControlMode(name='PrepareForMassMeasurement'))
+    control_sequence.append(ha.BlockJointControlMode(name='PrepareForReferenceMassMeasurement'))
 
     # 3b. Wait for a bit to allow vibrations to attenuate
-    control_sequence.append(ha.TimeSwitch('PrepareForMassMeasurement', 'ReferenceMassMeasurement', duration=0.5))
+    control_sequence.append(ha.TimeSwitch('PrepareForReferenceMassMeasurement', 'ReferenceMassMeasurement',
+                                          duration=0.5))
 
     # 4. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
     control_sequence.append(ha.BlockJointControlMode(name='ReferenceMassMeasurement'))

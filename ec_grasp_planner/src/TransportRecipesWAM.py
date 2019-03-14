@@ -41,14 +41,16 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
                                                                  reference_frame="world"))
 
     # 1b. Switch when joint configuration (half way up) is reached
-    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'PrepareForMassMeasurement', controller='GoUpHTransform',
-                                               epsilon='0.01', goal_is_relative='1', reference_frame="world"))
+    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'PrepareForEstimationMassMeasurement',
+                                               controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
+                                               reference_frame="world"))
 
     # 2. Hold current joint config 
-    control_sequence.append(ha.BlockJointControlMode(name='PrepareForMassMeasurement'))
+    control_sequence.append(ha.BlockJointControlMode(name='PrepareForEstimationMassMeasurement'))
 
     # 2b. Wait for a bit to allow vibrations to attenuate # TODO check if this is required...
-    control_sequence.append(ha.TimeSwitch('PrepareForMassMeasurement', 'ReferenceMassMeasurement', duration=0.5))
+    control_sequence.append(ha.TimeSwitch('PrepareForEstimationMassMeasurement', 'EstimationMassMeasurement',
+                                          duration=0.5))
 
     # 3. Measure the mass again and estimate number of grasped objects (grasp success estimation)
     control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
