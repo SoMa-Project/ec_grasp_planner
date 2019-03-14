@@ -226,8 +226,7 @@ class KUKA(BaseHandArm):
         # calculate_success_estimator_object_params.py. First value is mean, second is standard deviation.
         # This is mainly robot specific, but depending on the accuracy of the hand models each hand might introduce
         # additional noise. In that case the values should be updated in their specific classes
-        # THESE ARE DUMMY VALUES
-        self['success_estimation_robot_noise'] = np.array([-0.0036, 0.04424])
+        self['success_estimation_robot_noise'] = np.array([0.012, 0.0026457])
 
         # Impedance control params
         self['joint_damping'] = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7])

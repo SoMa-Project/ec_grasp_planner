@@ -106,7 +106,7 @@
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
-    mass: {'mean': 0.2025, 'stddev': 0.0374} # artificial values, since no fake mangos available. TODO get params as soon as we have the fake mangos again!
+    mass: {'mean': 0.394, 'stddev': 0.001} # values for fake mangos
     graspable_with_any_hand_orientation: False
 
   cucumber:
@@ -150,7 +150,7 @@
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
-    mass: {'mean': 0.1985, 'stddev': 0.0387} # values for fake cucumbers
+    mass: {'mean': 0.293, 'stddev': 0.001} # values for fake cucumbers
     # mass: {'mean': 0.3781, 'stddev': 0.058248237} # values for real cucumbers
     graspable_with_any_hand_orientation: False
 
@@ -192,7 +192,7 @@
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
-    mass: {'mean': 0.1903, 'stddev': 0.0374} # values for fake lime netbags (with small EE/FT noise)
+    mass: {'mean': 0.2158, 'stddev': 0.0035} # values for fake lime netbags
     graspable_with_any_hand_orientation: False
 
   punnet:
@@ -236,7 +236,7 @@
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 1}}
-    mass: {'mean': 0.2105, 'stddev': 0.03695} # values for fake new punnets
+    mass: {'mean': 0.22203, 'stddev': 0.0021} # values for fake new punnets
     graspable_with_any_hand_orientation: False
 
   lettuce:
@@ -277,7 +277,7 @@
         mass_estimation_no_object: CONTINUE
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0.25}}
-    mass: {'mean': 0.1275, 'stddev': 0.0369} # values for fake lettuce (with small EE/FT noise)
+    mass: {'mean': 0.11, 'stddev': 0.001} # values for fake lettuce
     graspable_with_any_hand_orientation: True
 
   banana:
