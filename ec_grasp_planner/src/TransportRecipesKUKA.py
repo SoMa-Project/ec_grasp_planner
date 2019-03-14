@@ -4,6 +4,9 @@ import hatools.components as ha
 from grasp_success_estimator import RESPONSES
 
 def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, grasp_type, handarm_type):
+    # Get object specific params    
+    stiff_joint_stiffness = handarm_params['stiff_joint_stiffness']
+    joint_damping = handarm_params['joint_damping']
 
     object_type = chosen_object['type']
     # Get the relevant parameters for hand object combination
@@ -35,7 +38,14 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
         control_sequence.append(ha.CartesianVelocityControlMode(up_world_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="world"))
     
     # 1b. Switch after the lift time
-    control_sequence.append(ha.TimeSwitch('GoUp_1', 'EstimationMassMeasurement', duration = lift_time))
+    control_sequence.append(ha.TimeSwitch('GoUp_1', 'GoStiff', duration = lift_time))
+
+    # 1c. Change arm -mode - stiffen 
+    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', 
+                                                        joint_stiffness = stiff_joint_stiffness, joint_damping = joint_damping))
+
+    # 1d. We switch after a short time 
+    control_sequence.append(ha.TimeSwitch('GoStiff', 'EstimationMassMeasurement', duration=1.0))
 
     # 2. Measure the mass again and estimate number of grasped objects (grasp success estimation)
     control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
@@ -114,7 +124,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     control_sequence.append(ha.InterpolatedHTransformControlMode(drop_off_pose, controller_name = 'GoToDropPose', goal_is_relative='0', name = target_cm_okay, reference_frame = 'world'))
  
     # 4b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch(target_cm_okay, 'PlaceInTote', controller = 'GoToDropPose', epsilon = '0.01'))
+    control_sequence.append(ha.FramePoseSwitch(target_cm_okay, 'PlaceInTote', controller = 'GoToDropPose', epsilon = '0.05'))
 
     # 4c. Switch to recovery if no plan is found
     control_sequence.append(ha.RosTopicSwitch(target_cm_okay, 'recovery_NoPlanFound' + grasp_type, ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
