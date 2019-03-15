@@ -581,7 +581,7 @@ class multi_object_params:
                 'pre_grasp': tra.quaternion_from_matrix(pre_approach_pose),
 
                 # Use object orientation
-                'go_down': tra.quaternion_from_matrix(go_down_pose),  # TODO use hand orietation instead?
+                'go_down': tra.quaternion_from_matrix(go_down_pose),  # TODO use hand orientation instead?
 
                 # use wall orientation
                 'slide_to_edge': tra.quaternion_from_matrix(edge_frame),
@@ -598,7 +598,7 @@ class multi_object_params:
                 # no collisions are allowed during going to pre_grasp pose
                 'pre_grasp': [],
 
-                # Only allow touching the bottom of the ifco
+                # Only allow touching the table
                 'go_down': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='table',
                                              terminating=False),
                             ],
