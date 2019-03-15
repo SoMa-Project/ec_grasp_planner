@@ -6,6 +6,7 @@ import tf
 import tf.transformations
 from enum import Enum
 from collections import deque
+from functools import partial
 
 import handarm_parameters
 
@@ -32,6 +33,13 @@ class RESPONSES(Enum):
     ESTIMATION_RESULT_UNKNOWN_FAILURE = 13.0
 
     GRASP_SUCCESS_ESTIMATOR_INACTIVE = 99.0
+
+
+class EstimationModes(Enum):
+    # Use a reference measurement (in a similar pose) and compare against that (more stable)
+    DIFFERENCE = 0
+    # Just one absolute measurement. Might be more prone to robot noise/ calibration errors.
+    ABSOLUTE = 1
 
 
 class ObjectModel(object):
@@ -110,7 +118,7 @@ class MassEstimator(object):
         # return stored robot noise
         return self.robot_noise
 
-    def __init__(self, ft_topic_name, ft_topic_type, object_ros_param_path, path_to_object_parameters, ee_frame):
+    def __init__(self, ft_topic_name, ft_topic_type, object_ros_param_path, path_to_object_parameters, ee_frame, model):
         rospy.init_node('graspSuccessEstimatorMass', anonymous=True)
 
         self.tf_listener = tf.TransformListener()
@@ -123,6 +131,12 @@ class MassEstimator(object):
         self.current_received_msgs = 0
 
         self.robot_noise = None
+
+        # Check on what model the estimation should be based on
+        try:
+            self.model = EstimationModes[model.upper()]
+        except KeyError:
+            raise ValueError("IllegalArgument: MassEstimator model {} not supported".format(model))
 
         # This is the ft measurement that is used as the empty hand reference. From this one we can calculate change.
         self.ft_measurement_reference = None
@@ -277,17 +291,20 @@ class MassEstimator(object):
         self.publish_status(RESPONSES.REFERENCE_MEASUREMENT_FAILURE)
 
     def estimate_number_of_objects(self):
-        if self.ft_measurement_reference is None:
-            rospy.logerr("MassEstimator: No reference measurement is present.")
-            self.publish_status(RESPONSES.ESTIMATION_RESULT_UNKNOWN_FAILURE)
-            return  # failure
 
-        if self.current_object_name is None or self.current_object_name != rospy.get_param(self.object_ros_param_path,
-                                                                                           default=None):
-            rospy.logerr("MassEstimator: The object name of the reference measurement doesn't match the one of the "
-                         "estimation.")
-            self.publish_status(RESPONSES.ESTIMATION_RESULT_UNKNOWN_FAILURE)
-            return  # failure
+        if self.model == EstimationModes.DIFFERENCE:
+
+            if self.ft_measurement_reference is None:
+                rospy.logerr("MassEstimator: No reference measurement is present.")
+                self.publish_status(RESPONSES.ESTIMATION_RESULT_UNKNOWN_FAILURE)
+                return  # failure
+
+            if self.current_object_name is None or self.current_object_name != rospy.get_param(self.object_ros_param_path,
+                                                                                               default=None):
+                rospy.logerr("MassEstimator: The object name of the reference measurement doesn't match the one of the "
+                             "estimation.")
+                self.publish_status(RESPONSES.ESTIMATION_RESULT_UNKNOWN_FAILURE)
+                return  # failure
 
         if self.current_object_name not in self.objects_info:
 
@@ -300,29 +317,34 @@ class MassEstimator(object):
         current_ft_estimate = self.get_current_ft_estimation()
 
         if current_ft_estimate is not None:
-            second_mass = MassEstimator.force2mass(current_ft_estimate.force.z)  # z-axis
-            mass_diff = second_mass - self.reference_mass
+            current_mass = MassEstimator.force2mass(current_ft_estimate.force.z)  # z-axis
+            reference_mass = self.reference_mass if self.model == EstimationModes.DIFFERENCE else 0.0
+            mass_diff = current_mass - reference_mass
 
-            print("MASSES:", second_mass, self.reference_mass, " diff:", mass_diff)
+            print("MASSES:", current_mass, reference_mass, " diff:", mass_diff, " model:", str(self.model))
             print("FT_IN_BASE ref:", self.ft_measurement_reference)
             print("FT_IN_BASE est:", current_ft_estimate)
 
-            # basic object distribution (mean gets shifted by number of objects that are checked against)
-            object_mean = self.objects_info[self.current_object_name].mass_mean
-            object_stddev = self.objects_info[self.current_object_name].mass_stddev
+            current_object = self.objects_info[self.current_object_name]
 
             # robot specific parameters (used to check for no object)
             robot_noise = self.get_robot_noise_params()
 
+            if self.model == EstimationModes.DIFFERENCE:
+                pdf_fun = partial(MassEstimator.pdf_difference_model, reference_mass)
+            else:
+                pdf_fun = MassEstimator.pdf_absolute_model
+
             # check for no object first (robot specific parameters)
-            max_pdf_val = norm.pdf(mass_diff, robot_noise.mass_mean, robot_noise.mass_stddev)
+            max_pdf_val = pdf_fun(0, current_mass, current_object, robot_noise)
             max_num_obj = 0
             pdf_val_sum = max_pdf_val
             pdf_values = [max_pdf_val]
 
             # check for number of objects > 0
+            # basic object distribution (mean gets shifted by number of objects that are checked against)
             for num_obj in range(1, 5):  # classes (number of detected objects) we perform maximum likelihood on.
-                pdf_val = norm.pdf(mass_diff, object_mean * num_obj, object_stddev)
+                pdf_val = pdf_fun(num_obj, current_mass, current_object, robot_noise)
                 pdf_values.append(pdf_val)
                 pdf_val_sum += pdf_val
                 if pdf_val > max_pdf_val:
@@ -341,8 +363,7 @@ class MassEstimator(object):
             self.estimator_confidence_all_pub.publish(MassEstimator.list_to_Float64MultiArrayMsg(confidence_all))
 
             # publish the estimated masses
-            self.estimator_mass_pub.publish(MassEstimator.list_to_Float64MultiArrayMsg(
-                [self.reference_mass, second_mass]))
+            self.estimator_mass_pub.publish(MassEstimator.list_to_Float64MultiArrayMsg([reference_mass, current_mass]))
 
             # publish the corresponding status message
             if max_num_obj == 0:
@@ -358,14 +379,44 @@ class MassEstimator(object):
         rospy.logerr("MassEstimator: Estimation measurement couldn't be done. Is FT-topic alive?")
         self.publish_status(RESPONSES.ESTIMATION_RESULT_UNKNOWN_FAILURE)
 
+    # Probability density function for the difference model (Compare the mass difference between a reference measurement
+    # in a similar hand pose with a second one)
+    #
+    # IMPORTANT: To calculate the correct parameters set the create_absolute_distributions parameter in the calculation
+    #            script (calculate_success_estimator_object_params.py, in soma_utils) to False.
+    @staticmethod
+    def pdf_difference_model(reference_mass, number_of_objects, current_mass, current_object, robot_noise):
+
+        mass_diff = current_mass - reference_mass
+
+        if number_of_objects == 0:
+            return norm.pdf(mass_diff, 0, robot_noise.mass_stddev)
+
+        return norm.pdf(mass_diff, current_object.mass_mean * number_of_objects, current_object.mass_stddev)
+
+    # Probability density function for the absolute model (No reference measurement is taken, instead the current
+    # mass measurement is directly used).
+    #
+    # IMPORTANT: This function assumes that the robot noise is already incorporated into the mass distribution of the
+    #            object. To do so you can set the create_absolute_distributions parameter in the calculation script
+    #            (calculate_success_estimator_object_params.py, in soma_utils) to True.
+    @staticmethod
+    def pdf_absolute_model(number_of_objects, current_mass, current_object, robot_noise):
+
+        if number_of_objects == 0:
+            return norm.pdf(current_mass, robot_noise.mass_mean, robot_noise.mass_stddev)
+
+        mass_mean = current_object.mass_mean * number_of_objects - robot_noise.mass_mean * (number_of_objects-1)
+        return norm.pdf(current_mass, mass_mean, current_object.mass_stddev)
+
 
 if __name__ == '__main__':
 
     my_argv = rospy.myargv(argv=sys.argv)
-    if len(my_argv) < 6:
-        print("usage: grasp_success_estimator.py ft_topic_name ft_topic_type object_ros_param_path path_to_object_parameters ee_frame")
+    if len(my_argv) < 7:
+        print("usage: grasp_success_estimator.py ft_topic_name ft_topic_type object_ros_param_path path_to_object_parameters ee_frame mass_model")
     else:
-        we = MassEstimator(my_argv[1], my_argv[2], my_argv[3], my_argv[4], my_argv[5])
+        we = MassEstimator(my_argv[1], my_argv[2], my_argv[3], my_argv[4], my_argv[5], my_argv[6])
         rospy.spin()
         # locking between the callbacks not required as long as we use only one spinner. See:
         # https://answers.ros.org/question/48429/should-i-use-a-lock-on-resources-in-a-listener-node-with-multiple-callbacks/
