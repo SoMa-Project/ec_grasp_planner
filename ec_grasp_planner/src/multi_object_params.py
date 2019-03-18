@@ -8,7 +8,7 @@ from tf import transformations as tra
 from geometry_graph_msgs.msg import Node, geometry_msgs
 import rospy
 import tf_conversions.posemath as pm
-
+import random
 
 import rospkg
 from tornado.concurrent import return_future
@@ -204,16 +204,22 @@ class multi_object_params:
 ## --------------------------------------------------------- ##
     # find the max probability and if there are more than one return one randomly
     def argmax_h(self, Q_matrix):
-        # find max probablity in list
+        # find max probablity in list        
 
         indeces_of_max = np.argwhere(Q_matrix == Q_matrix.max())
-        print("indeces_of_max  = {}".format(indeces_of_max ))
+        # print("indeces_of_max  = {}".format(indeces_of_max ))
 
-        print Q_matrix
+        # print Q_matrix
         if Q_matrix.max() == 0.0:
             rospy.logwarn("No Suitable Grasp Found - PLEASE REPLAN!!!")
 
-        return indeces_of_max[0][0], indeces_of_max[0][1]
+        if len(indeces_of_max) > 1:
+            # if several max element, pick one randomly
+            max_ind = random.SystemRandom().choice(indeces_of_max)
+        else:
+            max_ind = indeces_of_max[0]
+
+        return max_ind[0], max_ind[1]
 
 ## --------------------------------------------------------- ##
     # samples from a pdf dictionary where the values are normalized
