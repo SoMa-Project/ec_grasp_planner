@@ -190,8 +190,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     wall_force = params['wall_force']
     slide_speed = params['slide_speed']
-    scooping_angle = params['scooping_angle']
-
+    
     # Grasping phase
     pre_grasp_twist = params['pre_grasp_twist']
     pre_grasp_rotate_time = params['pre_grasp_rotation_duration']
@@ -217,9 +216,11 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     down_twist = np.array([0, 0, -down_speed, 0, 0, 0])
     # Slow Up speed is positive because it is defined on the world frame
     up_twist = np.array([0, 0, up_speed, 0, 0, 0])
-    # Slide twist is positive because it is defined on the EE frame
-    slide_twist_matrix = tra.rotation_matrix(-scooping_angle, [0, 1, 0]).dot(tra.translation_matrix([0, 0, slide_speed]))
-    slide_twist = np.array([slide_twist_matrix[0,3], slide_twist_matrix[1,3], slide_twist_matrix[2,3], 0, 0, 0 ])
+    # Calculate the twist to slide towards the wall in the world frame
+    # This is done because EE frame sliding is no longer safe because of reachability issues
+    slide_forwards_linear_velocity = wall_frame[:3,:3].dot(np.array([0, 0, -slide_speed]))
+    slide_twist = np.array([slide_forwards_linear_velocity[0], slide_forwards_linear_velocity[1], slide_forwards_linear_velocity[2], 0, 0, 0])
+
 
     control_sequence = []
 
@@ -311,7 +312,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # 6. Go towards the wall to slide object to wall
     control_sequence.append(
         ha.CartesianVelocityControlMode(slide_twist, controller_name='SlideToWall',
-                                             name="SlideToWall", reference_frame="EE"))
+                                             name="SlideToWall", reference_frame="world"))
 
     # 6b. Switch when the f/t sensor is triggered with normal force from wall
     force = np.array([0, 0, wall_force, 0, 0, 0])
