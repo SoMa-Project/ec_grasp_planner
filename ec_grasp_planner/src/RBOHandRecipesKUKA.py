@@ -176,8 +176,11 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     down_twist = np.array([0, 0, -down_speed, 0, 0, 0])
     # Slow Up speed is positive because it is defined on the world frame
     up_twist = np.array([0, 0, up_speed, 0, 0, 0])
-    # Slide twist is positive because it is defined on the EE frame
-    slide_twist = np.array([0, 0, slide_speed, 0, 0, 0])
+    # Calculate the twist to slide towards the wall in the world frame
+    # This is done because EE frame sliding is no longer safe because of reachability issues
+    slide_forwards_linear_velocity = wall_frame[:3,:3].dot(np.array([0, 0, -slide_speed]))
+    slide_twist = np.array([slide_forwards_linear_velocity[0], slide_forwards_linear_velocity[1], slide_forwards_linear_velocity[2], 0, 0, 0])
+
 
     control_sequence = []
 
@@ -263,7 +266,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # 6. Go towards the wall to slide object to wall
     control_sequence.append(
         ha.CartesianVelocityControlMode(slide_twist, controller_name='SlideToWall',
-                                             name="SlideToWall", reference_frame="EE"))
+                                             name="SlideToWall", reference_frame="world"))
 
     # 6b. Switch when the f/t sensor is triggered with normal force from wall
     force = np.array([0, 0, wall_force, 0, 0, 0])
@@ -355,8 +358,11 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     down_twist = np.array([0, 0, -down_speed, 0, 0, 0])
     # Slow Up speed is positive because it is defined on the world frame
     up_twist = np.array([0, 0, up_speed, 0, 0, 0])
-    # Slide twist is positive because it is defined on the EE frame
-    slide_twist = np.array([0, 0, slide_speed, 0, 0, 0])
+    # Calculate the twist to slide towards the wall in the world frame
+    # This is done because EE frame sliding is no longer safe because of reachability issues
+    slide_forwards_linear_velocity = wall_frame[:3,:3].dot(np.array([0, 0, -slide_speed]))
+    slide_twist = np.array([slide_forwards_linear_velocity[0], slide_forwards_linear_velocity[1], slide_forwards_linear_velocity[2], 0, 0, 0])
+
 
     control_sequence = []
 
@@ -442,7 +448,7 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     # 6. Go towards the wall to slide object to wall
     control_sequence.append(
         ha.CartesianVelocityControlMode(slide_twist, controller_name='SlideToWall',
-                                             name="SlideToWall", reference_frame="EE"))
+                                             name="SlideToWall", reference_frame="world"))
 
     # 6b. Switch when the f/t sensor is triggered with normal force from wall
     force = np.array([0, 0, wall_force, 0, 0, 0])
