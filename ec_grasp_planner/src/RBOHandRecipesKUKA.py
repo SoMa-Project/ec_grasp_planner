@@ -360,7 +360,7 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     up_twist = np.array([0, 0, up_speed, 0, 0, 0])
     # Calculate the twist to slide towards the wall in the world frame
     # This is done because EE frame sliding is no longer safe because of reachability issues
-    slide_forwards_linear_velocity = wall_frame[:3,:3].dot(np.array([0, 0, -slide_speed]))
+    slide_forwards_linear_velocity = corner_frame_alpha_zero[:3,:3].dot(np.array([0, 0, -slide_speed]))
     slide_twist = np.array([slide_forwards_linear_velocity[0], slide_forwards_linear_velocity[1], slide_forwards_linear_velocity[2], 0, 0, 0])
 
 
