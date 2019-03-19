@@ -294,6 +294,26 @@ def get_derived_corner_grasp_frames(corner_frame, object_pose):
 
     return ec_frame, corner_frame_alpha_zero
 
+# ================================================================================================
+def get_derived_wall_grasp_frames(wall_frame, object_pose, pre_grasp_pose):
+
+    ec_frame = np.copy(wall_frame)
+    ec_frame[:3, 3] = tra.translation_from_matrix(object_pose)
+    # y-axis stays the same, lets norm it just to go sure
+    y = ec_frame[:3, 1] / np.linalg.norm(ec_frame[:3, 1])
+    # z-axis is (roughly) the vector from object to pre_grasp_pose
+    z = pre_grasp_pose[:3, 3] - object_pose[:3, 3]
+    # z-axis should lie in the y-plane, so we subtract the part that is perpendicular to the y-plane
+    z = z - (np.dot(z, y) * y)
+    z = z / np.linalg.norm(z)
+    # x-axis is perpendicular to y- and z-axis, again normed to go sure
+    x = np.cross(y, z)
+    x = x / np.linalg.norm(x)
+    # the rotation part is overwritten with the new axis
+    ec_frame[:3, :3] = tra.inverse_matrix(np.vstack((x, y, z)))
+
+    return ec_frame
+
 
 # ================================================================================================
 def get_pre_grasp_transforms(handarm_params, object_type):
@@ -345,10 +365,12 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
     if grasp_type == 'EdgeGrasp':
         raise ValueError("Edge grasp is not supported yet")
     elif grasp_type == 'WallGrasp':  
-        wall_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))      
-        grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_wall_grasp(chosen_object, wall_frame, handarm_params, pre_grasp_pose)
+        wall_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))
+        wall_on_object_frame = get_derived_wall_grasp_frames(wall_frame, chosen_object['frame'], pre_grasp_pose)      
+        grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_wall_grasp(chosen_object, wall_on_object_frame, handarm_params, pre_grasp_pose)
         recovery_recipe = RecoveryRecipesKUKA.get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_frame)
-        rviz_frames.append(wall_frame)       
+        rviz_frames.append(wall_frame)
+        rviz_frames.append(wall_on_object_frame)       
     elif grasp_type == 'SurfaceGrasp':
         grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_surface_grasp(chosen_object, handarm_params, pre_grasp_pose)
         recovery_recipe = RecoveryRecipesKUKA.get_recovery_recipe(handarm_params, handarm_type, grasp_type)
