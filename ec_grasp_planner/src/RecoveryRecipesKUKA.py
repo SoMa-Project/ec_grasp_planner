@@ -34,7 +34,7 @@ def get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_or_corner
         control_sequence.append(ha.CartesianVelocityControlMode(up_EE_twist, controller_name = 'GoUpHTransform', name = 'recovery_GoDownSG', reference_frame="EE"))
 
         # Switch to finished after some time
-        control_sequence.append(ha.TimeSwitch('recovery_GoDownSG', 'go_to_view_config', duration = recovery_time))    
+        control_sequence.append(ha.TimeSwitch('recovery_GoDownSG', 'GoToViewPose', duration = recovery_time))    
 
         # If no plan to placement was found, start going down again to place the object back where it was grasped
         control_sequence.append(ha.CartesianVelocityControlMode(down_EE_twist, controller_name = 'GoUpHTransform', name = 'recovery_NoPlanFoundSurfaceGrasp', reference_frame="EE"))
@@ -73,7 +73,7 @@ def get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_or_corner
         control_sequence.append(ha.CartesianVelocityControlMode(up_world_twist, controller_name = 'GoUpHTransform', name = 'recovery_GoDownWG', reference_frame="world"))
 
         # Switch to finished after some time
-        control_sequence.append(ha.TimeSwitch('recovery_GoDownWG', 'go_to_view_config', duration = recovery_time)) 
+        control_sequence.append(ha.TimeSwitch('recovery_GoDownWG', 'GoToViewPose', duration = recovery_time)) 
 
 
         # Lift the hand if the CartesianVelocityControlMode crashed due to joint limits during approaching the IFCO wall
@@ -81,22 +81,6 @@ def get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_or_corner
 
         # Switch to going up after a small amount of time
         control_sequence.append(ha.TimeSwitch('recovery_SlideWG', 'softhand_open_recovery_WallGrasp', duration = 1))    
-
-
-        # If no plan to placement was found, start going down again to place the object back where it was grasped
-        control_sequence.append(ha.CartesianVelocityControlMode(down_world_twist, controller_name = 'GoUpHTransform', name = 'recovery_NoPlanFound'+grasp_type, reference_frame="world"))
-
-        # force threshold that if reached will trigger the closing of the hand
-        force = np.array([0, 0, downward_force, 0, 0, 0])
-        
-        # Switch when force-torque sensor is triggered
-        control_sequence.append(ha.ForceTorqueSwitch('recovery_NoPlanFound'+grasp_type,
-                                                     'slide_back_recovery',
-                                                     goal = force,
-                                                     norm_weights = np.array([0, 0, 1, 0, 0, 0]),
-                                                     jump_criterion = "THRESH_UPPER_BOUND",
-                                                     goal_is_relative = '1',
-                                                     frame_id = 'world'))
        
 
         # Calculate the twist to slide back in the world frame
@@ -104,11 +88,26 @@ def get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_or_corner
         slide_back_linear_velocity = wall_or_corner_frame[:3,:3].dot(np.array([0, 0, recovery_speed]))
         slide_back_world_twist = np.array([slide_back_linear_velocity[0], slide_back_linear_velocity[1], slide_back_linear_velocity[2], 0, 0, 0])
 
-        # Slide back towards the IFCO center
-        control_sequence.append(ha.CartesianVelocityControlMode(slide_back_world_twist, controller_name = 'GoUpHTransform', name = 'slide_back_recovery', reference_frame="world"))
+        # If no plan to placement was found, start going down again to place the object back where it was grasped
+        control_sequence.append(ha.CartesianVelocityControlMode(slide_back_world_twist, controller_name = 'GoUpHTransform', name = 'recovery_NoPlanFound'+grasp_type, reference_frame="world"))
 
-        # Switch to going up after a small amount of time
-        control_sequence.append(ha.TimeSwitch('slide_back_recovery', 'softhand_open_recovery_WallGrasp', duration = 1.5))    
+        # Switch to going down after a small amount of time
+        control_sequence.append(ha.TimeSwitch('recovery_NoPlanFound'+grasp_type, 'place_object_back_down', duration = 2))
+
+        # Slide back towards the IFCO center
+        control_sequence.append(ha.CartesianVelocityControlMode(down_world_twist, controller_name = 'GoUpHTransform', name = 'place_object_back_down', reference_frame="world"))
+
+        # force threshold that if reached will trigger the closing of the hand
+        force = np.array([0, 0, downward_force, 0, 0, 0])
+        
+        # Switch when force-torque sensor is triggered
+        control_sequence.append(ha.ForceTorqueSwitch('place_object_back_down',
+                                                     'softhand_open_recovery_WallGrasp',
+                                                     goal = force,
+                                                     norm_weights = np.array([0, 0, 1, 0, 0, 0]),
+                                                     jump_criterion = "THRESH_UPPER_BOUND",
+                                                     goal_is_relative = '1',
+                                                     frame_id = 'world'))
 
 
     return control_sequence
