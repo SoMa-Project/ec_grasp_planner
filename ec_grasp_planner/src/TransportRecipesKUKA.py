@@ -18,7 +18,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     lift_time = params['lift_duration']
     up_speed = params['up_speed']
     drop_off_pose = handarm_params['drop_off_pose']
-    view_joint_config = handarm_params['view_joint_config']
+    view_pose = handarm_params['view_pose']
 
     success_estimator_timeout = handarm_params['success_estimator_timeout']
 
@@ -38,14 +38,14 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
         control_sequence.append(ha.CartesianVelocityControlMode(up_world_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="world"))
     
     # 1b. Switch after the lift time
-    control_sequence.append(ha.TimeSwitch('GoUp_1', 'GoStiff', duration = lift_time))
+    control_sequence.append(ha.TimeSwitch('GoUp_1', 'EstimationMassMeasurement', duration = lift_time))
 
     # 1c. Change arm -mode - stiffen 
-    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', 
-                                                        joint_stiffness = stiff_joint_stiffness, joint_damping = joint_damping))
+    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', 
+    #                                                     joint_stiffness = stiff_joint_stiffness, joint_damping = joint_damping))
 
     # 1d. We switch after a short time 
-    control_sequence.append(ha.TimeSwitch('GoStiff', 'EstimationMassMeasurement', duration=1.0))
+    # control_sequence.append(ha.TimeSwitch('GoStiff', 'EstimationMassMeasurement', duration=1.0))
 
     # 2. Measure the mass again and estimate number of grasped objects (grasp success estimation)
     control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
@@ -103,16 +103,16 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
             control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = cm, synergy = 1))
 
         # Failure control modes representing grasping failure, which might be corrected by re-running the plan or replanning. 
-        control_sequence.append(ha.TimeSwitch(cm, 'go_to_view_config_after_failure', duration=0.5))
+        control_sequence.append(ha.TimeSwitch(cm, 'GoToViewPose_after_failure', duration=0.5))
 
-        # 4. View config above ifco
-        control_sequence.append(ha.PlanningJointControlMode(view_joint_config, name='go_to_view_config_after_failure', controller_name='viewJointCtrl'))
-
-        # 4b. Joint config switch
-        control_sequence.append(ha.JointConfigurationSwitch('go_to_view_config_after_failure', 'finished', controller='viewJointCtrl', epsilon=str(math.radians(7.))))
+        # 4. Go to view pose
+        control_sequence.append(ha.InterpolatedHTransformControlMode(view_pose, controller_name = 'GoToView', goal_is_relative='0', name = 'GoToViewPose_after_failure', reference_frame = 'world'))
+     
+        # 4b. Switch when hand reaches the goal pose
+        control_sequence.append(ha.FramePoseSwitch('GoToViewPose_after_failure', 'finished', controller = 'GoToView', epsilon = '0.01'))
 
         # 4c. Switch if no plan was found
-        control_sequence.append(ha.RosTopicSwitch('go_to_view_config_after_failure', 'finished', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+        control_sequence.append(ha.RosTopicSwitch('GoToViewPose_after_failure', 'finished', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
         
         # 5. Finish the plan
         control_sequence.append(ha.BlockJointControlMode(name='finished'))

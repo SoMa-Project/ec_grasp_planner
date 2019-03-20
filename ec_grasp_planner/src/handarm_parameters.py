@@ -31,7 +31,7 @@ class BaseHandArm(dict):
 
         self['CornerGrasp']['object'] = {}
 
-        self['success_estimator_timeout'] = 10
+        self['success_estimator_timeout'] = 5
 
     def checkValidity(self):
         # This function should always be called after the constructor of any class inherited from BaseHandArm
@@ -214,9 +214,8 @@ class KUKA(BaseHandArm):
     def __init__(self, **kwargs):
         super(KUKA, self).__init__()
         self['recovery_speed'] = 0.03
-        self['recovery_duration'] = 5
-        self['recovery_placement_force'] = 1.5
-        self['view_joint_config'] = np.array([-0.7, 0.9, 0, -0.7, 0, 0.9, 0])
+        self['recovery_duration'] = 10
+        self['recovery_placement_force'] = 3
         # duration of placing the object
         self['place_duration'] = 5
 
@@ -226,11 +225,10 @@ class KUKA(BaseHandArm):
         # calculate_success_estimator_object_params.py. First value is mean, second is standard deviation.
         # This is mainly robot specific, but depending on the accuracy of the hand models each hand might introduce
         # additional noise. In that case the values should be updated in their specific classes
-        self['success_estimation_robot_noise'] = np.array([0.012, 0.0026457])
+        self['success_estimation_robot_noise'] = np.array([0.1765, 0.025])
 
         # Impedance control params
         self['joint_damping'] = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7])
-        self['soft_joint_stiffness'] = np.array([1500, 1000, 1000, 1000, 20, 20, 20]) 
         self['stiff_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 200, 100, 100])
         self['joint_damping'] = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7])
         # Cartesian impedance control params
@@ -251,6 +249,8 @@ class RBOHandO2KUKA(KUKA):
         self['mesh_file_scale'] = 0.1
 
         self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.29692, -0.57419, 0.16603]), tra.quaternion_matrix([0.6986, -0.68501, -0.11607, -0.171]))
+
+        self['view_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.36392, -0.65228, 0.26258]), tra.quaternion_matrix([-0.6846, 0.72715, 0.018816, 0.047258]))
 
         # This should be the same for all objects
         self['SurfaceGrasp']['object']['hand_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.3]),
@@ -455,8 +455,8 @@ class PISAHandKUKA(KUKA):
     def __init__(self, **kwargs):
         super(PISAHandKUKA, self).__init__()
 
-        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.40392, -0.65228, 0.21258]), tra.quaternion_matrix([-0.6846, 0.72715, 0.018816, 0.047258]))
-        
+        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.33755, -0.53554, 0.29871]), tra.quaternion_matrix([0.99961, 0.021784, 0.013722, 0.010751]))
+        self['view_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.81636, -0.49031, 0.39303]), tra.quaternion_matrix([0.99003, -0.071965, 0.1136, 0.041887]))
 
         ####################################################################################
         # Params that define the grasping controller
@@ -508,9 +508,19 @@ class PISAHandKUKA(KUKA):
         # duration of lifting the object
         self['SurfaceGrasp']['object']['lift_duration'] = 11
 
+        self['SurfaceGrasp']['object']['soft_joint_stiffness'] = np.array([1500, 1000, 1000, 1000, 20, 20, 20]) 
+
         self['SurfaceGrasp']['cucumber'] = self['SurfaceGrasp']['object'].copy()
-        self['SurfaceGrasp']['cucumber']['hand_preshape_goal'] = 0.55
+        self['SurfaceGrasp']['cucumber']['hand_preshape_goal'] = 0.1
         self['SurfaceGrasp']['cucumber']['hand_closing_goal'] = 1
+
+        self['SurfaceGrasp']['punnet'] = self['SurfaceGrasp']['object'].copy()
+        self['SurfaceGrasp']['punnet']['hand_closing_goal'] = 0.7
+        self['SurfaceGrasp']['punnet']['soft_joint_stiffness'] = np.array([1500, 1500, 1500, 1500, 1500, 1500, 1500]) 
+
+        self['SurfaceGrasp']['mango'] = self['SurfaceGrasp']['object'].copy()
+        self['SurfaceGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, -0.0, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
 
         #####################################################################################
         # below are parameters for wall grasp 
@@ -557,7 +567,7 @@ class PISAHandKUKA(KUKA):
 
         self['WallGrasp']['object']['up_speed'] = 0.03
 
-        self['WallGrasp']['object']['wall_force'] = 12.0
+        self['WallGrasp']['object']['wall_force'] = 5.0
 
         self['WallGrasp']['object']['slide_speed'] = 0.03 #sliding speed
 
@@ -576,6 +586,8 @@ class PISAHandKUKA(KUKA):
 
         # duration of lifting the object
         self['WallGrasp']['object']['lift_duration'] = 8   
+
+        self['WallGrasp']['object']['soft_joint_stiffness'] = np.array([1500, 1000, 1000, 1000, 20, 20, 20])
 
         #####################################################################################
         # Below are parameters for CORNER grasp 
@@ -631,6 +643,7 @@ class PISAHandKUKA(KUKA):
 
         # duration of lifting the object
         self['CornerGrasp']['object']['lift_duration'] = 8   
+        self['CornerGrasp']['object']['soft_joint_stiffness'] = np.array([1500, 1000, 1000, 1000, 20, 20, 20])
         
 
 class PISAGripperKUKA(KUKA):
@@ -640,6 +653,8 @@ class PISAGripperKUKA(KUKA):
         # Placement pose reachable for the PISA gripper
 
         self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.32804, -0.62733, 0.068286]), tra.quaternion_matrix([0.85531, -0.51811, -0.0023802, -0.0016251]))
+
+        self['view_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.36392, -0.65228, 0.26258]), tra.quaternion_matrix([-0.6846, 0.72715, 0.018816, 0.047258]))
 
         ####################################################################################
         # Params that define the grasping controller
@@ -820,11 +835,12 @@ class ClashHandKUKA(KUKA):
     def __init__(self, **kwargs):
         super(ClashHandKUKA, self).__init__()
 
-        self['view_joint_config'] = np.array([-0.6, 0.9, -0.3, -0.6, 1.5, 0.9, 1.5])
-
         # Placement pose reachable for the CLASH hand
 
         self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.32804, -0.62733, 0.068286]), tra.quaternion_matrix([0.85531, -0.51811, -0.0023802, -0.0016251]))
+
+        self['view_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.36392, -0.65228, 0.26258]), tra.quaternion_matrix([-0.6846, 0.72715, 0.018816, 0.047258]))
+
 
         ####################################################################################
         # CLASH hand specific params

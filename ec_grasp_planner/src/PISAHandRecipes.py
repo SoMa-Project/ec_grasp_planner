@@ -4,8 +4,8 @@ from grasp_success_estimator import RESPONSES
 
 def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # Get robot specific params
-    soft_joint_stiffness = handarm_params['soft_joint_stiffness']
     joint_damping = handarm_params['joint_damping']
+    stiff_joint_stiffness = handarm_params['stiff_joint_stiffness']
 
     object_type = chosen_object['type']
     # Get the relevant parameters for hand object combination
@@ -16,6 +16,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # Get params per phase
 
     # Approach phase
+    soft_joint_stiffness = params['soft_joint_stiffness']
     downward_force = params['downward_force']
     down_speed = params['down_speed']
     hand_preshaping_time = params['hand_preshaping_duration']
@@ -38,6 +39,13 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # assemble controller sequence
     control_sequence = []
 
+    # 00. Change arm mode - soften
+    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'StartStiff', mode_id = 'joint_impedance', 
+    #                                                     joint_stiffness = stiff_joint_stiffness, joint_damping = joint_damping))
+
+    # 00. We switch after a short time 
+    # control_sequence.append(ha.TimeSwitch('StartStiff', 'softhand_preshape', duration=1.0))
+
     # 0. Trigger pre-shaping the hand
     control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_preshape_goal]), name  = 'softhand_preshape', synergy = '1'))
     
@@ -47,9 +55,12 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # 1. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pregrasp_transform, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'PreGrasp', reference_frame = 'world'))
  
-    # 1b. Switch when hand reaches the goal pose
+    # 1b1. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller = 'GoAboveObject', epsilon = '0.01'))
     
+    # 1b2. Switch when the controller says it reached the pregrasp pose
+    # control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'PrepareForMassMeasurement', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([2.])))
+
     # 1c. Switch to finished if no plan is found
     control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'softhand_open_after_preshape', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
@@ -99,7 +110,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     
     # 4b. Switch when force-torque sensor is triggered
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'GoSoft',
+                                                 'softhand_close',
                                                  goal = force,
                                                  norm_weights = np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion = "THRESH_UPPER_BOUND",
@@ -110,11 +121,11 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     control_sequence.append(ha.RosTopicSwitch('GoDown', 'softhand_open_recovery_SurfaceGrasp', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 4d. Change arm mode - soften
-    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'joint_impedance', 
-                                                        joint_stiffness = soft_joint_stiffness, joint_damping = joint_damping))
+    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'joint_impedance', 
+    #                                                     joint_stiffness = soft_joint_stiffness, joint_damping = joint_damping))
 
     # 4e. We switch after a short time 
-    control_sequence.append(ha.TimeSwitch('GoSoft', 'softhand_close', duration=1.0))
+    # control_sequence.append(ha.TimeSwitch('GoSoft', 'softhand_close', duration=1.0))
 
     # 6. Call hand controller
     if handarm_params['SimplePositionControl']:
@@ -137,7 +148,8 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
 # ================================================================================================
 def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transform):
     # Get robot specific params
-    soft_joint_stiffness = handarm_params['soft_joint_stiffness']
+    # soft_joint_stiffness = handarm_params['soft_joint_stiffness']
+    stiff_joint_stiffness = handarm_params['stiff_joint_stiffness']
     joint_damping = handarm_params['joint_damping']
 
     object_type = chosen_object['type']
@@ -150,6 +162,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # Get params per phase
 
     # Approach phase
+    soft_joint_stiffness = params['soft_joint_stiffness']   
     downward_force = params['downward_force']
     down_speed = params['down_speed']
     hand_preshape_goal = params['hand_preshape_goal']
@@ -188,6 +201,13 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     control_sequence = []
 
+    # 00. Change arm mode - soften
+    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'StartStiff', mode_id = 'joint_impedance', 
+    #                                                     joint_stiffness = stiff_joint_stiffness, joint_damping = joint_damping))
+
+    # 00. We switch after a short time 
+    # control_sequence.append(ha.TimeSwitch('StartStiff', 'softhand_preshape', duration=1.0))
+
     # 0 trigger pre-shaping the hand
     control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_preshape_goal]), name  = 'softhand_preshape', synergy = '1'))
     
@@ -197,9 +217,12 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # 1. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pregrasp_transform, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'PreGrasp', reference_frame = 'world'))
  
-    # 1b. Switch when hand reaches the goal pose
+    # 1b1. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller = 'GoAboveObject', epsilon = '0.01'))
     
+    # 1b2. Switch when the controller says it reached the pregrasp pose
+    # control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'PrepareForMassMeasurement', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([2.])))
+
     # 1c. Switch to finished if no plan is found
     control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'softhand_open_after_preshape', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
@@ -275,7 +298,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     # 6b. Switch when the f/t sensor is triggered with normal force from wall
     force = np.array([0, 0, wall_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'GoSoft', 'ForceSwitch', goal=force,
+    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SlideBackFromWall', 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame))
@@ -284,10 +307,10 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     control_sequence.append(ha.RosTopicSwitch('SlideToWall', 'recovery_SlideWG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 6d. Change arm mode - soften
-    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'joint_impedance', 
-                                                        joint_stiffness = soft_joint_stiffness, joint_damping = joint_damping))
+    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'joint_impedance', 
+    #                                                     joint_stiffness = soft_joint_stiffness, joint_damping = joint_damping))
     # 6e. We switch after a short time 
-    control_sequence.append(ha.TimeSwitch('GoSoft', 'SlideBackFromWall', duration=1.0))
+    # control_sequence.append(ha.TimeSwitch('GoSoft', 'SlideBackFromWall', duration=1.0))
 
     # 7. Go back a bit to allow the hand to inflate
     control_sequence.append(
@@ -315,7 +338,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
 def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, pregrasp_transform):
     # Get robot specific params
-    soft_joint_stiffness = handarm_params['soft_joint_stiffness']
+    # soft_joint_stiffness = handarm_params['soft_joint_stiffness']
     joint_damping = handarm_params['joint_damping']
 
     object_type = chosen_object['type']
@@ -328,6 +351,7 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     # Get params per phase
 
     # Approach phase
+    soft_joint_stiffness = params['soft_joint_stiffness']   
     downward_force = params['downward_force']
     down_speed = params['down_speed']
     hand_preshape_goal = params['hand_preshape_goal']
@@ -375,9 +399,12 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     # 1. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pregrasp_transform, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'PreGrasp', reference_frame = 'world'))
  
-    # 1b. Switch when hand reaches the goal pose
+    # 1b1. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller = 'GoAboveObject', epsilon = '0.01'))
     
+    # 1b2. Switch when the controller says it reached the pregrasp pose
+    # control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'PrepareForMassMeasurement', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([2.])))
+
     # 1c. Switch to finished if no plan is found
     control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'softhand_open_after_preshape', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
@@ -453,7 +480,7 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
 
     # 6b. Switch when the f/t sensor is triggered with normal force from wall
     force = np.array([0, 0, wall_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'GoSoft', 'ForceSwitch', goal=force,
+    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SlideBackFromWall', 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=corner_frame_alpha_zero))
@@ -462,10 +489,10 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     control_sequence.append(ha.RosTopicSwitch('SlideToWall', 'recovery_SlideWG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 6d. Change arm mode - soften
-    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'joint_impedance', 
-                                                        joint_stiffness = soft_joint_stiffness, joint_damping = joint_damping))
+    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'joint_impedance', 
+    #                                                     joint_stiffness = soft_joint_stiffness, joint_damping = joint_damping))
     # 6e. We switch after a short time 
-    control_sequence.append(ha.TimeSwitch('GoSoft', 'SlideBackFromWall', duration=1.0))
+    # control_sequence.append(ha.TimeSwitch('GoSoft', 'SlideBackFromWall', duration=1.0))
 
     # 7. Go back a bit to allow the hand to inflate
     control_sequence.append(

@@ -6,7 +6,7 @@ def get_placement_recipe(handarm_params, handarm_type):
 
     place_time = handarm_params['place_duration']
     place_speed = handarm_params['place_speed']
-    view_joint_config = handarm_params['view_joint_config']
+    view_pose = handarm_params['view_pose']
 
 
     # The twists are defined on the world frame
@@ -49,16 +49,16 @@ def get_placement_recipe(handarm_params, handarm_type):
     control_sequence.append(ha.CartesianVelocityControlMode(up_twist, controller_name = 'GetOutOfTote', name = 'get_out_of_tote', reference_frame="world"))
  
     # 3b. Switch after a certain amount of time
-    control_sequence.append(ha.TimeSwitch('get_out_of_tote', 'go_to_view_config', duration = place_time))
+    control_sequence.append(ha.TimeSwitch('get_out_of_tote', 'GoToViewPose', duration = place_time))
 
-    # 4. View config above ifco
-    control_sequence.append(ha.PlanningJointControlMode(view_joint_config, name='go_to_view_config', controller_name='viewJointCtrl'))
-
-    # 4b. Joint config switch
-    control_sequence.append(ha.JointConfigurationSwitch('go_to_view_config', 'finished', controller='viewJointCtrl', epsilon=str(math.radians(7.))))
+    # 4. Go to view pose
+    control_sequence.append(ha.InterpolatedHTransformControlMode(view_pose, controller_name = 'GoToView', goal_is_relative='0', name = 'GoToViewPose', reference_frame = 'world'))
+ 
+    # 4b. Switch when hand reaches the goal pose
+    control_sequence.append(ha.FramePoseSwitch('GoToViewPose', 'finished', controller = 'GoToView', epsilon = '0.01'))
 
     # 4c. Switch if no plan was found
-    control_sequence.append(ha.RosTopicSwitch('go_to_view_config', 'finished', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('GoToViewPose', 'finished', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 5. Block joints to finish motion
     control_sequence.append(ha.BlockJointControlMode(name  = 'finished'))
