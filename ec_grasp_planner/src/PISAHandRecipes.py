@@ -325,7 +325,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     control_sequence.append(ha.TimeSwitch('SlideBackFromWall', 'soften_arm', duration=pre_grasp_rotate_time))
 
     # 00. Change arm mode - soften
-    control_sequence.append(ha.kukaChangeModeControlMode(name='soften_arm', mode_id = 'cartesian_impedance', cartesian_stiffness = np.array([1000, 5000, 5000, 300, 10, 300]), cartesian_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), nullspace_stiffness = "1000", nullspace_damping = "0.7"))
+    control_sequence.append(ha.kukaChangeModeControlMode(name='soften_arm', mode_id = 'cartesian_impedance', cartesian_stiffness = np.array([1000, 5000, 5000, 300, 10, 300]), cartesian_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), nullspace_stiffness = "300", nullspace_damping = "0.7"))
 
 
     # 00. We switch after a short time 
