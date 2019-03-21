@@ -218,7 +218,7 @@ class GraspPlanner:
                                                                                     req.object_heuristic_function,
                                                                                     self.grasp_type,                                                                                    
                                                                                     object_list_msg,
-                                                                                    handarm_parameters
+                                                                                    self.handarm_params
                                                                                     )
 
         if pre_grasp_pose_in_base is None:

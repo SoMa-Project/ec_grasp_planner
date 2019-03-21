@@ -491,9 +491,11 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         # object specific parameters for mango
         self['SurfaceGrasp']['mango'] = self['SurfaceGrasp']['object'].copy()
 
+        self['SurfaceGrasp']['mango']['downward_force'] = 5
+
         self['SurfaceGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(
             # tra.translation_matrix([-0.03, 0.0, 0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
-            tra.translation_matrix([-0.06, 0.0, 0.0]),
+            tra.translation_matrix([-0.07, 0.0, 0.0]),
             tra.rotation_matrix(math.radians(35.0), [0, 1, 0]))  # <-- best so far
 
         self['SurfaceGrasp']['mango']['pre_approach_manifold'] = Manifold(position_deltas=[0.04, 0.04, 0.04],

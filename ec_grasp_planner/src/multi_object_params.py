@@ -54,6 +54,9 @@ class multi_object_params:
         self.data = None
         self.stored_trajectories = {}
 
+        self.hand_name = rospy.get_param('/planner_gui/hand', default='RBOHandP24_pulpy')
+        self.heuristic_type = rospy.get_param("planner_gui/heuristic_type", default="tub")
+
     def get_object_params(self):
         if self.data is None:
             self.load_object_params()
@@ -73,8 +76,8 @@ class multi_object_params:
     def reset_kinematic_checks_information(self):
         self.stored_trajectories = {}
 
-    ## --------------------------------------------------------- ##
-    #load parameters for hand-object-strategy
+    # --------------------------------------------------------- #
+    # load parameters for hand-object-strategy
     def load_object_params(self):
         file = pkg_path + '/data/' + self.file_name
         with open(file, 'r') as stream:
@@ -84,16 +87,16 @@ class multi_object_params:
             except yaml.YAMLError as exc:
                 print(exc)
 
-## --------------------------------------------------------- ##
+    # --------------------------------------------------------- #
     # return 0 or 1 if strategy is applicable on the object
-    # if there is a list of possible outcomes thant the strategy is applicable
+    # if there is a list of possible outcomes then the strategy is applicable
     def pdf_object_strategy(self, object):
         if isinstance(object['success'][self.hand_name], list):
             return 1
         else:
-            return object['success'][self.hand_name]
+            return 1 if object['success'][self.hand_name] > 0 else 0
 
-## --------------------------------------------------------- ##
+    # --------------------------------------------------------- #
     # return probability based on object and ec features
     def pdf_object_ec(self, object, ec_frame, strategy):
         q_val = -1
@@ -189,7 +192,7 @@ class multi_object_params:
         zone_fac = self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)
         wall_fac = self.black_list_walls(current_ec_index, all_ec_frames, strategy)
 
-        return 1.0 #zone_fac * wall_fac TODO re-insert?
+        return zone_fac * wall_fac
 
     # ------------------------------------------------------------- #
     # object-environment-hand based heuristic, q_value for grasping
@@ -202,26 +205,25 @@ class multi_object_params:
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
 
-        heuristic_type = rospy.get_param("planner_gui/heuristic_type", default="tub")
-        if heuristic_type == 'tub':
+        if self.heuristic_type == 'tub':
             feasibility_fun = partial(tub_feasibility_check_interface.check_kinematic_feasibility,
                                       current_object_idx, objects, object_params, current_ec_index,
                                       strategy, all_ec_frames, ifco_in_base_transform, handarm_params,
                                       self.stored_trajectories)
 
-        elif heuristic_type == 'tub-pile':
+        elif self.heuristic_type == 'tub-pile':
             # TODO integrate
             raise ValueError("Not supported yet")
 
-        elif heuristic_type == 'None':
+        elif self.heuristic_type == 'None':
             # Use default plain and simple black listing approach
             feasibility_fun = partial(self.black_list_risk_regions, current_object_idx, objects, current_ec_index,
                                       strategy, all_ec_frames, ifco_in_base_transform)
 
         else:
-            if heuristic_type == 'ocado':
+            if self.heuristic_type == 'ocado':
                 raise ValueError("Fatal: This function should never be called with ocado reachability checker!")
-            raise ValueError("The heuristic type {} is not supported yet".format(heuristic_type))
+            raise ValueError("The heuristic type {} is not supported yet".format(self.heuristic_type))
 
         q_val = 1
         q_val = q_val * \
@@ -300,12 +302,11 @@ class multi_object_params:
         return obj_tmp
 
     def create_q_matrix(self, object_type, ecs, graph_in_base, ifco_in_base_transform,
-                        heuristic_type='tub',
                         SG_pre_grasp_in_object_frame=tra.identity_matrix(),
                         WG_pre_grasp_in_object_frame=tra.identity_matrix(),
                         grasp_type="Any", object_list_msg=ObjectList(), handarm_parameters=None):
 
-        if heuristic_type == 'ocado':
+        if self.heuristic_type == 'ocado':
             srv = rospy.ServiceProxy('generate_q_matrix', target_selection_srv.GenerateQmatrix)
             object_data = self.data[
                 object_type]  # using the first object, in theory in the ocado use case we work with the same objects
@@ -353,8 +354,8 @@ class multi_object_params:
                 for j, ec in enumerate(ecs):
                     # the ec frame must be in the same reference frame as the object
                     ec_frame_in_base = graph_in_base.dot(convert_transform_msg_to_homogenous_tf(ec.transform))
-                    Q_matrix[i, j] = self.heuristic(i, objects, j, ec.label, all_ec_frames, ifco_in_base_transform,
-                                                    handarm_parameters)
+                    Q_matrix[i, j] = self.heuristic(i, objects, j, ec.label, all_ec_frames,
+                                                    ifco_in_base_transform, handarm_parameters)
 
         return Q_matrix
 
@@ -390,10 +391,11 @@ class multi_object_params:
         self.load_object_params()
         self.reset_kinematic_checks_information()
         self.hand_name = rospy.get_param('/planner_gui/hand', default='RBOHandP24_pulpy')
-        heuristic_type = rospy.get_param("planner_gui/heuristic_type", default="tub")
+        # set the heuristic type that should be used. Make sure this object member is only set here!
+        self.heuristic_type = rospy.get_param("planner_gui/heuristic_type", default="tub")
 
         # Calculate Q-Matrix
-        Q_matrix = self.create_q_matrix(object_type, ecs, graph_in_base, ifco_in_base_transform, heuristic_type,
+        Q_matrix = self.create_q_matrix(object_type, ecs, graph_in_base, ifco_in_base_transform,
                                         SG_pre_grasp_in_object_frame, WG_pre_grasp_in_object_frame, grasp_type,
                                         object_list_msg, handarm_parameters)
 
@@ -420,9 +422,8 @@ class multi_object_params:
             raise ValueError("Unknown heuristic function for choosing object-ec pair: {}".format(h_process_type))
 
         # Compute pre_grasp_pose
-        if heuristic_type == 'ocado':
+        if self.heuristic_type == 'ocado':
             chosen_object = self.object_from_object_list_msg(object_type, object_list_msg.objects[object_index], graph_in_base)
-            chosen_node = ecs[ec_index]
             srv = rospy.ServiceProxy('get_pregrasp_pose_q_row_col', target_selection_srv.GetPreGraspPoseForQRowCol)            
             res = srv(object_index, ec_index)
             pre_grasp_pose_in_base_frame = convert_pose_msg_to_homogenous_tf(res.pre_grasp_pose_in_base_frame)            
