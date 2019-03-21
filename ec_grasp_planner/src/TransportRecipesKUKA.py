@@ -38,7 +38,10 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
         control_sequence.append(ha.CartesianVelocityControlMode(up_world_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="world"))
     
     # 1b. Switch after the lift time
-    control_sequence.append(ha.TimeSwitch('GoUp_1', 'EstimationMassMeasurement', duration = lift_time))
+    control_sequence.append(ha.TimeSwitch('GoUp_1', 'GoStiff', duration = lift_time))
+
+    # 00. Change arm mode - soften
+    control_sequence.append(ha.kukaChangeModeControlMode(name='GoStiff', mode_id = 'cartesian_impedance', cartesian_stiffness = np.array([5000, 5000, 5000, 300, 300, 300]), cartesian_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), nullspace_stiffness = "1000", nullspace_damping = "0.7"))
 
     # 1c. Change arm -mode - stiffen 
     # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', 
@@ -46,6 +49,15 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
 
     # 1d. We switch after a short time 
     # control_sequence.append(ha.TimeSwitch('GoStiff', 'EstimationMassMeasurement', duration=1.0))
+
+    # 7b. We switch after a short time
+    control_sequence.append(ha.TimeSwitch('GoStiff', 'PrepareForMassMeasurementAgain', duration=0.5))
+
+    # 2. Go to gravity compensation 
+    control_sequence.append(ha.BlockJointControlMode(name = 'PrepareForMassMeasurementAgain'))
+
+    # 2b. Wait for a bit to allow vibrations to attenuate
+    control_sequence.append(ha.TimeSwitch('PrepareForMassMeasurementAgain', 'EstimationMassMeasurement', duration = 0.5))
 
     # 2. Measure the mass again and estimate number of grasped objects (grasp success estimation)
     control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))

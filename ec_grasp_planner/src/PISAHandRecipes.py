@@ -282,6 +282,11 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # 4c. Switch to recovery if the cartesian velocity fails due to joint limits
     control_sequence.append(ha.RosTopicSwitch('GoDown', 'softhand_open_recovery_WallGrasp', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
+
+    # 4d. Open hand
+    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_reopen', synergy = 1))
+
+    control_sequence.append(ha.TimeSwitch('softhand_reopen', 'LiftHand', duration = 0.5))
     
     # 5. Lift upwards so the hand doesn't slide on table surface
     control_sequence.append(
@@ -298,7 +303,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     # 6b. Switch when the f/t sensor is triggered with normal force from wall
     force = np.array([0, 0, wall_force, 0, 0, 0])
-    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SlideBackFromWall', 'ForceSwitch', goal=force,
+    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'soften_arm', 'ForceSwitch', goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame))
@@ -317,11 +322,18 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
         ha.CartesianVelocityControlMode(pre_grasp_twist, controller_name='SlideBackFromWall',
                                              name="SlideBackFromWall", reference_frame="EE"))
     # 7b. We switch after a short time
-    control_sequence.append(ha.TimeSwitch('SlideBackFromWall', 'softhand_close', duration=pre_grasp_rotate_time))
+    control_sequence.append(ha.TimeSwitch('SlideBackFromWall', 'soften_arm', duration=pre_grasp_rotate_time))
+
+    # 00. Change arm mode - soften
+    control_sequence.append(ha.kukaChangeModeControlMode(name='soften_arm', mode_id = 'cartesian_impedance', cartesian_stiffness = np.array([1000, 5000, 5000, 300, 10, 300]), cartesian_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), nullspace_stiffness = "1000", nullspace_damping = "0.7"))
+
+
+    # 00. We switch after a short time 
+    control_sequence.append(ha.TimeSwitch('soften_arm', 'softhand_close', duration=1.0))
     
 
     # 8. Call general hand controller
-    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_closing_goal]), name  = 'softhand_close', synergy = '1'))
+    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_preshape_goal]), name  = 'softhand_close', synergy = '1'))
     
 
     # 8b. Switch when hand closing duration ends
@@ -332,7 +344,14 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
         ha.CartesianVelocityControlMode(post_grasp_twist, controller_name='PostGraspRotate',
                                              name="PostGraspRotate", reference_frame="EE"))
     # 9b. We switch after a short time
-    control_sequence.append(ha.TimeSwitch('PostGraspRotate', 'GoUp_1', duration=post_grasp_rotate_time))
+    control_sequence.append(ha.TimeSwitch('PostGraspRotate', 'softhand_close_again', duration=post_grasp_rotate_time))
+
+    # 8. Call general hand controller
+    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_closing_goal]), name  = 'softhand_close_again', synergy = '1'))
+    
+
+    # 8b. Switch when hand closing duration ends
+    control_sequence.append(ha.TimeSwitch('softhand_close_again', 'GoUp_1', duration=hand_closing_time))
     
     return control_sequence
 

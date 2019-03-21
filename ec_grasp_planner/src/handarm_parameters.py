@@ -456,7 +456,7 @@ class PISAHandKUKA(KUKA):
         super(PISAHandKUKA, self).__init__()
 
         self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.33755, -0.53554, 0.29871]), tra.quaternion_matrix([0.99961, 0.021784, 0.013722, 0.010751]))
-        self['view_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.81636, -0.49031, 0.39303]), tra.quaternion_matrix([0.99003, -0.071965, 0.1136, 0.041887]))
+        self['view_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.36392, -0.65228, 0.26258]), tra.quaternion_matrix([-0.6846, 0.72715, 0.018816, 0.047258]))
 
         ####################################################################################
         # Params that define the grasping controller
@@ -525,8 +525,8 @@ class PISAHandKUKA(KUKA):
         #####################################################################################
         # below are parameters for wall grasp 
         #####################################################################################
-        self['WallGrasp']['object']['hand_preshape_goal'] = 0
-        self['WallGrasp']['object']['hand_preshaping_duration'] = 0
+        self['WallGrasp']['object']['hand_preshape_goal'] = 0.2
+        self['WallGrasp']['object']['hand_preshaping_duration'] = 1
 
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
@@ -549,7 +549,7 @@ class PISAHandKUKA(KUKA):
         # - palm facing the object and wall
         # This should be changed per object if needed
         self['WallGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-                tra.translation_matrix([-0.15, 0, -0.14]), #15 cm above object, 15 cm behind
+                tra.translation_matrix([-0.15, -0.05, -0.1]), #15 cm above object, 15 cm behind
                 tra.concatenate_matrices(
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
@@ -559,15 +559,15 @@ class PISAHandKUKA(KUKA):
                         math.radians(0.0), [0, 0, 1]),
             ))
 
-        self['WallGrasp']['object']['downward_force'] = 1.8
+        self['WallGrasp']['object']['downward_force'] = 1.5
 
         self['WallGrasp']['object']['down_speed'] = 0.03
 
-        self['WallGrasp']['object']['corrective_lift_duration'] = 1.5
+        self['WallGrasp']['object']['corrective_lift_duration'] = 2
 
         self['WallGrasp']['object']['up_speed'] = 0.03
 
-        self['WallGrasp']['object']['wall_force'] = 5.0
+        self['WallGrasp']['object']['wall_force'] = 7
 
         self['WallGrasp']['object']['slide_speed'] = 0.03 #sliding speed
 
@@ -580,9 +580,9 @@ class PISAHandKUKA(KUKA):
         self['WallGrasp']['object']['hand_closing_goal'] = 0.8
 
         # first motion after grasp, in hand palm frame
-        self['WallGrasp']['object']['post_grasp_twist'] = np.array([-0.05, 0.0, 0.0, 0.0, math.radians(-18.0), 0.0])
+        self['WallGrasp']['object']['post_grasp_twist'] = np.array([0.005, 0.0, 0.015, 0.0, math.radians(-12.0), 0.0])
 
-        self['WallGrasp']['object']['post_grasp_rotation_duration'] = 2    
+        self['WallGrasp']['object']['post_grasp_rotation_duration'] = 3    
 
         # duration of lifting the object
         self['WallGrasp']['object']['lift_duration'] = 8   
