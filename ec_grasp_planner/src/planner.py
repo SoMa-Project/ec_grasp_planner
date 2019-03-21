@@ -302,7 +302,7 @@ def get_derived_wall_grasp_frames(wall_frame, object_pose, pre_grasp_pose):
     # y-axis stays the same, lets norm it just to go sure
     y = ec_frame[:3, 1] / np.linalg.norm(ec_frame[:3, 1])
     # z-axis is (roughly) the vector from object to pre_grasp_pose
-    z = pre_grasp_pose[:3, 3] - object_pose[:3, 3]
+    z = - pre_grasp_pose[:3, 2]
     # z-axis should lie in the y-plane, so we subtract the part that is perpendicular to the y-plane
     z = z - (np.dot(z, y) * y)
     z = z / np.linalg.norm(z)
