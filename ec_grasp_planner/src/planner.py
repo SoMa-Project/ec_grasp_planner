@@ -377,6 +377,11 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
         rviz_frames.append(corner_frame)
         rviz_frames.append(corner_frame_alpha_zero)
 
+        # rviz_frames.append(pre_approach_transform)
+        # rviz_frames.append(ec_frame)
+        # rviz_frames.append(corner_frame)
+        # rviz_frames.append(corner_frame_alpha_zero)
+
     else:
         raise ValueError("Unknown grasp type: {}".format(grasp_type))
 

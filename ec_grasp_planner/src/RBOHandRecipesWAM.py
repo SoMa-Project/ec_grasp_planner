@@ -738,21 +738,17 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     # /EDITED
 
     # 6. Maintain contact while closing the hand
-    if handarm_params['isForceControllerAvailable']:
-        # apply force on object while closing the hand
-        # TODO arne: validate these values
-        desired_displacement = np.array(
-            [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
-        force_gradient = np.array(
-            [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
-        desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
-        control_sequence.append(ha.HandControlMode_ForceHT(name=mode_name_hand_closing, synergy=hand_synergy,
-                                                           desired_displacement=desired_displacement,
-                                                           force_gradient=force_gradient,
-                                                           desired_force_dimension=desired_force_dimension))
-    else:
-        # just close the hand
-        control_sequence.append(ha.close_rbohand())
+    # apply force on object while closing the hand
+    # TODO arne: validate these values
+    desired_displacement = np.array(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
+    force_gradient = np.array(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
+    desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
+    control_sequence.append(ha.HandControlMode_ForceHT(name=mode_name_hand_closing, synergy=hand_synergy,
+                                                       desired_displacement=desired_displacement,
+                                                       force_gradient=force_gradient,
+                                                       desired_force_dimension=desired_force_dimension))
 
     # 6b. Switch when hand closing duration ends
     control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration=hand_closing_duration))
