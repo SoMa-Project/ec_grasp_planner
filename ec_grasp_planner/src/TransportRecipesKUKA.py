@@ -41,7 +41,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     control_sequence.append(ha.TimeSwitch('GoUp_1', 'GoStiff', duration = lift_time))
 
     # 00. Change arm mode - soften
-    control_sequence.append(ha.kukaChangeModeControlMode(name='GoStiff', mode_id = 'cartesian_impedance', cartesian_stiffness = np.array([5000, 5000, 5000, 300, 300, 300]), cartesian_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), nullspace_stiffness = "300", nullspace_damping = "0.7"))
+    control_sequence.append(ha.kukaChangeModeControlMode(name='GoStiff', mode_id = 'cartesian_impedance', cartesian_stiffness = np.array([5000, 5000, 5000, 300, 300, 300]), cartesian_damping = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7]), nullspace_stiffness = "200", nullspace_damping = "0.7"))
 
     # 1c. Change arm -mode - stiffen 
     # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', 
