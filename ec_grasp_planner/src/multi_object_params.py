@@ -6,10 +6,12 @@ import numpy as np
 from tf import transformations as tra
 from geometry_graph_msgs.msg import Node, geometry_msgs, ObjectList
 import rospy
-import tf_conversions.posemath as pm
+
 from functools import partial
+from planner_utils import *
 
 import tub_feasibility_check_interface
+import GraspFrameRecipes
 
 import rospkg
 import pkgutil
@@ -21,31 +23,6 @@ if ocado_reachability_loader is not None:
 
 rospack = rospkg.RosPack()
 pkg_path = rospack.get_path('ec_grasp_planner')
-
-
-def unit_vector(vector):
-    # Returns the unit vector of the vector.
-    return vector / np.linalg.norm(vector)
-
-
-def angle_between(v1, v2):
-    # Returns the angle in radians between vectors 'v1' and 'v2'::
-    v1_u = unit_vector(v1)
-    v2_u = unit_vector(v2)
-    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
-
-
-def convert_pose_msg_to_homogenous_tf(msg):
-    return pm.toMatrix(pm.fromMsg(msg))
-
-
-def convert_homogenous_tf_to_pose_msg(htf):
-    return pm.toMsg(pm.fromMatrix(htf))
-
-
-def convert_transform_msg_to_homogenous_tf(msg):
-    return np.dot(tra.translation_matrix([msg.translation.x, msg.translation.y, msg.translation.z]),
-                      tra.quaternion_matrix([msg.rotation.x, msg.rotation.y, msg.rotation.z, msg.rotation.w]))
 
 
 class multi_object_params:
@@ -262,7 +239,6 @@ class multi_object_params:
 
         return 1.0
 
-
     def cornerGrasp_distant_object(self, object, objects, strategy, ec_HT):
         # for surface grasp always prefer the hiehest object on the pile
         if strategy not in ["CornerGrasp"]:
@@ -454,7 +430,7 @@ class multi_object_params:
         obj_tmp['type'] = object_type
         # the TF must be in the same reference frame as the EC frames
         # Get the object frame in robot base frame
-        object_in_camera = convert_pose_msg_to_homogenous_tf(object_list_msg.transform.pose)
+        object_in_camera = convert_pose_msg_to_homogeneous_tf(object_list_msg.transform.pose)
         object_in_base = camera_in_base.dot(object_in_camera)
         obj_tmp['frame'] = object_in_base
         obj_tmp['bounding_box'] = object_list_msg.boundingbox
@@ -475,11 +451,11 @@ class multi_object_params:
 
             # currently camera_in_base = graph_in_base
             camera_in_ifco = np.linalg.inv(ifco_in_base_transform).dot(graph_in_base)
-            camera_in_ifco_msg = convert_homogenous_tf_to_pose_msg(camera_in_ifco)
+            camera_in_ifco_msg = convert_homogeneous_tf_to_pose_msg(camera_in_ifco)
 
-            SG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(SG_pre_grasp_in_object_frame)
-            WG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(WG_pre_grasp_in_object_frame)
-            ifco_in_base_msg = convert_homogenous_tf_to_pose_msg(ifco_in_base_transform)
+            SG_pre_grasp_in_object_frame_msg = convert_homogeneous_tf_to_pose_msg(SG_pre_grasp_in_object_frame)
+            WG_pre_grasp_in_object_frame_msg = convert_homogeneous_tf_to_pose_msg(WG_pre_grasp_in_object_frame)
+            ifco_in_base_msg = convert_homogeneous_tf_to_pose_msg(ifco_in_base_transform)
 
             res = srv(grasp_type, object_list_msg, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg,
                       WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation,
@@ -507,12 +483,12 @@ class multi_object_params:
 
                 all_ec_frames = []
                 for j, ec in enumerate(ecs):
-                    all_ec_frames.append(graph_in_base.dot(convert_transform_msg_to_homogenous_tf(ec.transform)))
-                    print("ecs:{}".format(graph_in_base.dot(convert_transform_msg_to_homogenous_tf(ec.transform))))
+                    all_ec_frames.append(graph_in_base.dot(convert_transform_msg_to_homogeneous_tf(ec.transform)))
+                    print("ecs:{}".format(graph_in_base.dot(convert_transform_msg_to_homogeneous_tf(ec.transform))))
 
                 for j, ec in enumerate(ecs):
                     # the ec frame must be in the same reference frame as the object
-                    ec_frame_in_base = graph_in_base.dot(convert_transform_msg_to_homogenous_tf(ec.transform))
+                    ec_frame_in_base = graph_in_base.dot(convert_transform_msg_to_homogeneous_tf(ec.transform))
                     Q_matrix[i, j] = self.heuristic(i, objects, j, ec.label, all_ec_frames,
                                                     ifco_in_base_transform, handarm_parameters)
 
@@ -585,7 +561,7 @@ class multi_object_params:
             chosen_object = self.object_from_object_list_msg(object_type, object_list_msg.objects[object_index], graph_in_base)
             srv = rospy.ServiceProxy('get_pregrasp_pose_q_row_col', target_selection_srv.GetPreGraspPoseForQRowCol)            
             res = srv(object_index, ec_index)
-            pre_grasp_pose_in_base_frame = convert_pose_msg_to_homogenous_tf(res.pre_grasp_pose_in_base_frame)            
+            pre_grasp_pose_in_base_frame = convert_pose_msg_to_homogeneous_tf(res.pre_grasp_pose_in_base_frame)
         else:
             objects = [self.object_from_object_list_msg(object_type, o, graph_in_base) for o in object_list_msg.objects]
             chosen_object = objects[object_index]
@@ -593,17 +569,16 @@ class multi_object_params:
             chosen_node = ecs[ec_index]
 
             if chosen_node.label == 'SurfaceGrasp':
-                pre_grasp_pose_in_base_frame = object_pose.dot(SG_pre_grasp_in_object_frame)
+                pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_surface_pregrasp_pose_in_base_frame(
+                    SG_pre_grasp_in_object_frame, object_pose)
 
             elif chosen_node.label == 'WallGrasp':
-                object_pos_with_ec_orientation = graph_in_base.dot(convert_transform_msg_to_homogenous_tf(chosen_node.transform))
-                object_pos_with_ec_orientation[:3,3] = tra.translation_from_matrix(object_pose)
-                pre_grasp_pose_in_base_frame = object_pos_with_ec_orientation.dot(WG_pre_grasp_in_object_frame)
+                pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_wall_pregrasp_pose_in_base_frame(
+                    chosen_node, WG_pre_grasp_in_object_frame, object_pose, graph_in_base)
 
             elif chosen_node.label == 'CornerGrasp':
-                corner_frame = graph_in_base.dot(convert_transform_msg_to_homogenous_tf(chosen_node.transform))
-                ec_frame = get_derived_corner_grasp_frames(corner_frame, object_pose)[0]
-                pre_grasp_pose_in_base_frame = ec_frame.dot(CG_pre_grasp_in_object_frame)
+                pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_corner_pregrasp_pose_in_base_frame(
+                    chosen_node, CG_pre_grasp_in_object_frame, object_pose, graph_in_base)
 
             else:
                 raise ValueError("Unknown grasp type: {}".format(chosen_node.label))       
@@ -611,33 +586,6 @@ class multi_object_params:
         chosen_object['index'] = object_index
 
         return chosen_object, ec_index, pre_grasp_pose_in_base_frame
-
-
-# ================================================================================================
-def get_derived_corner_grasp_frames(corner_frame, object_pose):
-
-    # TODO move to separate file?
-
-    ec_frame = np.copy(corner_frame)
-    ec_frame[:3, 3] = tra.translation_from_matrix(object_pose)
-    # y-axis stays the same, lets norm it just to go sure
-    y = ec_frame[:3, 1] / np.linalg.norm(ec_frame[:3, 1])
-    # z-axis is (roughly) the vector from corner to object
-    z = ec_frame[:3, 3] - corner_frame[:3, 3]
-    # z-axis should lie in the y-plane, so we subtract the part that is perpendicular to the y-plane
-    z = z - (np.dot(z, y) * y)
-    z = z / np.linalg.norm(z)
-    # x-axis is perpendicular to y- and z-axis, again normed to go sure
-    x = np.cross(y, z)
-    x = x / np.linalg.norm(x)
-    # the rotation part is overwritten with the new axis
-    # ec_frame[:3, :3] = np.stack((x, y, z), axis=1) # TODO this line requires a newer version of numpy
-    ec_frame[:3, :3] = tra.inverse_matrix(np.vstack((x, y, z)))  # <- This one is the downward compatible version
-
-    corner_frame_alpha_zero = np.copy(corner_frame)
-    corner_frame_alpha_zero[:3, :3] = np.copy(ec_frame[:3, :3])
-
-    return ec_frame, corner_frame_alpha_zero
 
 
 def test(ece_list = []):

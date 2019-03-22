@@ -254,10 +254,10 @@ class RBOHandP24WAM(RBOHand2):
         # Defines the general manifold for pre_approach in which alternative goal poses are sampled during kinematics
         # checks. You can also define special manifolds per obejct
         self['WallGrasp']['object']['pre_approach_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.02],
-                                                                     'max_position_deltas': [0.01, 0.01, 0.02],
-                                                                     'min_orientation_deltas': [0, 0, -0.17],
-                                                                     'max_orientation_deltas': [0, 0, 0.17]
-                                                                     })
+                                                                         'max_position_deltas': [0.01, 0.01, 0.02],
+                                                                         'min_orientation_deltas': [0, 0, -0.17],
+                                                                         'max_orientation_deltas': [0, 0, 0.17]
+                                                                         })
 
         # ---- Go-Down parameters ----
         # The maximum allowed force for pushing down (guarding the movement to the ifco bottom)
@@ -272,10 +272,10 @@ class RBOHandP24WAM(RBOHand2):
         # Defines the general manifold for go_down in which alternative goal poses are sampled during kinematics
         # checks. You can also define special manifolds per obejct
         self['WallGrasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.02, -0.04],
-                                                                     'max_position_deltas': [0.01, 0.02, 0.06],
-                                                                     'min_orientation_deltas': [0,         0, -np.pi / 16.0],
-                                                                     'max_orientation_deltas': [0, np.pi / 2,  np.pi / 16.0]
-                                                                     })
+                                                                    'max_position_deltas': [0.01, 0.02, 0.06],
+                                                                    'min_orientation_deltas': [0,         0, -np.pi / 16.0],
+                                                                    'max_orientation_deltas': [0, np.pi / 2,  np.pi / 16.0]
+                                                                    })
 
         # ---- Sliding parameters ----
         # Short lift after initial contact with bottom (before slide)
@@ -284,10 +284,10 @@ class RBOHandP24WAM(RBOHand2):
         # Defines the general manifold for corrective_lift in which alternative goal poses are sampled during kinematics
         # checks. You can also define special manifolds per obejct
         self['WallGrasp']['object']['corrective_lift_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.02, -0.04],
-                                                                       'max_position_deltas': [0.01, 0.02, 0.04],
-                                                                       'min_orientation_deltas': [0, 0, -np.pi/16.0],
-                                                                       'max_orientation_deltas': [0, 0, np.pi/16.0]
-                                                                       })
+                                                                            'max_position_deltas': [0.01, 0.02, 0.04],
+                                                                            'min_orientation_deltas': [0, 0, -np.pi/16.0],
+                                                                            'max_orientation_deltas': [0, 0, np.pi/16.0]
+                                                                            })
 
         # The maximum allowed force for pushing against the wall (guarding the sliding movement)
         self['WallGrasp']['object']['wall_force'] = 12.0
@@ -301,9 +301,9 @@ class RBOHandP24WAM(RBOHand2):
         # Defines the general manifold for sliding motion in which alternative goal poses are sampled during kinematics
         # checks. You can also define special manifolds per obejct
         self['WallGrasp']['object']['slide_to_wall_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
-                                                                           'max_position_deltas': [0.01, 0.01, 0.01],
-                                                                           'min_orientation_deltas': [0, 0, -0.17],
-                                                                           'max_orientation_deltas': [0, 0, 0.17]
+                                                                          'max_position_deltas': [0.01, 0.01, 0.01],
+                                                                          'min_orientation_deltas': [0, 0, -0.17],
+                                                                          'max_orientation_deltas': [0, 0, 0.17]
                                                                           })
 
         # ---- Hand closing ----
@@ -365,6 +365,14 @@ class RBOHandP24WAM(RBOHand2):
                     math.radians(0.0), [0, 0, 1]),
             ))
 
+        # Defines the general manifold for pre_approach in which alternative goal poses are sampled during kinematics
+        # checks. You can also define special manifolds per obejct
+        self['CornerGrasp']['object']['pre_approach_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.02],
+                                                                           'max_position_deltas': [0.01, 0.01, 0.02],
+                                                                           'min_orientation_deltas': [0, 0, -0.17],
+                                                                           'max_orientation_deltas': [0, 0, 0.17]
+                                                                           })
+
         # ---- Go-Down parameters ----
         # The maximum allowed force for pushing down (guarding the movement to the ifco bottom)
         self['CornerGrasp']['object']['downward_force'] = 1.8
@@ -373,9 +381,25 @@ class RBOHandP24WAM(RBOHand2):
         # Maximum velocity of the EE during the go down movement. First value: rotational, second translational
         self['CornerGrasp']['object']['go_down_velocity'] = np.array([0.125, 0.09])
 
+        # Defines the general manifold for go_down in which alternative goal poses are sampled during kinematics
+        # checks. You can also define special manifolds per obejct
+        self['CornerGrasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.02, -0.04],
+                                                                      'max_position_deltas': [0.01, 0.02, 0.06],
+                                                                      'min_orientation_deltas': [0,         0, -np.pi / 16.0],
+                                                                      'max_orientation_deltas': [0, np.pi / 2,  np.pi / 16.0]
+                                                                      })
+
         # ---- Sliding parameters ----
         # Short lift after initial contact with bottom (before slide)
         self['CornerGrasp']['object']['corrective_lift_dist'] = 0.1
+
+        # Defines the general manifold for corrective_lift in which alternative goal poses are sampled during kinematics
+        # checks. You can also define special manifolds per obejct
+        self['CornerGrasp']['object']['corrective_lift_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.02, -0.04],
+                                                                            'max_position_deltas': [0.01, 0.02, 0.04],
+                                                                            'min_orientation_deltas': [0, 0, -np.pi/16.0],
+                                                                            'max_orientation_deltas': [0, 0, np.pi/16.0]
+                                                                            })
 
         # The maximum allowed force for pushing against the wall (guarding the sliding movement)
         self['CornerGrasp']['object']['wall_force'] = 12.0 # aggressive 17
@@ -385,6 +409,14 @@ class RBOHandP24WAM(RBOHand2):
 
         # Maximum velocity of the EE during the sliding movement. First value: rotational, second translational
         self['CornerGrasp']['object']['slide_velocity'] = np.array([0.125, 0.3]) #.063 for empty tennis balls; aggresive 0.5 # np.array([0.125, 0.12])
+
+        # Defines the general manifold for sliding motion in which alternative goal poses are sampled during kinematics
+        # checks. You can also define special manifolds per obejct
+        self['CornerGrasp']['object']['slide_to_wall_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
+                                                                          'max_position_deltas': [0.01, 0.01, 0.01],
+                                                                          'min_orientation_deltas': [0, 0, -0.17],
+                                                                          'max_orientation_deltas': [0, 0, 0.17]
+                                                                          })
 
         # ---- Hand closing ----
         # synergy type for soft hand closing

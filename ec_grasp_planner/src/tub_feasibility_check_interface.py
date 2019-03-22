@@ -9,6 +9,8 @@ from tub_feasibility_check.msg import BoundingBoxWithPose, AllowedCollision
 from tub_feasibility_check.srv import CheckKinematicsResponse
 from shape_msgs.msg import SolidPrimitive
 
+import GraspFrameRecipes
+
 
 class AlternativeBehavior:
     # TODO this class should be adapted if return value of the feasibility check changes (e.g. switch conditions)
@@ -83,17 +85,45 @@ def get_matching_ifco_wall(ifco_in_base_transform, ec_frame):
 
     # one could also check for dot-product = 0 instead of using the x-axis but this is prone to the same errors
     if ec_z_axis.dot(np.array([1, 0, 0])) > space_thresh and ec_x_axis.dot(np.array([0, 1, 0])) > space_thresh:
-        # print("GET MATCHING=SOUTH", multi_object_params.tf_dbg_call_to_string(ec_frame, frame_name='ifco_south'))
+        # print("GET MATCHING=SOUTH", tf_dbg_call_to_string(ec_frame, frame_name='ifco_south'))
         return 'south'
     elif ec_z_axis.dot(np.array([1, 0, 0])) < -space_thresh and ec_x_axis.dot(np.array([0, 1, 0])) < -space_thresh:
-        # print("GET MATCHING=NORTH", multi_object_params.tf_dbg_call_to_string(ec_frame, frame_name='ifco_north'))
+        # print("GET MATCHING=NORTH", tf_dbg_call_to_string(ec_frame, frame_name='ifco_north'))
         return 'north'
     elif ec_z_axis.dot(np.array([0, 1, 0])) < -space_thresh and ec_x_axis.dot(np.array([1, 0, 0])) > space_thresh:
-        # print("GET MATCHING=WEST", multi_object_params.tf_dbg_call_to_string(ec_frame, frame_name='ifco_west'))
+        # print("GET MATCHING=WEST", tf_dbg_call_to_string(ec_frame, frame_name='ifco_west'))
         return 'west'
     elif ec_z_axis.dot(np.array([0, 1, 0])) > space_thresh and ec_x_axis.dot(np.array([1, 0, 0])) < -space_thresh:
-        # print("GET MATCHING=EAST", multi_object_params.tf_dbg_call_to_string(ec_frame, frame_name='ifco_east'))
+        # print("GET MATCHING=EAST", tf_dbg_call_to_string(ec_frame, frame_name='ifco_east'))
         return 'east'
+    else:
+        # This should never be reached. Just here to prevent bugs
+        raise ValueError("ERROR: Could not identify matching ifco wall. Check frames!")
+
+
+def get_matching_ifco_corner(ifco_in_base_transform, ec_frame):
+
+    # transforms points in base frame to ifco frame
+    base_in_ifco_transform = tra.inverse_matrix(ifco_in_base_transform)
+
+    # ec (corner) z-axis in ifco frame
+    ec_z_axis = base_in_ifco_transform.dot(ec_frame)[0:3, 2]
+
+    # we can't check for zero because of small errors in the frame (due to vision or numerical uncertainty)
+    space_thresh = 0.0  # 0.1
+
+    if ec_z_axis.dot(np.array([1, 0, 0])) < -space_thresh and ec_z_axis.dot(np.array([0, 1, 0])) < -space_thresh:
+        print("GET MATCHING=SOUTH_EAST", tf_dbg_call_to_string(ec_frame, frame_name='ifco_southeast'))
+        return 'south', 'east'
+    elif ec_z_axis.dot(np.array([1, 0, 0])) < -space_thresh and ec_z_axis.dot(np.array([0, 1, 0])) > space_thresh:
+        print("GET MATCHING=SOUTH_WEST", tf_dbg_call_to_string(ec_frame, frame_name='ifco_southwest'))
+        return 'south', 'west'
+    elif ec_z_axis.dot(np.array([1, 0, 0])) > space_thresh and ec_z_axis.dot(np.array([0, 1, 0])) > space_thresh:
+        print("GET MATCHING=NORTH_WEST", tf_dbg_call_to_string(ec_frame, frame_name='ifco_northwest'))
+        return 'north', 'west'
+    elif ec_z_axis.dot(np.array([1, 0, 0])) > space_thresh and ec_z_axis.dot(np.array([0, 1, 0])) < -space_thresh:
+        print("GET MATCHING=NORTH_EAST", tf_dbg_call_to_string(ec_frame, frame_name='ifco_northeast'))
+        return 'north', 'east'
     else:
         # This should never be reached. Just here to prevent bugs
         raise ValueError("ERROR: Could not identify matching ifco wall. Check frames!")
@@ -140,10 +170,16 @@ def check_kinematic_feasibility(current_object_idx, objects, object_params, curr
 
     elif strategy == "CornerGrasp":
 
-        # TODO implement
-        rospy.logerr("Kinematics checks are currently only supported for surface grasps and wall grasps, "
-                     "but strategy was CornerGrasp")
-        return 0
+        selected_wall_names = get_matching_ifco_corner(ifco_in_base_transform, ec_frame)
+        print("FOUND_EC: ", selected_wall_names)
+
+        blocked_ecs = [('north', 'east'), ('north', 'west'), ('south', 'west')]  # TODO remove or move to config file
+        if selected_wall_names in blocked_ecs:
+            rospy.loginfo("Skipped corner " + selected_wall_names[0] + selected_wall_names[1] + " (Blacklisted)")
+            return 0
+
+        call_params = prepare_corner_grasp_parameter(ec_frame, selected_wall_names, objects, current_object_idx,
+                                                   object_params, ifco_in_base_transform, params)
 
     else:
         raise ValueError("Kinematics checks are currently only supported for surface grasps and wall grasps, "
@@ -345,7 +381,7 @@ def prepare_wall_grasp_parameter(ec_frame, selected_wall_name, objects, current_
     # the FT-Switch during go_down and the actual lifted distance by the TimeSwitch (or a pose switch in case
     # the robot allows precise small movements) TODO better solution?
     fake_lift_up_dist = np.min([params['lift_dist'], 0.01])  # 1cm
-    lift_hand_pose = tra.translation_matrix([0, 0, fake_lift_up_dist]).dot(go_down_pose)
+    corrective_lift_pose = tra.translation_matrix([0, 0, fake_lift_up_dist]).dot(go_down_pose)
 
     dir_wall = tra.translation_matrix([0, 0, -params['sliding_dist']])
     # TODO sliding_distance should be computed from wall and hand frame.
@@ -354,7 +390,7 @@ def prepare_wall_grasp_parameter(ec_frame, selected_wall_name, objects, current_
     dir_wall[:3, 3] = wall_frame[:3, :3].dot(dir_wall[:3, 3])
 
     # normal goal pose behind the wall
-    slide_to_wall_pose = dir_wall.dot(lift_hand_pose)
+    slide_to_wall_pose = dir_wall.dot(corrective_lift_pose)
 
     # now project it into the wall plane!
     z_projection = np.array([[1, 0, 0, 0],
@@ -367,10 +403,10 @@ def prepare_wall_grasp_parameter(ec_frame, selected_wall_name, objects, current_
 
     # TODO remove code duplication with planner.py (refactor code snippets to function calls) !!!!!!!
 
-    checked_motions = ['pre_approach', 'go_down', 'lift_hand',
+    checked_motions = ['pre_approach', 'go_down', 'corrective_lift',
                        'slide_to_wall']  # TODO overcome problem of FT-Switch after go_down
 
-    goals = [pre_approach_pose, go_down_pose, lift_hand_pose, slide_to_wall_pose]  # TODO see checked_motions
+    goals = [pre_approach_pose, go_down_pose, corrective_lift_pose, slide_to_wall_pose]  # TODO see checked_motions
 
     # Take orientation of object but translation of pre grasp pose
     pre_grasp_pos_manifold = np.copy(object_params['frame'])
@@ -384,7 +420,7 @@ def prepare_wall_grasp_parameter(ec_frame, selected_wall_name, objects, current_
         # Use object frame for sampling
         'go_down': np.copy(go_down_pose),
 
-        'lift_hand': np.copy(lift_hand_pose),
+        'corrective_lift': np.copy(corrective_lift_pose),
     # should always be the same frame as go_down # TODO use world orientation?
 
         # Use wall frame for sampling. Keep in mind that the wall frame has different orientation, than world.
@@ -399,15 +435,11 @@ def prepare_wall_grasp_parameter(ec_frame, selected_wall_name, objects, current_
         'go_down': tra.quaternion_from_matrix(go_down_pose),  # TODO use hand orietation instead?
 
         # should always be the same orientation as go_down
-        'lift_hand': tra.quaternion_from_matrix(lift_hand_pose),
+        'corrective_lift': tra.quaternion_from_matrix(corrective_lift_pose),
 
         # use wall orientation
         'slide_to_wall': tra.quaternion_from_matrix(wall_frame),
     }
-
-    # override initial robot configuration
-    # TODO also check gotToView -> params['initial_goal'] (requires forward kinematics, or change to op-space)
-    curr_start_config = params['initial_goal']
 
     allowed_collisions = {
 
@@ -421,8 +453,8 @@ def prepare_wall_grasp_parameter(ec_frame, selected_wall_name, objects, current_
                                      terminating=False),
                     ],
 
-        'lift_hand': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
-                                       terminating=False),
+        'corrective_lift': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
+                                                  terminating=False),
                       ],
 
         # TODO also allow all other obejcts to be touched during sliding motion
@@ -432,8 +464,7 @@ def prepare_wall_grasp_parameter(ec_frame, selected_wall_name, objects, current_
                              AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=obj_idx,
                                               terminating=False, required=obj_idx == current_object_idx)
                              for obj_idx in range(0, len(objects))
-                         ]
-                         + [
+                         ] + [
                              AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
                                               constraint_name=selected_wall_name, terminating=False),
 
@@ -445,3 +476,119 @@ def prepare_wall_grasp_parameter(ec_frame, selected_wall_name, objects, current_
 
     return FeasibilityQueryParameters(checked_motions, goals, allowed_collisions, goal_manifold_frames,
                                       goal_manifold_orientations)
+
+
+def prepare_corner_grasp_parameter(ec_frame, selected_wall_names, objects, current_object_idx, object_params,
+                                   ifco_in_base_transform, params):
+
+    rospy.logerr("Kinematics checks are currently only supported for surface grasps and wall grasps, "
+                 "but strategy was CornerGrasp")
+
+    # hand pose above and behind the object
+    pre_approach_transform = params['pre_approach_transform']
+
+    corner_frame = np.copy(ec_frame)
+    used_ec_frame, corner_frame_alpha_zero = GraspFrameRecipes.get_derived_corner_grasp_frames(corner_frame,
+                                                                                               object_params['frame'])
+    pre_approach_pose = used_ec_frame.dot(params['hand_transform'].dot(pre_approach_transform)) # TODO order of hand and pre_approach
+
+    # down_dist = params['down_dist']  #  dist lower than ifco bottom: behavior of the high level planner
+    # dist = z difference to ifco bottom minus hand frame offset (dist from hand frame to collision point)
+    # (more realistic behavior since we have a force threshold when going down to the bottom)
+    bounded_down_dist = pre_approach_pose[2, 3] - ifco_in_base_transform[2, 3]
+    hand_frame_to_bottom_offset = 0.07  # 7cm TODO maybe move to handarm_parameters.py
+    bounded_down_dist = min(params['down_dist'], bounded_down_dist - hand_frame_to_bottom_offset)
+
+    # goal pose for go down movement
+    go_down_pose = tra.translation_matrix([0, 0, -bounded_down_dist]).dot(pre_approach_pose)
+
+    # pose after lifting. This is somewhat fake, since the real go_down_pose will be determined by
+    # the FT-Switch during go_down and the actual lifted distance by the TimeSwitch (or a pose switch in case
+    # the robot allows precise small movements) TODO better solution?
+    fake_lift_up_dist = np.min([params['lift_dist'], 0.01])  # 1cm
+    corrective_lift_pose = tra.translation_matrix([0, 0, fake_lift_up_dist]).dot(go_down_pose)
+
+    sliding_dist = params['sliding_dist']
+    wall_dir = tra.translation_matrix([0, 0, -sliding_dist])
+    # slide direction is given by the corner_frame_alpha_zero
+    wall_dir[:3, 3] = corner_frame_alpha_zero[:3, :3].dot(wall_dir[:3, 3])
+
+    slide_to_wall_pose = wall_dir.dot(corrective_lift_pose)
+
+    # TODO actually place goal pose directly in the corner?
+
+    checked_motions = ['pre_approach', 'go_down', 'corrective_lift', 'slide_to_wall']
+
+    goals = [pre_approach_pose, go_down_pose, corrective_lift_pose, slide_to_wall_pose]
+
+    # Take orientation of object but translation of pre grasp pose
+    pre_grasp_pos_manifold = np.copy(object_params['frame'])
+    pre_grasp_pos_manifold[:3, 3] = tra.translation_from_matrix(pre_approach_pose)
+
+    slide_pos_manifold = np.copy(slide_to_wall_pose)
+
+    goal_manifold_frames = {
+        'pre_approach': pre_grasp_pos_manifold,
+
+        # Use object frame for sampling
+        'go_down': np.copy(go_down_pose),
+
+        'corrective_lift': np.copy(corrective_lift_pose),
+    # should always be the same frame as go_down # TODO use world orientation?
+
+        # Use wall frame for sampling. Keep in mind that the wall frame has different orientation, than world.
+        'slide_to_wall': slide_pos_manifold,
+    }
+
+    goal_manifold_orientations = {
+        # use hand orientation
+        'pre_approach': tra.quaternion_from_matrix(pre_approach_pose),
+
+        # Use object orientation
+        'go_down': tra.quaternion_from_matrix(go_down_pose),  # TODO use hand orietation instead?
+
+        # should always be the same orientation as go_down
+        'corrective_lift': tra.quaternion_from_matrix(corrective_lift_pose),
+
+        # use wall orientation
+        'slide_to_wall': tra.quaternion_from_matrix(corner_frame),  # TODO is that the right one?
+    }
+
+    allowed_collisions = {
+
+        # 'init_joint': [],
+
+        # no collisions are allowed during going to pre_grasp pose
+        'pre_approach': [],
+
+        # Only allow touching the bottom of the ifco
+        'go_down': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
+                                     terminating=False),
+                    ],
+
+        'corrective_lift': [AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
+                                                  terminating=False),
+                      ],
+
+        'slide_to_wall': [
+                             # Allow all other objects to be touched as well
+                             # (since hand will go through them in simulation)
+                             AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=obj_idx,
+                                              terminating=False, required=obj_idx == current_object_idx)
+                             for obj_idx in range(0, len(objects))
+                         ] + [
+                             AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                              constraint_name=selected_wall_names[0], terminating=False),
+
+                             AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                              constraint_name=selected_wall_names[1], terminating=False),
+
+                             AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT, constraint_name='bottom',
+                                              terminating=False),
+                         ],
+
+    }
+
+    return FeasibilityQueryParameters(checked_motions, goals, allowed_collisions, goal_manifold_frames,
+                                      goal_manifold_orientations)
+

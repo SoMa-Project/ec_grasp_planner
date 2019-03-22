@@ -32,7 +32,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alte
     # goal_ is object_pose.dot(params['hand_transform'])
     goal_ = pregrasp_transform.dot(tra.inverse_matrix(param_pre_grasp))
 
-    # hacky check (if feasibility is on this is already ensured, otherwise we need this for ne basic heuristic)
+    # hacky check (if feasibility is on, this is already ensured, otherwise we need this for the basic heuristic)
     if goal_[0][0] < 0:
         zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
         goal_ = goal_.dot(zflip_transform)

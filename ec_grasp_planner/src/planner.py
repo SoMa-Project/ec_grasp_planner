@@ -43,6 +43,7 @@ import TransportRecipesWAM
 import TransportRecipesKUKA
 import PlacementRecipes
 import multi_object_params as mop
+from GraspFrameRecipes import get_derived_corner_grasp_frames
 
 markers_rviz = MarkerArray()
 frames_rviz = []
@@ -302,7 +303,8 @@ def get_handarm_params(handarm_params, object_type, grasp_type):
 
 # ================================================================================================
 def get_pre_grasp_transforms(handarm_params, object_type):
-    # Returns the initial pre_grasp transforms for wall grasp and surface grasp depending on the object type and the hand in the object frame
+    # Returns the initial pre_grasp transforms for wall, surface and corner grasp depending on the object type and the
+    # hand in the object frame
     
     # Surface grasp pre_grasp transform SG_pre_grasp_transform
     params = get_handarm_params(handarm_params, object_type, "SurfaceGrasp")
@@ -368,7 +370,7 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
                                                                                           alternative_behavior)
     elif grasp_type == 'CornerGrasp':
         corner_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))
-        corner_frame_alpha_zero = mop.get_derived_corner_grasp_frames(corner_frame, chosen_object['frame'])[1]
+        corner_frame_alpha_zero = get_derived_corner_grasp_frames(corner_frame, chosen_object['frame'])[1]
         grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_corner_grasp(chosen_object,
                                                                                          corner_frame_alpha_zero,
                                                                                          handarm_params,
