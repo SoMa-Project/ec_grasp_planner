@@ -6,8 +6,7 @@ from grasp_success_estimator import RESPONSES
 
 def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # Get robot specific params
-    soft_joint_stiffness = handarm_params['soft_joint_stiffness']
-    joint_damping = handarm_params['joint_damping']
+   
 
     object_type = chosen_object['type']
     # Get the relevant parameters for hand object combination
@@ -15,6 +14,17 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
         params = handarm_params['SurfaceGrasp'][object_type]
     else:
         params = handarm_params['SurfaceGrasp']['object']
+    
+    high_cartesian_stiffness = handarm_params['high_cartesian_stiffness']
+    low_cartesian_stiffness = params['low_cartesian_stiffness']
+    cartesian_damping = handarm_params['cartesian_damping']
+    null_stiff = handarm_params['nullspace_stiffness']
+    null_damp = handarm_params['nullspace_damping']
+
+    high_joint_stiffness = handarm_params['high_joint_stiffness']
+    low_joint_stiffness = params['low_joint_stiffness']
+    joint_damping = handarm_params['joint_damping']
+    
     # Get params per phase
 
     # Approach phase
@@ -40,6 +50,15 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
 
     # assemble controller sequence
     control_sequence = []
+
+    # 00a. Change arm mode - soften
+    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'cartesian_impedance', 
+    #                                                     cartesian_stiffness = high_cartesian_stiffness, cartesian_damping = cartesian_damping, 
+    #                                                     nullspace_stiffness =null_stiff, nullspace_damping = null_damp))
+    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', 
+                                                        joint_stiffness = high_joint_stiffness, joint_damping = joint_damping))
+    # 00b. We switch after a short time 
+    control_sequence.append(ha.TimeSwitch('GoStiff', 'softhand_preshape', duration=1.0))
 
     # 0. Trigger pre-shaping the hand
     control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_preshape_goal]), name  = 'softhand_preshape', synergy = '1'))
@@ -113,9 +132,11 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     control_sequence.append(ha.RosTopicSwitch('GoDown', 'softhand_open_recovery_SurfaceGrasp', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 4d. Change arm mode - soften
+    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'cartesian_impedance', 
+    #                                                     cartesian_stiffness = low_cartesian_stiffness, cartesian_damping = cartesian_damping, 
+    #                                                     nullspace_stiffness =null_stiff, nullspace_damping = null_damp))
     control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'joint_impedance', 
-                                                        joint_stiffness = soft_joint_stiffness, joint_damping = joint_damping))
-
+                                                        joint_stiffness = low_joint_stiffness, joint_damping = joint_damping))
     # 4e. We switch after a short time 
     control_sequence.append(ha.TimeSwitch('GoSoft', 'softhand_close', duration=1.0))
 
@@ -137,8 +158,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
 # ================================================================================================
 def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transform):
     # Get robot specific params
-    soft_joint_stiffness = handarm_params['soft_joint_stiffness']
-    joint_damping = handarm_params['joint_damping']
+
 
     object_type = chosen_object['type']
     # Get the relevant parameters for hand object combination
@@ -146,6 +166,16 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
         params = handarm_params['WallGrasp'][object_type]
     else:
         params = handarm_params['WallGrasp']['object']
+
+    high_cartesian_stiffness = handarm_params['high_cartesian_stiffness']
+    cartesian_damping = handarm_params['cartesian_damping']
+    low_cartesian_stiffness = params['low_cartesian_stiffness']
+    null_stiff = handarm_params['nullspace_stiffness']
+    null_damp = handarm_params['nullspace_damping']
+
+    high_joint_stiffness = handarm_params['high_joint_stiffness']
+    low_joint_stiffness = params['low_joint_stiffness']
+    joint_damping = handarm_params['joint_damping']
 
     # Get params per phase
 
@@ -185,6 +215,15 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     slide_twist = np.array([slide_forwards_linear_velocity[0], slide_forwards_linear_velocity[1], slide_forwards_linear_velocity[2], 0, 0, 0])
 
     control_sequence = []
+
+    # 00a. Change arm mode - soften
+    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'cartesian_impedance', 
+    #                                                     cartesian_stiffness = high_cartesian_stiffness, cartesian_damping = cartesian_damping, 
+    #                                                     nullspace_stiffness =null_stiff, nullspace_damping = null_damp))
+    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', 
+                                                        joint_stiffness = high_joint_stiffness, joint_damping = joint_damping))
+    # 00b. We switch after a short time 
+    control_sequence.append(ha.TimeSwitch('GoStiff', 'softhand_preshape', duration=1.0))
 
     # 0 trigger pre-shaping the hand
     control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_preshape_goal]), name  = 'softhand_preshape', synergy = '1'))
@@ -281,9 +320,12 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     control_sequence.append(ha.RosTopicSwitch('SlideToWall', 'recovery_SlideWG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 6d. Change arm mode - soften
+    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'cartesian_impedance', 
+    #                                                     cartesian_stiffness = low_cartesian_stiffness, cartesian_damping = cartesian_damping, 
+    #                                                     nullspace_stiffness =null_stiff, nullspace_damping = null_damp))
     control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'joint_impedance', 
-                                                        joint_stiffness = soft_joint_stiffness, joint_damping = joint_damping))
-    # 6e. We switch after a short time 
+                                                        joint_stiffness = low_joint_stiffness, joint_damping = joint_damping))
+    #  6e. We switch after a short time 
     control_sequence.append(ha.TimeSwitch('GoSoft', 'SlideBackFromWall', duration=1.0))
 
     # 7. Go back a bit to allow the hand to inflate
@@ -311,8 +353,6 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # ================================================================================================
 def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, pregrasp_transform):
     # Get robot specific params
-    soft_joint_stiffness = handarm_params['soft_joint_stiffness']
-    joint_damping = handarm_params['joint_damping']
 
     object_type = chosen_object['type']
     # Get the relevant parameters for hand object combination
@@ -320,6 +360,16 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
         params = handarm_params['CornerGrasp'][object_type]
     else:
         params = handarm_params['CornerGrasp']['object']
+
+    high_cartesian_stiffness = handarm_params['high_cartesian_stiffness']
+    cartesian_damping = handarm_params['cartesian_damping']
+    low_cartesian_stiffness = params['low_cartesian_stiffness']
+    null_stiff = handarm_params['nullspace_stiffness']
+    null_damp = handarm_params['nullspace_damping']
+    
+    high_joint_stiffness = handarm_params['high_joint_stiffness']
+    low_joint_stiffness = params['low_joint_stiffness']
+    joint_damping = handarm_params['joint_damping']
 
     # Get params per phase
 
@@ -359,6 +409,14 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     slide_twist = np.array([slide_forwards_linear_velocity[0], slide_forwards_linear_velocity[1], slide_forwards_linear_velocity[2], 0, 0, 0])
 
     control_sequence = []
+    # 00a. Change arm mode - soften
+    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'cartesian_impedance', 
+    #                                                     cartesian_stiffness = high_cartesian_stiffness, cartesian_damping = cartesian_damping, 
+    #                                                     nullspace_stiffness =null_stiff, nullspace_damping = null_damp))
+    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', 
+                                                        joint_stiffness = high_joint_stiffness, joint_damping = joint_damping))
+    # 00b. We switch after a short time 
+    control_sequence.append(ha.TimeSwitch('GoStiff', 'softhand_preshape', duration=1.0))
 
     # 0 trigger pre-shaping the hand
     control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_preshape_goal]), name  = 'softhand_preshape', synergy = '1'))
@@ -455,8 +513,9 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     control_sequence.append(ha.RosTopicSwitch('SlideToWall', 'recovery_SlideWG', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
     
     # 6d. Change arm mode - soften
-    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'joint_impedance', 
-                                                        joint_stiffness = soft_joint_stiffness, joint_damping = joint_damping))
+    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoSoft', mode_id = 'cartesian_impedance', 
+                                                        cartesian_stiffness = low_cartesian_stiffness, cartesian_damping = cartesian_damping, 
+                                                        nullspace_stiffness =null_stiff, nullspace_damping = null_damp))
     # 6e. We switch after a short time 
     control_sequence.append(ha.TimeSwitch('GoSoft', 'SlideBackFromWall', duration=1.0))
 

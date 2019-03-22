@@ -229,12 +229,12 @@ class KUKA(BaseHandArm):
 
         # Impedance control params
         self['joint_damping'] = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7])
-        self['stiff_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 200, 100, 100])
-        self['joint_damping'] = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7])
+        self['high_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 200, 100, 100])
         # Cartesian impedance control params
         self['cartesian_stiffness'] = np.array([1000, 1000, 1000, 300, 300, 300])
+        self['high_cartesian_stiffness'] = np.array([5000, 5000, 5000, 300, 300, 300])
         self['cartesian_damping'] = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7]) 
-        self['nullspace_stiffness'] = 100 
+        self['nullspace_stiffness'] = 200 
         self['nullspace_damping'] = 0.7
             
 
@@ -652,9 +652,11 @@ class PISAGripperKUKA(KUKA):
 
         # Placement pose reachable for the PISA gripper
 
-        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.32804, -0.62733, 0.068286]), tra.quaternion_matrix([0.85531, -0.51811, -0.0023802, -0.0016251]))
+        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.32804, -0.62733, 0.068286]), 
+                                                            tra.quaternion_matrix([0.85531, -0.51811, -0.0023802, -0.0016251]))
 
-        self['view_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.36392, -0.65228, 0.26258]), tra.quaternion_matrix([-0.6846, 0.72715, 0.018816, 0.047258]))
+        self['view_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.5452, -0.4836, 0.2]), 
+                                                        tra.quaternion_matrix([1, 0, 0, 0]))
 
         ####################################################################################
         # Params that define the grasping controller
@@ -670,6 +672,10 @@ class PISAGripperKUKA(KUKA):
         ####################################################################################
         # PISAGripper specific params
         ####################################################################################
+
+        self['SurfaceGrasp']['object']['low_cartesian_stiffness'] = np.array([5000, 5000, 2000, 300, 300, 300])
+        self['SurfaceGrasp']['object']['low_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 200, 10, 10])
+
 
         self['SurfaceGrasp']['object']['hand_preshape_goal'] = 0
         self['SurfaceGrasp']['object']['hand_preshaping_duration'] = 0
@@ -709,8 +715,8 @@ class PISAGripperKUKA(KUKA):
         self['SurfaceGrasp']['object']['lift_duration'] = 11
 
         self['SurfaceGrasp']['cucumber'] = self['SurfaceGrasp']['object'].copy()
-        self['SurfaceGrasp']['cucumber']['hand_preshape_goal'] = 0.15
-        self['SurfaceGrasp']['cucumber']['downward_force'] = 10
+        self['SurfaceGrasp']['cucumber']['hand_preshape_goal'] = 0.2
+        self['SurfaceGrasp']['cucumber']['downward_force'] = 8
 
 
 
@@ -719,6 +725,10 @@ class PISAGripperKUKA(KUKA):
         #####################################################################################
         self['WallGrasp']['object']['hand_preshape_goal'] = 0
         self['WallGrasp']['object']['hand_preshaping_duration'] = 0
+
+        self['WallGrasp']['object']['low_cartesian_stiffness'] = np.array([2000, 5000, 5000, 300, 10, 300])
+        self['WallGrasp']['object']['low_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 100, 20, 20])
+
 
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
@@ -754,29 +764,53 @@ class PISAGripperKUKA(KUKA):
                         math.radians(0.0), [0, 0, 1]),
             ))
 
-        self['WallGrasp']['object']['downward_force'] = 1.8
+        self['WallGrasp']['object']['downward_force'] = 2.5
         self['WallGrasp']['object']['down_speed'] = 0.03
         self['WallGrasp']['object']['corrective_lift_duration'] = 1.5
         self['WallGrasp']['object']['up_speed'] = 0.03
         self['WallGrasp']['object']['wall_force'] = 12.0
-        self['WallGrasp']['object']['slide_speed'] = 0.03 #sliding speed
+        self['WallGrasp']['object']['slide_speed'] = 0.05 #sliding speed
         self['WallGrasp']['object']['pre_grasp_twist'] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         self['WallGrasp']['object']['pre_grasp_rotation_duration'] = 0
         self['WallGrasp']['object']['hand_closing_duration'] = 1.0
         self['WallGrasp']['object']['hand_closing_goal'] = 0.8
 
         # first motion after grasp, in hand palm frame
-        self['WallGrasp']['object']['post_grasp_twist'] = np.array([-0.05, 0.0, 0.0, 0.0, math.radians(-18.0), 0.0])
+        self['WallGrasp']['object']['post_grasp_twist'] = np.array([-0.01, 0.0, 0.02, 0.0, math.radians(-5.0), 0.0])
         self['WallGrasp']['object']['post_grasp_rotation_duration'] = 2    
 
         # duration of lifting the object
         self['WallGrasp']['object']['lift_duration'] = 8  
+
+        # Object specific params
+
+        self['WallGrasp']['cucumber'] = self['WallGrasp']['object'].copy()
+        self['WallGrasp']['cucumber']['hand_preshape_goal'] = 0.2
+        self['WallGrasp']['cucumber']['hand_preshaping_duration'] = 1
+        self['WallGrasp']['cucumber']['scooping_angle'] = math.radians(20)
+        self['WallGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.15, 0, -0.05]), #15 cm above object, 10 cm behind
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    self['WallGrasp']['cucumber']['scooping_angle'], [0, 1, 0]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 0, 1]),
+        ))
+        self['WallGrasp']['cucumber']['wall_force'] = 15.0
+        self['WallGrasp']['cucumber']['slide_speed'] = 0.1 #sliding speed
+
 
         #####################################################################################
         # Below are parameters for CORNER grasp 
         #####################################################################################
         self['CornerGrasp']['object']['hand_preshape_goal'] = 0
         self['CornerGrasp']['object']['hand_preshaping_duration'] = 0
+
+        self['CornerGrasp']['object']['low_cartesian_stiffness'] = np.array([2000, 5000, 5000, 300, 10, 300])
+        self['CornerGrasp']['object']['low_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 200, 10, 10])
+
 
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
