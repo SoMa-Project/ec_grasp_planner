@@ -377,7 +377,6 @@ class RBOHandP24WAM(RBOHand2):
         # Short lift after initial contact with bottom (before slide)
         self['CornerGrasp']['object']['corrective_lift_dist'] = 0.1
 
-
         # The maximum allowed force for pushing against the wall (guarding the sliding movement)
         self['CornerGrasp']['object']['wall_force'] = 12.0
 
@@ -386,7 +385,6 @@ class RBOHandP24WAM(RBOHand2):
 
         # Maximum velocity of the EE during the sliding movement. First value: rotational, second translational
         self['CornerGrasp']['object']['slide_velocity'] = np.array([0.125, 0.20])  # np.array([0.125, 0.12])
-
 
         # ---- Hand closing ----
         # synergy type for soft hand closing
