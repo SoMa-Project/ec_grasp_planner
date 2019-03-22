@@ -66,14 +66,18 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     target_cm_okay = 'GoDropOff'
 
     # 2b.1 No object was grasped => go to failure mode.
-    target_cm_estimation_no_object = 'softhand_open_after_failure_and_' + reaction.cm_name_for(FailureCases.MASS_ESTIMATION_NO_OBJECT, default=target_cm_okay)
+    target_cm_estimation_no_object = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_NO_OBJECT, default=target_cm_okay)
+    if target_cm_estimation_no_object != target_cm_okay:
+        target_cm_estimation_no_object = 'softhand_open_after_failure_and_' + target_cm_estimation_no_object
     control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_estimation_no_object,
                                               ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
                                               goal=np.array([RESPONSES.ESTIMATION_RESULT_NO_OBJECT.value]),
                                               ))
 
     # 2b.2 More than one object was grasped => failure
-    target_cm_estimation_too_many = 'softhand_open_after_failure_and_' + reaction.cm_name_for(FailureCases.MASS_ESTIMATION_TOO_MANY, default=target_cm_okay)
+    target_cm_estimation_too_many = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_TOO_MANY, default=target_cm_okay)
+    if target_cm_estimation_too_many != target_cm_okay:
+        target_cm_estimation_too_many = 'softhand_open_after_failure_and_' + target_cm_estimation_too_many
     control_sequence.append(ha.RosTopicSwitch('EstimationMassMeasurement', target_cm_estimation_too_many,
                                               ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
                                               goal=np.array([RESPONSES.ESTIMATION_RESULT_TOO_MANY.value]),
