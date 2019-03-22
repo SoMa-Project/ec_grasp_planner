@@ -333,7 +333,7 @@ class RBOHandP24WAM(RBOHand2):
         #####################################################################################
 
         self['CornerGrasp']['object']['initial_goal'] = np.array(
-            [0.439999, 0.624437, -0.218715, 1.71695, -0.735594, 0.197093, -0.920799])
+            [0.458148, 0.649566, -0.30957, 2.22163, -1.88134, 0.289638, -0.326112])
 
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
@@ -355,12 +355,12 @@ class RBOHandP24WAM(RBOHand2):
         # - fingers pointing downwards
         # - palm facing the object and wall
         self['CornerGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.23, 0, -0.14]),  # 23 cm above object, 15 cm behind
+            tra.translation_matrix([-0.23, 0.0, -0.14]),  # 23 cm above object, 15 cm behind
             tra.concatenate_matrices(
                 tra.rotation_matrix(
                     math.radians(0.), [1, 0, 0]),
                 tra.rotation_matrix(
-                    math.radians(30.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                    math.radians(15.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
                 tra.rotation_matrix(  # this makes the fingers point downwards
                     math.radians(0.0), [0, 0, 1]),
             ))
@@ -378,27 +378,27 @@ class RBOHandP24WAM(RBOHand2):
         self['CornerGrasp']['object']['corrective_lift_dist'] = 0.1
 
         # The maximum allowed force for pushing against the wall (guarding the sliding movement)
-        self['CornerGrasp']['object']['wall_force'] = 12.0
+        self['CornerGrasp']['object']['wall_force'] = 12.0 # aggressive 17
 
         # Sliding distance. Should be at least half the ifco size
         self['CornerGrasp']['object']['sliding_dist'] = 0.4
 
         # Maximum velocity of the EE during the sliding movement. First value: rotational, second translational
-        self['CornerGrasp']['object']['slide_velocity'] = np.array([0.125, 0.20])  # np.array([0.125, 0.12])
+        self['CornerGrasp']['object']['slide_velocity'] = np.array([0.125, 0.3]) #.063 for empty tennis balls; aggresive 0.5 # np.array([0.125, 0.12])
 
         # ---- Hand closing ----
         # synergy type for soft hand closing
         self['CornerGrasp']['object']['hand_closing_synergy'] = 0
 
         # time of soft hand closing
-        self['CornerGrasp']['object']['hand_closing_duration'] = 1.0
+        self['CornerGrasp']['object']['hand_closing_duration'] = 2.0
 
         # ---- Drop off parameters ----
         # first motion after grasp, in hand palm frame
         self['CornerGrasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.01, 0.0, 0.0]),  # nothing right now
-            tra.rotation_matrix(math.radians(-12.0),
-                                [0, 1, 0]))
+            tra.translation_matrix([-0.02, -0.0, 0.0]),  # nothing right now
+            tra.rotation_matrix(math.radians(-10.0),
+                                 [0, 1, 0]))
 
         # Distance that the hand should be lifted after grasping the object
         self['CornerGrasp']['object']['up_dist'] = 0.25

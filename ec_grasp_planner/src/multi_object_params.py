@@ -55,7 +55,7 @@ class multi_object_params:
         self.stored_trajectories = {}
 
         self.hand_name = rospy.get_param('/planner_gui/hand', default='RBOHandP24_pulpy')
-        self.heuristic_type = rospy.get_param("planner_gui/heuristic_type", default="tub")
+        self.heuristic_type = rospy.get_param("planner_gui/heuristic_type", default="tub-separated")
 
     def get_object_params(self):
         if self.data is None:
@@ -162,6 +162,36 @@ class multi_object_params:
         else:
             return 0
 
+    def black_list_corners(self, current_ec_index, all_ec_frames, strategy):
+
+        if strategy not in ["CornerGrasp"]:
+            # print("strategy {} not CG".format(strategy))
+            return 1
+        # this function will blacklist all corners except
+        # the one on th right side and further from the robot
+        # y coord is negative and x is greater
+
+        # print("Corner EC: \n {} \n at x: {} \n at y: {}".format(all_ec_frames[current_ec_index],all_ec_frames[current_ec_index][0,3], all_ec_frames[current_ec_index][1,3]))
+
+        if all_ec_frames[current_ec_index][1,3] > 0:
+            # print("==== F1 ========")
+            return 0
+
+        max_x = -10000.0
+        max_x_index = 0
+
+        for i, ec in enumerate(all_ec_frames):
+            if  (max_x < ec[0,3]) and ec[1,3] < 0:
+                max_x = ec[0,3]
+                max_x_index = i
+
+        if max_x_index == current_ec_index:
+            # print("==== true ========")
+            return 1
+        else:
+            # print("==== F2 i={} c={} ========".format(max_x_index, current_ec_index))
+            return 0
+
     def black_list_unreachable_zones(self, object, object_params, ifco_in_base_transform, strategy):
 
         # this function will blacklist out of reach zones for wall and surface grasp
@@ -182,6 +212,106 @@ class multi_object_params:
         else:
             return 0
 
+    def surfaceGrasp_hihgest_object(self, object, objects, strategy):
+        # for surface grasp always prefer the hiehest object on the pile
+        if strategy not in ["SurfaceGrasp"]:
+            print("Not SG!")
+            return 1
+
+        object_HT = object['frame']
+        max_h = -10000
+        epsilon = 0.01
+
+        for o in objects:
+            o_HT = o['frame']
+            print("o_h: {}".format(o_HT[2,3]))
+            if o_HT[2,3] > max_h:
+                max_h = o_HT[2,3]
+        print("o_max: {}".format(max_h))
+
+        if object_HT[2,3]+epsilon < max_h:
+            return 0.2
+
+        return 1.0
+
+    def wallGrasp_distant_object(self, object, objects, strategy, ec_HT):
+        # for surface grasp always prefer the hiehest object on the pile
+        if strategy not in ["WallGrasp", "CornerGrasp"]:
+            return 1
+
+        object_HT = object['frame']
+        max_dist = -10000
+        epsilon = 0.01
+
+        for o in objects:
+            o_HT = o['frame']
+
+            delta = np.linalg.inv(ec_HT).dot(o_HT)
+            # this is the distance between object and EC
+            dist = delta[2, 3]
+
+            if dist > max_dist:
+                max_dist = dist
+
+        delta = np.linalg.inv(ec_HT).dot(object_HT)
+        # this is the distance between object and EC
+        dist = delta[2, 3]
+
+        if dist+epsilon < max_dist:
+            return 0.2
+
+        return 1.0
+
+
+    def cornerGrasp_distant_object(self, object, objects, strategy, ec_HT):
+        # for surface grasp always prefer the hiehest object on the pile
+        if strategy not in ["CornerGrasp"]:
+            return 1
+
+        object_HT = object['frame']
+        max_dist = -10000
+        epsilon = 0.01
+
+        #object_in_EC = np.linalg.inv(ec_HT)*object_HT
+        # angle_of_attack = np.arctan2(object_HT[0,3], object_HT[2,3])
+
+        ##z = z - (np.dot(z, y) * y) project to surface
+        attack_vector =  object_HT[0:2,3] - ec_HT[0:2,3]
+        attack_vector =  attack_vector - (np.dot(attack_vector, ec_HT[0:2,1]) *ec_HT[0:2,1] )
+
+        angle_of_attack = np.arccos(np.dot(ec_HT[0:2,2], attack_vector)/
+                                    (np.linalg.norm(ec_HT[0:2,2]) * np.linalg.norm(attack_vector)))
+
+        # print("angle: {} frame {}, obj {}".format(np.rad2deg(angle_of_attack), ec_HT[0:3,3], object_HT[0:3,3]))
+
+        if angle_of_attack > np.deg2rad(30) or angle_of_attack < np.deg2rad(20):
+            return 0.2
+
+        # for o in objects:
+        #     o_HT = o['frame']
+        #
+        #     attack_vector = o_HT[0:2, 3] - ec_HT[0:2, 3]
+        #     attack_vector = attack_vector - (np.dot(attack_vector, ec_HT[0:2, 1]) * ec_HT[0:2, 1])
+        #     angle_of_attack = np.arccos(np.dot(ec_HT[0:2, 2], attack_vector) / \
+        #                                 (np.linalg.norm(ec_HT[0:2, 2]) * np.linalg.norm(attack_vector)))
+        #
+        #     if angle_of_attack < np.deg2rad(-35) and angle_of_attack > np.deg2rad(-18):
+        #         delta = np.linalg.inv(ec_HT).dot(o_HT)
+        #         # this is the distance between object and EC
+        #         dist = delta[2, 3]
+        #
+        #         if dist > max_dist:
+        #             max_dist = dist
+        #
+        # delta = np.linalg.inv(ec_HT).dot(object_HT)
+        # # this is the distance between object and EC
+        # dist = delta[2, 3]
+        #
+        # if dist+epsilon < max_dist:
+        #     return 0.2
+
+        return 1.0
+
     def black_list_risk_regions(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames,
                                 ifco_in_base_transform):
 
@@ -191,8 +321,32 @@ class multi_object_params:
 
         zone_fac = self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)
         wall_fac = self.black_list_walls(current_ec_index, all_ec_frames, strategy)
+        corner_fac = self.black_list_corners(current_ec_index, all_ec_frames, strategy)
 
-        return zone_fac * wall_fac
+        return zone_fac * wall_fac * corner_fac
+
+    def basic_pile_heuristic(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames):
+        ##-----------------------------------OCE-------------------
+        ## used for ECE and OCE
+        # self.black_list_walls(current_ec_index, all_ec_frames, strategy) * \
+        ## used for ECE and OCE
+        # self.black_list_corners(current_ec_index, all_ec_frames, strategy) * \
+        ## used for OCE only @ corner - can be active for all OCE strategies
+        #self.cornerGrasp_distant_object(object, objects, strategy, ec_frame) * \
+        ## used for OCE only @ corenr & wall - can be active for all OCE strategies
+        #self.wallGrasp_distant_object(object, objects, strategy, ec_frame) * \
+        ## used for OCE only @ surface - can be active for all OCE strategies
+        #self.surfaceGrasp_hihgest_object(object, objects, strategy)
+
+        object = objects[current_object_idx]
+        ec_frame = all_ec_frames[current_ec_index]
+
+        return self.black_list_walls(current_ec_index, all_ec_frames, strategy) * \
+            self.black_list_corners(current_ec_index, all_ec_frames, strategy) * \
+            self.cornerGrasp_distant_object(object, objects, strategy, ec_frame) * \
+            self.wallGrasp_distant_object(object, objects, strategy, ec_frame) * \
+            self.surfaceGrasp_hihgest_object(object, objects, strategy)
+
 
     # ------------------------------------------------------------- #
     # object-environment-hand based heuristic, q_value for grasping
@@ -205,7 +359,7 @@ class multi_object_params:
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
 
-        if self.heuristic_type == 'tub':
+        if self.heuristic_type == 'tub-separated':
             feasibility_fun = partial(tub_feasibility_check_interface.check_kinematic_feasibility,
                                       current_object_idx, objects, object_params, current_ec_index,
                                       strategy, all_ec_frames, ifco_in_base_transform, handarm_params,
@@ -215,10 +369,15 @@ class multi_object_params:
             # TODO integrate
             raise ValueError("Not supported yet")
 
-        elif self.heuristic_type == 'None':
+        elif self.heuristic_type == 'basic-separated':
             # Use default plain and simple black listing approach
             feasibility_fun = partial(self.black_list_risk_regions, current_object_idx, objects, current_ec_index,
                                       strategy, all_ec_frames, ifco_in_base_transform)
+
+        elif self.heuristic_type == 'basic-pile':
+            # Use default plain and simple black listing approach
+            feasibility_fun = partial(self.basic_pile_heuristic, current_object_idx, objects, current_ec_index,
+                                      strategy, all_ec_frames)
 
         else:
             if self.heuristic_type == 'ocado':
@@ -392,7 +551,7 @@ class multi_object_params:
         self.reset_kinematic_checks_information()
         self.hand_name = rospy.get_param('/planner_gui/hand', default='RBOHandP24_pulpy')
         # set the heuristic type that should be used. Make sure this object member is only set here!
-        self.heuristic_type = rospy.get_param("planner_gui/heuristic_type", default="tub")
+        self.heuristic_type = rospy.get_param("planner_gui/heuristic_type", default="tub-separated")
 
         # Calculate Q-Matrix
         Q_matrix = self.create_q_matrix(object_type, ecs, graph_in_base, ifco_in_base_transform,
@@ -472,7 +631,9 @@ def get_derived_corner_grasp_frames(corner_frame, object_pose):
     x = np.cross(y, z)
     x = x / np.linalg.norm(x)
     # the rotation part is overwritten with the new axis
-    ec_frame[:3, :3] = np.hstack((x, y, z))
+    ec_frame[:3, :3] = np.vstack((x, y, z))
+    #ec_frame[:3, :3] = np.stack((x, y, z), axis=1) # TODO this line is the wokring one on our life robot. Check for downward compatibility
+    #ec_frame[:3, :3] = tra.inverse_matrix(np.vstack((x, y, z))) <- This one?
 
     corner_frame_alpha_zero = np.copy(corner_frame)
     corner_frame_alpha_zero[:3, :3] = np.copy(ec_frame[:3, :3])
