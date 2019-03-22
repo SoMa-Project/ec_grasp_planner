@@ -5,8 +5,13 @@ from grasp_success_estimator import RESPONSES
 
 def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, grasp_type, handarm_type):
     # Get object specific params    
-    stiff_joint_stiffness = handarm_params['stiff_joint_stiffness']
+    high_joint_stiffness = handarm_params['high_joint_stiffness']
     joint_damping = handarm_params['joint_damping']
+
+    high_cartesian_stiffness = handarm_params['high_cartesian_stiffness']
+    cartesian_damping = handarm_params['cartesian_damping']
+    null_stiff = handarm_params['nullspace_stiffness']
+    null_damp = handarm_params['nullspace_damping']
 
     object_type = chosen_object['type']
     # Get the relevant parameters for hand object combination
@@ -38,14 +43,21 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
         control_sequence.append(ha.CartesianVelocityControlMode(up_world_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="world"))
     
     # 1b. Switch after the lift time
-    control_sequence.append(ha.TimeSwitch('GoUp_1', 'EstimationMassMeasurement', duration = lift_time))
+    control_sequence.append(ha.TimeSwitch('GoUp_1', 'GoStiff_Transport', duration = lift_time))
 
     # 1c. Change arm -mode - stiffen 
-    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', 
-    #                                                     joint_stiffness = stiff_joint_stiffness, joint_damping = joint_damping))
+    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff_Transport', mode_id = 'joint_impedance', 
+                                                        joint_stiffness = high_joint_stiffness, joint_damping = joint_damping))
 
     # 1d. We switch after a short time 
-    # control_sequence.append(ha.TimeSwitch('GoStiff', 'EstimationMassMeasurement', duration=1.0))
+    control_sequence.append(ha.TimeSwitch('GoStiff_Transport', 'EstimationMassMeasurement', duration=1.0))
+
+    # # 1c. Change arm -mode - stiffen 
+    # control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff_Transport', mode_id = 'cartesian_impedance', 
+    #                                                     cartesian_stiffness = high_cartesian_stiffness, cartesian_damping = cartesian_damping, 
+    #                                                     nullspace_stiffness =null_stiff, nullspace_damping = null_damp))
+    # # 1d. We switch after a short time 
+    # control_sequence.append(ha.TimeSwitch('GoStiff_Transport', 'EstimationMassMeasurement', duration=1.0))
 
     # 2. Measure the mass again and estimate number of grasped objects (grasp success estimation)
     control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
