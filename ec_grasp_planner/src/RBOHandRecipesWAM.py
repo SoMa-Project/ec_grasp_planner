@@ -335,7 +335,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     control_sequence.append(ha.JointConfigurationSwitch('InitialJointConfig', 'softhand_preshape_2_1',
                                                         controller='initialJointCtrl', epsilon=str(math.radians(7.))))
 
-    # 1 trigger pre-shaping the hand (if there is a synergy). The 2 in the name represents a wall grasp.
+    # 1. trigger pre-shaping the hand (if there is a synergy). The 2 in the name represents a wall grasp.
     control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_2_1'))
 
     # 1b. Time for pre-shape
@@ -592,6 +592,7 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     initial_jointConf = params['initial_goal']
 
     pre_approach_transform = pregrasp_transform
+    pre_grasp_joint_velocity = params['max_joint_velocity']
 
     # ---- GoDown ----
     # Force threshold for guarded GoDown motion
@@ -601,10 +602,12 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     down_dir = tra.translation_matrix([0, 0, -down_dist])
 
     go_down_velocity = params['go_down_velocity']
+    go_down_joint_velocity = params['max_joint_velocity']
 
     # ---- LiftHand ----
     lift_dist = params['corrective_lift_dist']
     lift_dir = tra.translation_matrix([0, 0, lift_dist])
+    lift_hand_joint_velocity = params['max_joint_velocity']
 
     # ---- SlideToWall
     wall_force = params['wall_force']
@@ -617,6 +620,7 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     wall_dir[:3, 3] = corner_frame_alpha_zero[:3, :3].dot(wall_dir[:3, 3])
 
     slide_velocity = params['slide_velocity']
+    slide_joint_velocity = params['slide_joint_velocity']
 
     # -- Grasping phase --
 
@@ -650,56 +654,117 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
         ha.JointControlMode(initial_jointConf, name='InitialJointConfig', controller_name='initialJointCtrl'))
 
     # 0b. Joint config switch
-    control_sequence.append(ha.JointConfigurationSwitch('InitialJointConfig', 'softhand_preshape_2_1',
+    control_sequence.append(ha.JointConfigurationSwitch('InitialJointConfig', 'softhand_preshape_4_1',
                                                         controller='initialJointCtrl', epsilon=str(math.radians(7.))))
 
-    # 0.5 trigger pre-shaping the hand (if there is a synergy). The 2 in the name represents a wall grasp.
-    control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_2_1'))
-    control_sequence.append(ha.TimeSwitch('softhand_preshape_2_1', 'PreGrasp', duration=0.5))  # time for pre-shape
+    # 1. trigger pre-shaping the hand (if there is a synergy). The 4 in the name represents a corner grasp.
+    control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_4_1'))
 
-    # 1. Go above the object
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(pre_approach_transform, controller_name='GoAboveObject', goal_is_relative='0',
-                                             name="PreGrasp"))
+    # 1b. Time for pre-shape
+    control_sequence.append(ha.TimeSwitch('softhand_preshape_4_1', 'PreGrasp', duration=0.5))  # time for pre-shape
 
-    # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
-                                               epsilon='0.01'))
+    # 2. Go above the object - Pregrasp
+    if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
+        # we can not use the initially generated plan, but have to include the result of the feasibility checks
+        goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
 
-    # TODO add a time switch and short waiting time before the reference measurement is actually done?
-    # 2. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
+        print("Use alternative GOAL_TRAJ PreGrasp Dim", goal_traj.shape)
+        control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
+                                                    goal_is_relative='0',
+                                                    v_max=pre_grasp_joint_velocity,
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear'))
+
+        # 2b. Switch when hand reaches the goal configuration
+        control_sequence.append(ha.JointConfigurationSwitch('PreGrasp', 'PrepareForReferenceMassMeasurement',
+                                                            controller='GoAboveObject', epsilon=str(math.radians(7.))))
+
+    else:
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(pre_approach_transform, controller_name='GoAboveObject',
+                                                 goal_is_relative='0', name="PreGrasp"))
+
+        # 2b. Switch when hand reaches the goal pose
+        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForReferenceMassMeasurement',
+                                                   controller='GoAboveObject', epsilon='0.01'))
+
+    # 3. Hold current joint config
+    control_sequence.append(ha.BlockJointControlMode(name='PrepareForReferenceMassMeasurement'))
+
+    # 3b. Wait for a bit to allow vibrations to attenuate
+    control_sequence.append(ha.TimeSwitch('PrepareForReferenceMassMeasurement', 'ReferenceMassMeasurement',
+                                          duration=0.5))
+
+    # 4. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
     control_sequence.append(ha.BlockJointControlMode(name='ReferenceMassMeasurement'))  # TODO use gravity comp instead?
 
-    # 2b. Switches when reference measurement was done
-    # 2b.1 Successful reference measurement
+    # 4b. Switches when reference measurement was done
+    # 4b.1 Successful reference measurement
     control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
                                               ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
                                               goal=np.array([RESPONSES.REFERENCE_MEASUREMENT_SUCCESS.value]),
                                               ))
 
-    # 2b.2 The grasp success estimator module is inactive
+    # 4b.2 The grasp success estimator module is inactive
     control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
                                               ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
                                               goal=np.array([RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE.value]),
                                               ))
 
-    # 2b.3 Timeout (grasp success estimator module not started, an error occurred or it takes too long)
+    # 4b.3 Timeout (grasp success estimator module not started, an error occurred or it takes too long)
     control_sequence.append(ha.TimeSwitch('ReferenceMassMeasurement', 'GoDown',
                                           duration=success_estimator_timeout))
 
-    # 2b.4 There is no special switch for unknown error response (estimator signals REFERENCE_MEASUREMENT_FAILURE)
+    # 4b.4 There is no special switch for unknown error response (estimator signals REFERENCE_MEASUREMENT_FAILURE)
     #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
 
-    # 3. Go down onto the object/table, in world frame
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(down_dir,
-                                             controller_name='GoDown',
-                                             goal_is_relative='1',
-                                             name="GoDown",
-                                             reference_frame="world",
-                                             v_max=go_down_velocity))
+    # 5. Go down onto the object/table, in world frame
 
-    # 3b. Switch when force threshold is exceeded
+    if alternative_behavior is not None and 'go_down' in alternative_behavior:
+        # we can not use the initially generated plan, but have to include the result of the feasibility checks
+        # Go down onto the object (joint controller + relative world frame motion)
+
+        goal_traj = alternative_behavior['go_down'].get_trajectory()
+
+        print("Use alternative GOAL_TRAJ GoDown Dim:", goal_traj.shape)  # TODO remove (only for debugging)
+        control_sequence.append(ha.JointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
+                                                    goal_is_relative='0',
+                                                    v_max=go_down_joint_velocity,
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear'))
+
+        # Relative motion that ensures that the actual force/torque threshold is reached
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, -10]),
+                                                 controller_name='GoDownFurther',
+                                                 goal_is_relative='1',
+                                                 name="GoDownFurther",
+                                                 reference_frame="world",
+                                                 v_max=go_down_velocity))
+
+        # Switch when goal is reached to trigger the relative go down further motion
+        control_sequence.append(ha.JointConfigurationSwitch('GoDown', 'GoDownFurther', controller='GoDown',
+                                                            epsilon=str(math.radians(7.))))
+
+        # Force/Torque switch for the additional relative go down further
+        control_sequence.append(ha.ForceTorqueSwitch('GoDownFurther',
+                                                     'LiftHand',
+                                                     goal=downward_force_thresh,
+                                                     norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                     jump_criterion="THRESH_UPPER_BOUND",
+                                                     goal_is_relative='1',
+                                                     frame_id='world',
+                                                     port='2'))
+    else:
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(down_dir,
+                                                 controller_name='GoDown',
+                                                 goal_is_relative='1',
+                                                 name="GoDown",
+                                                 reference_frame="world",
+                                                 v_max=go_down_velocity))
+
+    # 5b. Switch when force threshold is exceeded
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                  'LiftHand',
                                                  goal=downward_force_thresh,
@@ -709,25 +774,82 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
                                                  frame_id='world',
                                                  port='2'))
 
-    # TODO: remove 4 and 4b if hand should slide on surface
-    # OR duration=0.0
-    # 4. Lift upwards so the hand doesn't slide on table surface
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(lift_dir, controller_name='Lift1', goal_is_relative='1', name="LiftHand",
-                                             reference_frame="world"))
+    # 6. Lift upwards so the hand doesn't slide directly on table surface
+    lift_duration = 0.2  # timeout for the TimeSwitch-hack
+    if alternative_behavior is not None and 'lift_hand' in alternative_behavior:
 
-    # 4b. We switch after a short time as this allows us to do a small, precise lift motion
-    # TODO partners: this can be replaced by a frame pose switch if your robot is able to do small motions precisely
-    control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=0.2))
+        goal_traj = alternative_behavior['lift_hand'].get_trajectory()
+        print("Use alternative GOAL_TRAJ LiftHand Dim:", goal_traj.shape)  # TODO remove (only for debugging)
+        control_sequence.append(ha.JointControlMode(goal_traj, name='LiftHand', controller_name='Lift1',
+                                                    goal_is_relative='0',
+                                                    v_max=lift_hand_joint_velocity,
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear'))
 
-    # 5. Go towards the wall to slide object to wall
+        # Switch when goal is reached to trigger the relative go down further motion
+        control_sequence.append(ha.JointConfigurationSwitch('LiftHand', 'SlideToWall', controller='Lift1',
+                                                            epsilon=str(math.radians(7.))))
 
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(wall_dir, controller_name='SlideToWall', goal_is_relative='1',
-                                             name="SlideToWall", reference_frame="world",
-                                             v_max=slide_velocity))
+        # We also switch after a short time as this allows us to do a small, precise lift motion, in case the
+        # JointConfigurationSwitch above does not trigger.
+        # TODO partners: this can be removed if your robot is able to do small motions precisely
+        control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=lift_duration))
 
-    # 5b. Switch when the f/t sensor is triggered with normal force from wall
+    else:
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(lift_dir, controller_name='Lift1', goal_is_relative='1',
+                                                 name="LiftHand", reference_frame="world"))
+
+        # 6b. We switch after a short time as this allows us to do a small, precise lift motion
+        # TODO partners: this can be replaced by a frame pose switch if your robot is able to do small motions precisely
+        control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=lift_duration))
+
+    # 7. Go towards the wall to slide object to wall
+    if alternative_behavior is not None and 'slide_to_wall' in alternative_behavior:
+
+        goal_traj = alternative_behavior['slide_to_wall'].get_trajectory()
+        print("Use alternative GOAL_TRAJ SlideToWall Dim:", goal_traj.shape)  # TODO remove (only for debugging)
+
+        # Sliding motion in joint space
+        control_sequence.append(ha.JointControlMode(goal_traj, name='SlideToWall', controller_name='SlideToWall',
+                                                    goal_is_relative='0',
+                                                    v_max=slide_joint_velocity,
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear'))
+
+        # Relative motion that ensures that the actual force/torque threshold is reached (world space)
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(wall_dir,
+                                                 controller_name='SlideFurther',
+                                                 goal_is_relative='1',
+                                                 name="SlideFurther",
+                                                 reference_frame="world",
+                                                 v_max=slide_velocity))
+
+        # Switch when goal is reached to trigger the relative slide further motion
+        control_sequence.append(ha.JointConfigurationSwitch('SlideToWall', 'SlideFurther', controller='SlideToWall',
+                                                            epsilon=str(math.radians(7.))))
+
+        # Force/Torque switch for the additional relative slide further
+        control_sequence.append(ha.ForceTorqueSwitch('SlideFurther',
+                                                     mode_name_hand_closing,
+                                                     name='ForceSwitch',
+                                                     goal=wall_force_threshold,
+                                                     norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                     jump_criterion="THRESH_UPPER_BOUND",
+                                                     goal_is_relative='1',
+                                                     frame_id='world',
+                                                     frame=corner_frame_alpha_zero,
+                                                     port='2'))
+    else:
+        # Sliding motion (entirely world space controlled)
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(wall_dir, controller_name='SlideToWall', goal_is_relative='1',
+                                                 name="SlideToWall", reference_frame="world",
+                                                 v_max=slide_velocity))
+
+    # 7b. Switch when the f/t sensor is triggered with normal force from wall
+    #     (in both cases joint trajectory or op-space control)
     # TODO arne: needs tuning
     # EDITED
     control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, 'ForceSwitch',
@@ -737,7 +859,7 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
                                                  frame_id='world', frame=corner_frame_alpha_zero, port='2'))
     # /EDITED
 
-    # 6. Maintain contact while closing the hand
+    # 8. Maintain contact while closing the hand
     # apply force on object while closing the hand
     # TODO arne: validate these values
     desired_displacement = np.array(
@@ -750,16 +872,16 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
                                                        force_gradient=force_gradient,
                                                        desired_force_dimension=desired_force_dimension))
 
-    # 6b. Switch when hand closing duration ends
+    # 8b. Switch when hand closing duration ends
     control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration=hand_closing_duration))
 
-    # 7. Move hand after closing and before lifting it up
+    # 9. Move hand after closing and before lifting it up
     # relative to current hand pose
     control_sequence.append(
         ha.HTransformControlMode(post_grasp_transform, controller_name='PostGraspRotate', name='PostGraspRotate',
                                  goal_is_relative='1', ))
 
-    # 7b. Switch when hand reaches post grasp pose
+    # 9b. Switch when hand reaches post grasp pose
     control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp_1', controller='PostGraspRotate',
                                                epsilon='0.01', goal_is_relative='1', reference_frame='EE'))
 

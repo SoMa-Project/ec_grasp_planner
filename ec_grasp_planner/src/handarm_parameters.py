@@ -298,6 +298,10 @@ class RBOHandP24WAM(RBOHand2):
         # Maximum velocity of the EE during the sliding movement. First value: rotational, second translational
         self['WallGrasp']['object']['slide_velocity'] = np.array([0.125, 0.30])  # np.array([0.125, 0.12])
 
+        # Maximal joint velocities during sliding motion in case a JointController is used.
+        # (e.g. alternative behavior was generated)
+        self['WallGrasp']['object']['slide_joint_velocity'] = np.array([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.15])
+
         # Defines the general manifold for sliding motion in which alternative goal poses are sampled during kinematics
         # checks. You can also define special manifolds per obejct
         self['WallGrasp']['object']['slide_to_wall_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
@@ -323,17 +327,17 @@ class RBOHandP24WAM(RBOHand2):
         # Distance that the hand should be lifted after grasping the object
         self['WallGrasp']['object']['up_dist'] = 0.25
 
-        # Maximal joint velocities during sliding motion in case a JointController is used.
-        # (e.g. alternative behavior was generated)
-        self['WallGrasp']['object']['slide_joint_velocity'] = np.array([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.15])
-
-
         #####################################################################################
         # below are parameters for corner grasp with P24 fingers (standard RBO hand)
         #####################################################################################
 
         self['CornerGrasp']['object']['initial_goal'] = np.array(
             [0.458148, 0.649566, -0.30957, 2.22163, -1.88134, 0.289638, -0.326112])
+
+        # Maximal joint velocities in case a JointController is used (e.g. alternative behavior was generated)
+        # This is the general maximal velocity for any joint controller during a wall grasp.
+        # For the sliding motion however, we define different maximal joint velocities (see: slide_joint_velocity)
+        self['CornerGrasp']['object']['max_joint_velocity'] = np.ones(7) * 0.2
 
         # transformation between hand and EC frame (which is positioned like object and oriented like wall) at grasp time
         # the convention at our lab is: x along the fingers and z normal on the palm.
@@ -409,6 +413,10 @@ class RBOHandP24WAM(RBOHand2):
 
         # Maximum velocity of the EE during the sliding movement. First value: rotational, second translational
         self['CornerGrasp']['object']['slide_velocity'] = np.array([0.125, 0.3]) #.063 for empty tennis balls; aggresive 0.5 # np.array([0.125, 0.12])
+
+        # Maximal joint velocities during sliding motion in case a JointController is used.
+        # (e.g. alternative behavior was generated)
+        self['CornerGrasp']['object']['slide_joint_velocity'] = np.array([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.15])
 
         # Defines the general manifold for sliding motion in which alternative goal poses are sampled during kinematics
         # checks. You can also define special manifolds per obejct

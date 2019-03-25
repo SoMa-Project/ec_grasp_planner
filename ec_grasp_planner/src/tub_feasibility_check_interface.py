@@ -536,7 +536,6 @@ def prepare_corner_grasp_parameter(ec_frame, selected_wall_names, objects, curre
 
     slide_to_wall_pose = wall_dir.dot(corrective_lift_pose)
 
-    # TODO remove?
     # now project it into the wall plane!
     z_projection = np.array([[1, 0, 0, 0],
                              [0, 1, 0, 0],
@@ -545,10 +544,6 @@ def prepare_corner_grasp_parameter(ec_frame, selected_wall_names, objects, curre
 
     to_wall_plane_transform = corner_frame_alpha_zero.dot(z_projection.dot(tra.inverse_matrix(corner_frame_alpha_zero).dot(slide_to_wall_pose)))
     slide_to_wall_pose[:3, 3] = tra.translation_from_matrix(to_wall_plane_transform)
-
-    # TODO end remove?
-
-    # TODO actually place goal pose directly in the corner?
 
     checked_motions = ['pre_approach', 'go_down', 'corrective_lift', 'slide_to_wall']
 
