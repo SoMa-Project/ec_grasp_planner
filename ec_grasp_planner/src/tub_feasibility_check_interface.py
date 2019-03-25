@@ -10,6 +10,7 @@ from tub_feasibility_check.srv import CheckKinematicsResponse
 from shape_msgs.msg import SolidPrimitive
 
 import GraspFrameRecipes
+import planner_utils as pu
 
 
 class AlternativeBehavior:
@@ -49,27 +50,6 @@ class FeasibilityQueryParameters:
         self.goal_manifold_frames = goal_manifold_frames
         # TODO docu
         self.goal_manifold_orientations = goal_manifold_orientations
-
-
-def tf_dbg_call_to_string(in_transformation, frame_name='dbg'):
-    msgframe = transform_to_pose_msg(in_transformation)
-    return "rosrun tf static_transform_publisher {0} {1} {2} {3} {4} {5} {6} rlab_origin {7} 100".format(
-        msgframe.position.x, msgframe.position.y, msgframe.position.z, msgframe.orientation.x,
-        msgframe.orientation.y, msgframe.orientation.z, msgframe.orientation.w, frame_name)
-
-
-def transform_to_pose(in_transform):
-    # convert 4x4 matrix to trans + rot
-    scale, shear, angles, translation, persp = tra.decompose_matrix(in_transform)
-    orientation_quat = tra.quaternion_from_euler(angles[0], angles[1], angles[2])
-    return translation, orientation_quat
-
-
-def transform_to_pose_msg(in_transform):
-    trans, rot = transform_to_pose(in_transform)
-    trans = geometry_msgs.msg.Point(x=trans[0], y=trans[1], z=trans[2])
-    rot = geometry_msgs.msg.Quaternion(x=rot[0], y=rot[1], z=rot[2], w=rot[3])
-    return geometry_msgs.msg.Pose(position=trans, orientation=rot)
 
 
 def get_matching_ifco_wall(ifco_in_base_transform, ec_frame):
@@ -112,21 +92,51 @@ def get_matching_ifco_corner(ifco_in_base_transform, ec_frame):
     # we can't check for zero because of small errors in the frame (due to vision or numerical uncertainty)
     space_thresh = 0.0  # 0.1
 
-    if ec_z_axis.dot(np.array([1, 0, 0])) < -space_thresh and ec_z_axis.dot(np.array([0, 1, 0])) < -space_thresh:
-        print("GET MATCHING=SOUTH_EAST", tf_dbg_call_to_string(ec_frame, frame_name='ifco_southeast'))
+    if ec_z_axis.dot(np.array([1, 0, 0])) > space_thresh and ec_z_axis.dot(np.array([0, 1, 0])) > space_thresh:
+        print("GET MATCHING=SOUTH_EAST", pu.tf_dbg_call_to_string(ec_frame, frame_name='ifco_southeast'))
         return 'south', 'east'
-    elif ec_z_axis.dot(np.array([1, 0, 0])) < -space_thresh and ec_z_axis.dot(np.array([0, 1, 0])) > space_thresh:
-        print("GET MATCHING=SOUTH_WEST", tf_dbg_call_to_string(ec_frame, frame_name='ifco_southwest'))
-        return 'south', 'west'
-    elif ec_z_axis.dot(np.array([1, 0, 0])) > space_thresh and ec_z_axis.dot(np.array([0, 1, 0])) > space_thresh:
-        print("GET MATCHING=NORTH_WEST", tf_dbg_call_to_string(ec_frame, frame_name='ifco_northwest'))
-        return 'north', 'west'
     elif ec_z_axis.dot(np.array([1, 0, 0])) > space_thresh and ec_z_axis.dot(np.array([0, 1, 0])) < -space_thresh:
-        print("GET MATCHING=NORTH_EAST", tf_dbg_call_to_string(ec_frame, frame_name='ifco_northeast'))
+        print("GET MATCHING=SOUTH_WEST", pu.tf_dbg_call_to_string(ec_frame, frame_name='ifco_southwest'))
+        return 'south', 'west'
+    elif ec_z_axis.dot(np.array([1, 0, 0])) < -space_thresh and ec_z_axis.dot(np.array([0, 1, 0])) < -space_thresh:
+        print("GET MATCHING=NORTH_WEST", pu.tf_dbg_call_to_string(ec_frame, frame_name='ifco_northwest'))
+        return 'north', 'west'
+    elif ec_z_axis.dot(np.array([1, 0, 0])) < -space_thresh and ec_z_axis.dot(np.array([0, 1, 0])) > space_thresh:
+        print("GET MATCHING=NORTH_EAST", pu.tf_dbg_call_to_string(ec_frame, frame_name='ifco_northeast'))
         return 'north', 'east'
     else:
         # This should never be reached. Just here to prevent bugs
         raise ValueError("ERROR: Could not identify matching ifco wall. Check frames!")
+
+
+# Checks if the Y-Axis of the ifco frame points towards the robot (origin of base frame)
+# The base frame is assumed to be the following way:
+#   x points to the robots right (if you are behind the robot)
+#   y points to the robots front
+#   z points upwards
+def ifco_transform_needs_to_be_flipped(ifco_in_base_transform):
+
+    # we can't check for zero because of small errors in the frame (due to vision or numerical uncertainty)
+    space_thresh = 0.05
+
+    y_of_yaxis = ifco_in_base_transform[1, 1]
+    y_of_translation = ifco_in_base_transform[1, 3]
+
+    if y_of_translation > space_thresh:
+        # ifco is in front of robot
+        return y_of_yaxis > 0
+    elif y_of_translation < space_thresh:
+        # ifco is behind the robot
+        return y_of_yaxis < 0
+    else:
+        x_of_translation = ifco_in_base_transform[0, 3]
+        x_of_yaxis = ifco_in_base_transform[0, 1]
+        if x_of_translation > 0:
+            # ifco is to the right of the robot
+            return x_of_yaxis > 0
+        else:
+            # ifco is to the left of the robot
+            return x_of_yaxis < 0
 
 
 # This function will call TUB's feasibility checker to check a motion.
@@ -137,6 +147,16 @@ def check_kinematic_feasibility(current_object_idx, objects, object_params, curr
 
     if handarm_params is None:
         raise ValueError("HandArmParameters can't be None, check callstack!")
+
+    print("IFCO_BEFORE", pu.tf_dbg_call_to_string(ifco_in_base_transform, frame_name='ifco_before'))
+    if ifco_transform_needs_to_be_flipped(ifco_in_base_transform):
+        # flip the ifco transform such that it fulfills the requirements of the feasibilty checker
+        # (y-axis of ifco points towards the robot)
+        rospy.loginfo("Flip ifco transform for tub feasibilty checker")
+        zflip_transform = tra.rotation_matrix(math.radians(180.0), [0, 0, 1])
+        ifco_in_base_transform = ifco_in_base_transform.dot(zflip_transform)
+
+    print("IFCO_AFTER", pu.tf_dbg_call_to_string(ifco_in_base_transform, frame_name='ifco_after'))
 
     object = objects[current_object_idx]
     ec_frame = all_ec_frames[current_ec_index]
@@ -160,7 +180,7 @@ def check_kinematic_feasibility(current_object_idx, objects, object_params, curr
         selected_wall_name = get_matching_ifco_wall(ifco_in_base_transform, ec_frame)
         print("FOUND_EC: ", selected_wall_name)
 
-        blocked_ecs = ['north', 'east', 'west']  # TODO remove or move to config file
+        blocked_ecs = ['north', 'east', 'west']  # TODO move to config file?
         if selected_wall_name in blocked_ecs:
             rospy.loginfo("Skipped wall " + selected_wall_name + " (Blacklisted)")
             return 0
@@ -173,13 +193,13 @@ def check_kinematic_feasibility(current_object_idx, objects, object_params, curr
         selected_wall_names = get_matching_ifco_corner(ifco_in_base_transform, ec_frame)
         print("FOUND_EC: ", selected_wall_names)
 
-        blocked_ecs = [('north', 'east'), ('north', 'west'), ('south', 'west')]  # TODO remove or move to config file
+        blocked_ecs = [('north', 'east'), ('north', 'west'), ('south', 'west')]  # TODO move to config file?
         if selected_wall_names in blocked_ecs:
             rospy.loginfo("Skipped corner " + selected_wall_names[0] + selected_wall_names[1] + " (Blacklisted)")
             return 0
 
         call_params = prepare_corner_grasp_parameter(ec_frame, selected_wall_names, objects, current_object_idx,
-                                                   object_params, ifco_in_base_transform, params)
+                                                     object_params, ifco_in_base_transform, params)
 
     else:
         raise ValueError("Kinematics checks are currently only supported for surface grasps and wall grasps, "
@@ -189,13 +209,13 @@ def check_kinematic_feasibility(current_object_idx, objects, object_params, curr
     stored_trajectories[(current_object_idx, current_ec_index)] = {}
 
     # The pose of the ifco (in base frame) in message format
-    ifco_pose = transform_to_pose_msg(ifco_in_base_transform)
+    ifco_pose = pu.transform_to_pose_msg(ifco_in_base_transform)
     print("IFCO_POSE", ifco_pose)
 
     # The bounding boxes of all objects in message format
     bounding_boxes = []
     for obj in objects:
-        obj_pose = transform_to_pose_msg(obj['frame'])
+        obj_pose = pu.transform_to_pose_msg(obj['frame'])
         obj_bbox = SolidPrimitive(type=SolidPrimitive.BOX,
                                   dimensions=[obj['bounding_box'].x, obj['bounding_box'].y, obj['bounding_box'].z])
 
@@ -209,11 +229,11 @@ def check_kinematic_feasibility(current_object_idx, objects, object_params, curr
 
         manifold_name = motion + '_manifold'
 
-        goal_pose = transform_to_pose_msg(curr_goal)
+        goal_pose = pu.transform_to_pose_msg(curr_goal)
         print("GOAL_POSE", goal_pose)
         print("INIT_CONF", curr_start_config)
 
-        goal_manifold_frame = transform_to_pose_msg(call_params.goal_manifold_frames[motion])
+        goal_manifold_frame = pu.transform_to_pose_msg(call_params.goal_manifold_frames[motion])
 
         goal_manifold_orientation = geometry_msgs.msg.Quaternion(x=call_params.goal_manifold_orientations[motion][0],
                                                                  y=call_params.goal_manifold_orientations[motion][1],
@@ -488,6 +508,7 @@ def prepare_corner_grasp_parameter(ec_frame, selected_wall_names, objects, curre
     pre_approach_transform = params['pre_approach_transform']
 
     corner_frame = np.copy(ec_frame)
+    print("Prepare Corner: ", pu.tf_dbg_call_to_string(corner_frame, "prepare"))
     used_ec_frame, corner_frame_alpha_zero = GraspFrameRecipes.get_derived_corner_grasp_frames(corner_frame,
                                                                                                object_params['frame'])
     pre_approach_pose = used_ec_frame.dot(params['hand_transform'].dot(pre_approach_transform)) # TODO order of hand and pre_approach
@@ -514,6 +535,18 @@ def prepare_corner_grasp_parameter(ec_frame, selected_wall_names, objects, curre
     wall_dir[:3, 3] = corner_frame_alpha_zero[:3, :3].dot(wall_dir[:3, 3])
 
     slide_to_wall_pose = wall_dir.dot(corrective_lift_pose)
+
+    # TODO remove?
+    # now project it into the wall plane!
+    z_projection = np.array([[1, 0, 0, 0],
+                             [0, 1, 0, 0],
+                             [0, 0, 0, 0],
+                             [0, 0, 0, 1]])
+
+    to_wall_plane_transform = corner_frame_alpha_zero.dot(z_projection.dot(tra.inverse_matrix(corner_frame_alpha_zero).dot(slide_to_wall_pose)))
+    slide_to_wall_pose[:3, 3] = tra.translation_from_matrix(to_wall_plane_transform)
+
+    # TODO end remove?
 
     # TODO actually place goal pose directly in the corner?
 

@@ -1,6 +1,6 @@
 import numpy as np
 from tf import transformations as tra
-from planner_utils import convert_transform_msg_to_homogeneous_tf
+from planner_utils import convert_transform_msg_to_homogeneous_tf, tf_dbg_call_to_string
 
 
 def get_derived_corner_grasp_frames(corner_frame, object_pose):
@@ -44,6 +44,9 @@ def get_wall_pregrasp_pose_in_base_frame(chosen_node, pre_grasp_in_object_frame,
 def get_corner_pregrasp_pose_in_base_frame(chosen_node, pre_grasp_in_object_frame, object_pose, graph_in_base):
 
     corner_frame = graph_in_base.dot(convert_transform_msg_to_homogeneous_tf(chosen_node.transform))
+
+    print("Prepare Corner: ", tf_dbg_call_to_string(corner_frame, "recipe"))
+
     ec_frame = get_derived_corner_grasp_frames(corner_frame, object_pose)[0]
     pre_grasp_pose_in_base_frame = ec_frame.dot(pre_grasp_in_object_frame)
 
