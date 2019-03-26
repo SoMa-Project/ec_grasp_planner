@@ -96,13 +96,15 @@
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 1.0
-      min: [-1000.0, -0.075]
-      max: [-0.05, 0.045]
+      max: [1000.0, 0.075]
+      min: [0.05, -0.045]
+      #min: [-1000.0, -0.075]
+      #max: [-0.05, 0.045]
       reactions: 
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
-    mass: {'mean': 0.28052, 'stddev': 0.05958} # artificial values, since no fake mangos available. TODO get params as soon as we have the fake mangos again!
+    mass: {'mean': 0.397675, 'stddev': 0.0174503477433} # artificial values, since no fake mangos available. TODO get params as soon as we have the fake mangos again!
     graspable_with_any_hand_orientation: False
 
   cucumber:
@@ -147,7 +149,7 @@
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
     #mass: {'mean': 0.07058, 'stddev': 0.00359} # values for fake cucumbers
-    mass: {'mean': 0.3781, 'stddev': 0.058248237} # values for real cucumbers
+    mass: {'mean': 0.305225, 'stddev': 0.0174362} # values for real cucumbers
     graspable_with_any_hand_orientation: False
 
   netbag:
@@ -188,7 +190,7 @@
         mass_estimation_no_object: REEXECUTE
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
-    mass: {'mean': 0.193, 'stddev': 0.02660839542} # values for fake lime netbags (with small EE/FT noise)
+    mass: {'mean': 0.184, 'stddev': 0.01702} # values for fake lime netbags (with small EE/FT noise)
     graspable_with_any_hand_orientation: True
 
   punnet:

@@ -406,7 +406,7 @@ class RBOHandP24WAM(RBOHand2):
                                                                             })
 
         # The maximum allowed force for pushing against the wall (guarding the sliding movement)
-        self['CornerGrasp']['object']['wall_force'] = 12.0 # aggressive 17
+        self['CornerGrasp']['object']['wall_force'] = 12.0  # aggressive 17
 
         # Sliding distance. Should be at least half the ifco size
         self['CornerGrasp']['object']['sliding_dist'] = 0.4
@@ -574,6 +574,8 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                     math.radians(0.0), [0, 0, 1]),
             ))
 
+        self['WallGrasp']['mango']['wall_force'] = 12.0  # since they are quite heavy be more aggressive
+
         #####################################################################################
         # Specific Parameters for Corner Grasp + P24_pulpy
         #####################################################################################
@@ -592,6 +594,9 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                     tra.rotation_matrix(                #this makes the fingers point downwards
                         math.radians(0.0), [0, 0, 1]),
             ))
+
+        self['CornerGrasp']['mango'] = self['CornerGrasp']['object'].copy()
+        self['CornerGrasp']['mango']['wall_force'] = 14.0  # since they are quite heavy be more aggressive
 
 
 # ----------------------------------------------------------------- #

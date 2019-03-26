@@ -120,10 +120,10 @@ class multi_object_params:
         if strategy not in ["WallGrasp", "EdgeGrasp"]:
             return 1
         # this function will blacklist all walls except
-        # the one on th right side of the robot
+        # the one on the right side of the robot
         # y coord is the smallest
 
-        if all_ec_frames[current_ec_index][1,3] > 0:
+        if all_ec_frames[current_ec_index][1, 3] > 0:
                 return 0
 
         min_y = 10000
@@ -533,6 +533,8 @@ class multi_object_params:
         Q_matrix = self.create_q_matrix(object_type, ecs, graph_in_base, ifco_in_base_transform,
                                         SG_pre_grasp_in_object_frame, WG_pre_grasp_in_object_frame, grasp_type,
                                         object_list_msg, handarm_parameters)
+
+        print("Qmat = {}".format(Q_matrix))
 
         # Check if there is a grasp candidate
         if Q_matrix.max() == 0.0:
