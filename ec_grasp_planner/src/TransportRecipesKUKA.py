@@ -122,17 +122,26 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
         # 5. Finish the plan
         control_sequence.append(ha.BlockJointControlMode(name='finished'))
 
+    drop_off_config = np.array([1.71, -0.7, 0.81, 1.22, -0.14, -1.04, -0.79])
+
+    # 4. Go to dropOFF location
+    control_sequence.append(ha.JointControlMode(drop_off_config, controller_name='GoToDropPose',
+                                                name=target_cm_okay))
+
+    # 4.b  Switch when joint is reached
+    control_sequence.append(ha.JointConfigurationSwitch(target_cm_okay, 'GoDrop', controller = 'GoToDropPose',
+                                                        epsilon=str(math.radians(7.))))
     
     # 5. Go above the object - Pregrasp
-    control_sequence.append(ha.InterpolatedHTransformControlMode(drop_off_pose, controller_name = 'GoToDropPose', goal_is_relative='0', name = target_cm_okay, reference_frame = 'world'))
+    control_sequence.append(ha.InterpolatedHTransformControlMode(drop_off_pose, controller_name = 'GoToDropPose', goal_is_relative='0', name = 'GoDrop', reference_frame = 'world'))
  
     # 5b1. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch(target_cm_okay, 'PlaceInTote', controller = 'GoToDropPose', epsilon = '0.05'))
+    control_sequence.append(ha.FramePoseSwitch('GoDrop', 'PlaceInTote', controller = 'GoToDropPose', epsilon = '0.05'))
 
     # 5b2. Switch when hand reaches the goal pose
-    control_sequence.append(ha.RosTopicSwitch(target_cm_okay, 'PlaceInTote', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([2.])))
+    control_sequence.append(ha.RosTopicSwitch('GoDrop', 'PlaceInTote', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([2.])))
 
     # 5c. Switch to recovery if no plan is found
-    control_sequence.append(ha.RosTopicSwitch(target_cm_okay, 'recovery_NoPlanFound' + grasp_type, ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('GoDrop', 'recovery_NoPlanFound' + grasp_type, ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     return control_sequence
