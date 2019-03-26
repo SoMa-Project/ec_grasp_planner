@@ -331,7 +331,7 @@ def get_pre_grasp_transforms(handarm_params, object_type):
             hand_transform = params['hand_transform']
             ee_in_goal_frame = params['ee_in_goal_frame']
             pre_approach_transform = params['pre_approach_transform']
-            SG_pre_grasp_transform = (hand_transform.dot(pre_approach_transform)).dot(ee_in_goal_frame)
+            SG_pre_grasp_transform = (hand_transform.dot(ee_in_goal_frame)).dot(pre_approach_transform)
         elif grasp_type == "WallGrasp":
             hand_transform = params['hand_transform']
             pre_approach_transform = params['pre_approach_transform']
