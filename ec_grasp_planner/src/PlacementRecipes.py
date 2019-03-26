@@ -54,8 +54,11 @@ def get_placement_recipe(handarm_params, handarm_type):
     # 4. Go to view pose
     control_sequence.append(ha.InterpolatedHTransformControlMode(view_pose, controller_name = 'GoToView', goal_is_relative='0', name = 'GoToViewPose', reference_frame = 'world'))
  
-    # 4b. Switch when hand reaches the goal pose
+    # 4b1. Switch when hand reaches the goal pose
     control_sequence.append(ha.FramePoseSwitch('GoToViewPose', 'finished', controller = 'GoToView', epsilon = '0.01'))
+
+    # 4b2. Switch when hand reaches the goal pose
+    control_sequence.append(ha.RosTopicSwitch('GoToViewPose', 'finished', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([2.])))
 
     # 4c. Switch if no plan was found
     control_sequence.append(ha.RosTopicSwitch('GoToViewPose', 'finished', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
