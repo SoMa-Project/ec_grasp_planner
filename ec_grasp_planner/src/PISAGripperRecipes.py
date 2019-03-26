@@ -21,7 +21,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     null_stiff = handarm_params['nullspace_stiffness']
     null_damp = handarm_params['nullspace_damping']
 
-    high_joint_stiffness = handarm_params['high_joint_stiffness']
+    high_joint_stiffness = params['high_joint_stiffness']
     low_joint_stiffness = params['low_joint_stiffness']
     joint_damping = handarm_params['joint_damping']
     
@@ -173,7 +173,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     null_stiff = handarm_params['nullspace_stiffness']
     null_damp = handarm_params['nullspace_damping']
 
-    high_joint_stiffness = handarm_params['high_joint_stiffness']
+    high_joint_stiffness = params['high_joint_stiffness']
     low_joint_stiffness = params['low_joint_stiffness']
     joint_damping = handarm_params['joint_damping']
 
@@ -367,7 +367,7 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     null_stiff = handarm_params['nullspace_stiffness']
     null_damp = handarm_params['nullspace_damping']
     
-    high_joint_stiffness = handarm_params['high_joint_stiffness']
+    high_joint_stiffness = params['high_joint_stiffness']
     low_joint_stiffness = params['low_joint_stiffness']
     joint_damping = handarm_params['joint_damping']
 
