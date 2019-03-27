@@ -264,7 +264,7 @@ class MassEstimator(object):
             frame_transform = tf.transformations.concatenate_matrices(T, R)
 
             ft_measurement = [ft_measurement_msg.wrench.force.x, ft_measurement_msg.wrench.force.y,
-                              ft_measurement_msg.wrench.force.z, 1]
+                              ft_measurement_msg.wrench.force.z, 0]
             # print("4", frame_transform, ft_measurement)
             # print("4", type(frame_transform), type(ft_measurement))
             return frame_transform.dot(ft_measurement)
