@@ -480,7 +480,7 @@ class PISAHandKUKA(KUKA):
 
         self['SurfaceGrasp']['object']['hand_preshape_goal'] = 0
 
-        self['SurfaceGrasp']['object']['hand_preshaping_duration'] = 0
+        self['SurfaceGrasp']['object']['hand_preshaping_duration'] = 1
 
         # This is the same for all objects
         # Prepend transforms to this one to transform on the object frame (guarantees that hand z will go through the object center)
@@ -521,10 +521,11 @@ class PISAHandKUKA(KUKA):
 
         self['SurfaceGrasp']['cucumber'] = self['SurfaceGrasp']['object'].copy()
         self['SurfaceGrasp']['cucumber']['hand_transform'] = tra.concatenate_matrices(tra.rotation_matrix(
-                                                                                        math.radians(20.), [1, 0, 0]),
+                                                                                        math.radians(-30.), [1, 0, 0]),
                                                                                     self['SurfaceGrasp']['object']['hand_transform']
                                                                                     )
-        self['SurfaceGrasp']['cucumber']['hand_preshape_goal'] = 0.1
+        self['SurfaceGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.04, -0.03, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(-20.0), [0, 0, 1]))
         self['SurfaceGrasp']['cucumber']['hand_closing_goal'] = 1
 
         self['SurfaceGrasp']['punnet'] = self['SurfaceGrasp']['object'].copy()
