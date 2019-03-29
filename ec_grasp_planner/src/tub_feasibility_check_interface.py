@@ -111,8 +111,8 @@ def get_matching_ifco_corner(ifco_in_base_transform, ec_frame):
 
 # Checks if the Y-Axis of the ifco frame points towards the robot (origin of base frame)
 # The base frame is assumed to be the following way:
-#   x points to the robots right (if you are behind the robot)
-#   y points to the robots front
+#   x points to the robots front
+#   y points to the robots left (if you are behind the robot)
 #   z points upwards
 def ifco_transform_needs_to_be_flipped(ifco_in_base_transform):
 
