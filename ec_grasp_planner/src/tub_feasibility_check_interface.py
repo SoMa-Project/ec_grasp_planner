@@ -205,7 +205,7 @@ def check_kinematic_feasibility(current_object_idx, objects, object_params, curr
                                                      object_params, ifco_in_base_transform, params)
 
     else:
-        raise ValueError("Kinematics checks are currently only supported for surface grasps and wall grasps, "
+        raise ValueError("Kinematics checks are currently only supported for surface, wall and corner grasps, "
                          "but strategy was " + strategy)
 
     # initialize stored trajectories for the given object
@@ -507,9 +507,6 @@ def prepare_wall_grasp_parameter(ec_frame, selected_wall_name, objects, current_
 
 def prepare_corner_grasp_parameter(ec_frame, selected_wall_names, objects, current_object_idx, object_params,
                                    ifco_in_base_transform, params):
-
-    rospy.logerr("Kinematics checks are currently only supported for surface grasps and wall grasps, "
-                 "but strategy was CornerGrasp")
 
     # hand pose above and behind the object
     pre_approach_transform = params['pre_approach_transform']
