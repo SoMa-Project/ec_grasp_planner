@@ -16,6 +16,9 @@
 #   probability of any other orientation that does not fall into one of those intervals defined by angle and epsilon.
 #
 # min(xy), max(xy) defines a box for the basic black-listing heuristic outside of which an object will be ignored.
+#   It is important to notice that if the box is not symetric wrt the ifco center this box has to be adapted regarding
+#   the estimated ifco pose. The current conventions allow both a y-axis pointing towards the robot or away from it.
+#   TODO work with a fixed convention in multi_object_params.py as in the tub_feasibilty_check.
 #
 # reactions defines reactions to the result of the grasp success estimator
 #   (see: https://github.com/SoMa-Project/ec_grasp_planner/pull/40)
@@ -71,9 +74,11 @@
         RBOHandO2: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
-        ClashHand: 1.0      
-      min: [-0.14, -0.1]
-      max: [0.14, 0.05]
+        ClashHand: 1.0
+      max: [ 0.14,  0.1]
+      min: [-0.14, -0.05]
+      #min: [-0.14, -0.1] # values if ifco y-axis is pointing towards the robot
+      #max: [ 0.14, 0.05] # values if ifco y-axis is pointing towards the robot
       reactions: 
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
@@ -84,8 +89,10 @@
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 1.0
-      min: [-1000.0, -0.075]
-      max: [-0.05, 0.045]
+      min: [0.05, -0.045]
+      max: [1000.0, 0.075]
+      #min: [-1000.0, -0.075] # values if ifco y-axis is pointing towards the robot
+      #max: [-0.05, 0.045] # values if ifco y-axis is pointing towards the robot
       reactions:
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
@@ -96,10 +103,10 @@
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 1.0
-      max: [1000.0, 0.075]
       min: [0.05, -0.045]
-      #min: [-1000.0, -0.075]
-      #max: [-0.05, 0.045]
+      max: [1000.0, 0.075]
+      #min: [-1000.0, -0.075] # values if ifco y-axis is pointing towards the robot
+      #max: [-0.05, 0.045] # values if ifco y-axis is pointing towards the robot
       reactions: 
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
@@ -114,9 +121,11 @@
         RBOHandO2: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
-        ClashHand: 1.0 
-      min: [-0.14, -0.1]
-      max: [0.14, 0.05]
+        ClashHand: 1.0
+      max: [0.14, 0.1]
+      min: [-0.14, -0.05]
+      #max: [0.14, 0.05] # values if ifco y-axis is pointing towards the robot
+      #min: [-0.14, -0.1] # values if ifco y-axis is pointing towards the robot
       reactions: 
         mass_estimation_no_object: REEXECUTE
         mass_estimation_too_many: REPLAN
@@ -127,8 +136,10 @@
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 1.0
-      min: [-1000.0, -0.075]
-      max: [-0.05, 0.045]
+      max: [1000.0, 0.075]
+      min: [0.05, -0.045]
+      #max: [-0.05, 0.045]    # values if ifco y-axis is pointing towards the robot
+      #min: [-1000.0, -0.075] # values if ifco y-axis is pointing towards the robot
       reactions:
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
@@ -142,8 +153,10 @@
       angle: 
         RBOHandP24_pulpy: [0, 180, 360]
       epsilon: 20
-      min: [-1000.0, -0.075]
-      max: [-0.05, 0.045]
+      max: [1000.0, 0.075]
+      min: [0.05, -0.045]
+      #max: [-0.05, 0.045]    # values if ifco y-axis is pointing towards the robot
+      #min: [-1000.0, -0.075] # values if ifco y-axis is pointing towards the robot
       reactions: 
         mass_estimation_no_object: REEXECUTE
         mass_estimation_too_many: REPLAN
@@ -159,9 +172,11 @@
         RBOHandO2: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
-        ClashHand: 1.0      
-      min: [-0.14, -0.1]
-      max: [0.14, 0.05]
+        ClashHand: 1.0
+      min: [-0.14, -0.05]
+      max: [0.14, 0.1]
+      #min: [-0.14, -0.1] # values if ifco y-axis is pointing towards the robot
+      #max: [0.14, 0.05]  # values if ifco y-axis is pointing towards the robot
       reactions: 
         mass_estimation_no_object: REEXECUTE
         mass_estimation_too_many: REPLAN
@@ -172,8 +187,10 @@
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 1.0
-      min: [-1000.0, -0.075]
-      max: [-0.05, 0.045]
+      max: [1000.0, 0.075]
+      min: [0.05, -0.045]
+      #max: [-0.05, 0.045]    # values if ifco y-axis is pointing towards the robot
+      #min: [-1000.0, -0.075] # values if ifco y-axis is pointing towards the robot
       reactions:
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
@@ -183,9 +200,11 @@
         RBOHandO2: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
-        ClashHand: 1.0      
-      min: [-1000.0, -0.075]
-      max: [-0.05, 0.042]
+        ClashHand: 1.0
+      max: [1000.0, 0.075]
+      min: [0.05, -0.042]
+      #min: [-1000.0, -0.075] # values if ifco y-axis is pointing towards the robot
+      #max: [-0.05, 0.042]    # values if ifco y-axis is pointing towards the robot
       reactions: 
         mass_estimation_no_object: REEXECUTE
         mass_estimation_too_many: REPLAN

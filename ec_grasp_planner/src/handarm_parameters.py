@@ -117,7 +117,8 @@ class RBOHand2(WAM):
         super(RBOHand2, self).__init__()
         self['mesh_file'] = "package://ec_grasp_planner/data/softhand_right_colored.dae"
         self['mesh_file_scale'] = 0.1
-        self['drop_off_config'] = np.array([-0.57148, 0.816213, -0.365673, 1.53765, 0.30308, 0.128965, 1.02467])
+        #self['drop_off_config'] = np.array([-0.57148, 0.816213, -0.365673, 1.53765, 0.30308, 0.128965, 1.02467]) # TODO make strategy dependent? (since wall grasp would favor a rotated drop off)
+        self['drop_off_config'] = np.array([-0.571809, 0.786619, -0.166804, 1.54949, -1.36263, -0.266865, 0.414062])
 # This map defines all grasp parameter such as poses and configurations for a specific robot system
 
 
@@ -303,12 +304,16 @@ class RBOHandP24WAM(RBOHand2):
         self['WallGrasp']['object']['slide_joint_velocity'] = np.array([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.15])
 
         # Defines the general manifold for sliding motion in which alternative goal poses are sampled during kinematics
-        # checks. You can also define special manifolds per obejct
+        # checks. You can also define special manifolds per object
         self['WallGrasp']['object']['slide_to_wall_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
                                                                           'max_position_deltas': [0.01, 0.01, 0.01],
                                                                           'min_orientation_deltas': [0, 0, -0.17],
                                                                           'max_orientation_deltas': [0, 0, 0.17]
                                                                           })
+
+        # Defines if it should be tried to soften the transition between sliding and wall collision
+        # (this prevents abrupt stops of the robot and makes the WAM sound less scary)
+        self['WallGrasp']['object']['soften_impact'] = True
 
         # ---- Hand closing ----
         # synergy type for soft hand closing
@@ -421,10 +426,14 @@ class RBOHandP24WAM(RBOHand2):
         # Defines the general manifold for sliding motion in which alternative goal poses are sampled during kinematics
         # checks. You can also define special manifolds per obejct
         self['CornerGrasp']['object']['slide_to_wall_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.01],
-                                                                          'max_position_deltas': [0.01, 0.01, 0.01],
-                                                                          'min_orientation_deltas': [0, 0, -0.17],
-                                                                          'max_orientation_deltas': [0, 0, 0.17]
-                                                                          })
+                                                                            'max_position_deltas': [0.01, 0.01, 0.01],
+                                                                            'min_orientation_deltas': [0, 0, -0.17],
+                                                                            'max_orientation_deltas': [0, 0, 0.17]
+                                                                            })
+
+        # Defines if it should be tried to soften the transition between sliding and wall collision
+        # (this prevents abrupt stops of the robot and makes the WAM sound less scary)
+        self['CornerGrasp']['object']['soften_impact'] = True
 
         # ---- Hand closing ----
         # synergy type for soft hand closing
@@ -495,6 +504,9 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         # short lift after initial contact (before slide)
         self['WallGrasp']['object']['lift_dist'] = 0.13
 
+        self['SurfaceGrasp']['netbag'] = self['SurfaceGrasp']['object'].copy()
+        self['SurfaceGrasp']['netbag']['downward_force'] = 14  # 14 for piles, 12 normal TODO
+
         # object specific parameters for apple
         self['SurfaceGrasp']['apple'] = self['SurfaceGrasp']['object'].copy()
         self['SurfaceGrasp']['apple']['pre_approach_transform'] = tra.concatenate_matrices(
@@ -503,7 +515,12 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         # object specific parameters for cucumber
         self['SurfaceGrasp']['cucumber'] = self['SurfaceGrasp']['object'].copy()
         self['SurfaceGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.045, 0, 0.0]), tra.rotation_matrix(math.radians(40.0), [0, 1, 0]))
+            tra.translation_matrix([-0.045, 0, 0.0]),
+            (tra.rotation_matrix(math.radians(-10.0), [0, 0, 1]).dot(
+                tra.rotation_matrix(math.radians(40.0), [0, 1, 0]))))  # specific change for fake cucumbers
+     #       tra.translation_matrix([-0.06, 0, 0.0]), tra.rotation_matrix(math.radians(40.0), [0, 1, 0]))
+
+        self['SurfaceGrasp']['cucumber']['downward_force'] = 14  # 14 for piles, 12 normal TODO
 
         self['SurfaceGrasp']['cucumber']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, -0.14]),
@@ -529,7 +546,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         # object specific parameters for mango
         self['SurfaceGrasp']['mango'] = self['SurfaceGrasp']['object'].copy()
 
-        self['SurfaceGrasp']['mango']['downward_force'] = 5
+        self['SurfaceGrasp']['mango']['downward_force'] = 12  # 5 for very soft approach... not recommended
 
         self['SurfaceGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(
             # tra.translation_matrix([-0.03, 0.0, 0.0]), tra.rotation_matrix(math.radians(35.0), [0, 1, 0])) # <-- best so far
@@ -539,11 +556,11 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         self['SurfaceGrasp']['mango']['pre_approach_manifold'] = Manifold(position_deltas=[0.04, 0.04, 0.04],
                                                                           orientation_deltas=[0, 0, np.pi])
 
-        self['SurfaceGrasp']['mango']['go_down_manifold'] =  Manifold({'min_position_deltas': [-0.09, -0.09, -0.09],
-                                                                       'max_position_deltas': [0.09, 0.09, 0.09],
-                                                                       'min_orientation_deltas': [0, 0,  -np.pi],
-                                                                       'max_orientation_deltas': [0, 0,  np.pi]
-                                                                       })
+        self['SurfaceGrasp']['mango']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.09, -0.09, -0.09],
+                                                                      'max_position_deltas': [0.09, 0.09, 0.09],
+                                                                      'min_orientation_deltas': [0, 0,  -np.pi],
+                                                                      'max_orientation_deltas': [0, 0,  np.pi]
+                                                                      })
 
         #####################################################################################
         # Specific Parameters for Wall Grasp + P24_pulpy
@@ -562,6 +579,12 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                     math.radians(0.0), [0, 0, 1]),
             ))
 
+        self['WallGrasp']['cucumber']['hand_closing_duration'] = 3.0
+
+        self['WallGrasp']['cucumber']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.02, 0.0, 0.0]),  # nothing right now
+            tra.rotation_matrix(math.radians(-9.0), [0, 1, 0]))  # -9.0 without EC_design (curvature), -18 if with it
+
         self['WallGrasp']['mango'] = self['WallGrasp']['object'].copy()
         self['WallGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.23, 0.01, -0.15]),  # 23 cm above object, 15 cm behind, 1cm to the left
@@ -574,7 +597,34 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                     math.radians(0.0), [0, 0, 1]),
             ))
 
-        self['WallGrasp']['mango']['wall_force'] = 12.0  # since they are quite heavy be more aggressive
+        self['WallGrasp']['mango']['wall_force'] = 13.0  # since they are quite heavy be more aggressive
+
+        self['WallGrasp']['mango']['hand_closing_duration'] = 3.0  # TODO change for generic object as well?
+
+        self['WallGrasp']['mango']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.0, 0.0, 0.0]),  # nothing right now
+            tra.rotation_matrix(math.radians(-5.0), [0, 1, 0]))  # -5.0 without EC_design (curvature), -18 if with it
+
+        # Distance that the hand should be lifted after grasping the object
+        self['WallGrasp']['mango']['up_dist'] = 0.34
+
+        self['WallGrasp']['netbag'] = self['WallGrasp']['object'].copy()
+        self['WallGrasp']['netbag']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.23, 0, -0.17]),  # 23 cm above object, 17 cm behind
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(15.0), [0, 1, 0]),  # hand rotated 15 degrees on y = thumb axis
+                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+
+        self['WallGrasp']['netbag']['hand_closing_duration'] = 3.0  # TODO change for generic object as well?
+
+        self['WallGrasp']['netbag']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.02, 0.0, 0.0]),  # nothing right now
+            tra.rotation_matrix(math.radians(-9.0), [0, 1, 0]))  # -9.0 without EC_design (curvature), -18 if with it
 
         #####################################################################################
         # Specific Parameters for Corner Grasp + P24_pulpy
@@ -585,18 +635,18 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
 
         self['CornerGrasp']['cucumber'] = self['WallGrasp']['object'].copy()
         self['CornerGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
-                tra.translation_matrix([-0.23, 0, -0.14]), #23 cm above object, 15 cm behind
+                tra.translation_matrix([-0.23, 0, -0.14]),  # 23 cm above object, 15 cm behind
                 tra.concatenate_matrices(
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
                     tra.rotation_matrix(
-                        math.radians(22.0), [0, 1, 0]), #hand rotated 30 degrees on y = thumb axis
-                    tra.rotation_matrix(                #this makes the fingers point downwards
+                        math.radians(22.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                    tra.rotation_matrix(                 # this makes the fingers point downwards
                         math.radians(0.0), [0, 0, 1]),
             ))
 
         self['CornerGrasp']['mango'] = self['CornerGrasp']['object'].copy()
-        self['CornerGrasp']['mango']['wall_force'] = 14.0  # since they are quite heavy be more aggressive
+        self['CornerGrasp']['mango']['wall_force'] = 12.0  # since they are quite heavy be more aggressive
 
 
 # ----------------------------------------------------------------- #

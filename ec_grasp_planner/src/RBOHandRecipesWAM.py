@@ -291,6 +291,8 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     slide_velocity = params['slide_velocity']
     slide_joint_velocity = params['slide_joint_velocity']
 
+    soften_impact = params['soften_impact']
+
     # -- Grasping phase --
 
     # The 2 in softhand_close_2 represents a wall grasp. This way the strategy is encoded in the HA.
@@ -538,11 +540,26 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                  frame_id='world', frame=wall_frame, port='2'))
 
-    control_sequence.append(ha.BlockJointControlMode('SoftenImpact', kp=np.array([300, 200, 150, 20, 10, 10, 10]) * 0.75,
-                                                     kv=np.array([2, 4, 2, 0.8, 0.2, 0.2, 0.02])))
+    if soften_impact:
 
-    control_sequence.append(ha.TimeSwitch('SoftenImpact', mode_name_hand_closing, duration=0.1))
+        control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='ForceSwitch',
+                                                     goal=wall_force_threshold,
+                                                     norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                     jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
+                                                     frame_id='world', frame=wall_frame, port='2'))
 
+        control_sequence.append(
+            ha.BlockJointControlMode('SoftenImpact', kp=np.array([300, 200, 150, 20, 10, 10, 10]) * 0.8,
+                                     kv=np.array([2, 4, 2, 0.8, 0.2, 0.2, 0.02])))
+
+        control_sequence.append(ha.TimeSwitch('SoftenImpact', mode_name_hand_closing, duration=0.1))
+
+    else:
+        control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, name='ForceSwitch',
+                                                     goal=wall_force_threshold,
+                                                     norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                     jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
+                                                     frame_id='world', frame=wall_frame, port='2'))
 
     # 8. Maintain contact while closing the hand
     # apply force on object while closing the hand
@@ -628,6 +645,8 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
 
     slide_velocity = params['slide_velocity']
     slide_joint_velocity = params['slide_joint_velocity']
+
+    soften_impact = params['soften_impact']
 
     # -- Grasping phase --
 
@@ -859,11 +878,26 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     #     (in both cases joint trajectory or op-space control)
     # TODO arne: needs tuning
     # EDITED
-    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, 'ForceSwitch',
-                                                 goal=wall_force_threshold,
-                                                 norm_weights=np.array([0, 0, 1, 0, 0, 0]),
-                                                 jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
-                                                 frame_id='world', frame=corner_frame_alpha_zero, port='2'))
+    if soften_impact:
+
+        control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='ForceSwitch',
+                                                     goal=wall_force_threshold,
+                                                     norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                     jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
+                                                     frame_id='world', frame=corner_frame_alpha_zero, port='2'))
+
+        control_sequence.append(
+            ha.BlockJointControlMode('SoftenImpact', kp=np.array([300, 200, 150, 20, 10, 10, 10]) * 0.8,
+                                     kv=np.array([2, 4, 2, 0.8, 0.2, 0.2, 0.02])))
+
+        control_sequence.append(ha.TimeSwitch('SoftenImpact', mode_name_hand_closing, duration=0.1))
+
+    else:
+        control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, 'ForceSwitch',
+                                                     goal=wall_force_threshold,
+                                                     norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                     jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
+                                                     frame_id='world', frame=corner_frame_alpha_zero, port='2'))
     # /EDITED
 
     # 8. Maintain contact while closing the hand
