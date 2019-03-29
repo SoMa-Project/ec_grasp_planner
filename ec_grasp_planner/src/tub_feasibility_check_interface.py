@@ -119,24 +119,27 @@ def ifco_transform_needs_to_be_flipped(ifco_in_base_transform):
     # we can't check for zero because of small errors in the frame (due to vision or numerical uncertainty)
     space_thresh = 0.05
 
-    y_of_yaxis = ifco_in_base_transform[1, 1]
-    y_of_translation = ifco_in_base_transform[1, 3]
+    x_of_yaxis = ifco_in_base_transform[0, 1]
+    x_of_translation = ifco_in_base_transform[0, 3]
 
-    if y_of_translation > space_thresh:
+    print(ifco_in_base_transform)
+    print(space_thresh, x_of_yaxis, x_of_translation)
+
+    if x_of_translation > space_thresh:
         # ifco is in front of robot
-        return y_of_yaxis > 0
-    elif y_of_translation < space_thresh:
+        return x_of_yaxis > 0
+    elif x_of_translation < space_thresh:
         # ifco is behind the robot
-        return y_of_yaxis < 0
+        return x_of_yaxis < 0
     else:
-        x_of_translation = ifco_in_base_transform[0, 3]
-        x_of_yaxis = ifco_in_base_transform[0, 1]
-        if x_of_translation > 0:
+        y_of_translation = ifco_in_base_transform[1, 3]
+        y_of_yaxis = ifco_in_base_transform[1, 1]
+        if y_of_translation < 0:
             # ifco is to the right of the robot
-            return x_of_yaxis > 0
+            return y_of_yaxis < 0
         else:
             # ifco is to the left of the robot
-            return x_of_yaxis < 0
+            return y_of_yaxis > 0
 
 
 # This function will call TUB's feasibility checker to check a motion.
@@ -173,7 +176,7 @@ def check_kinematic_feasibility(current_object_idx, objects, object_params, curr
 
     if strategy == 'SurfaceGrasp':
 
-        call_params = prepare_surface_grasp_parameter(current_object_idx, object_params, params)
+        call_params = prepare_surface_grasp_parameter(objects, current_object_idx, object_params, params)
 
     elif strategy == "WallGrasp":
 
@@ -291,7 +294,7 @@ def check_kinematic_feasibility(current_object_idx, objects, object_params, curr
     return 1.0
 
 
-def prepare_surface_grasp_parameter(current_object_idx, object_params, params):
+def prepare_surface_grasp_parameter(objects, current_object_idx, object_params, params):
     # use kinematic checks
     # TODO create proxy; make it a persistent connection?
 
@@ -346,13 +349,10 @@ def prepare_surface_grasp_parameter(current_object_idx, object_params, params):
 
         # Use object orientation
         'go_down': tra.quaternion_from_matrix(go_down_pose),
-    # tra.quaternion_from_matrix(object_params['frame'])  # TODO use hand orietation instead?
+        # tra.quaternion_from_matrix(object_params['frame'])  # TODO use hand orietation instead?
     }
 
-    print("ALLOWED COLLISIONS:", "box_" + str(current_object_idx), 'bottom')
-
     # The collisions that are allowed per motion in message format
-    # TODO currently we only allow to touch the object to be grasped and the ifco bottom during a surface grasp, is that really desired? (what about a really crowded ifco)
     allowed_collisions = {
         # no collisions are allowed during going to pre_grasp pose
         'pre_approach': [],
@@ -360,7 +360,12 @@ def prepare_surface_grasp_parameter(current_object_idx, object_params, params):
         'go_down': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=current_object_idx,
                                      terminating=True, required=True),
                     AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                     constraint_name='bottom', terminating=False)],
+                                     constraint_name='bottom', terminating=False)] +
+
+                   [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=obj_idx, terminating=False)
+                    for obj_idx, o in enumerate(objects) if obj_idx != current_object_idx and
+                    params['go_down_allow_touching_other_objects']
+                    ],
 
         # TODO also account for the additional object in a way?
         'post_grasp_rot': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=current_object_idx,
@@ -368,6 +373,8 @@ def prepare_surface_grasp_parameter(current_object_idx, object_params, params):
                            AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
                                             constraint_name='bottom', terminating=False)]
     }
+
+    print("ALLOWED COLLISIONS:", allowed_collisions)
 
     return FeasibilityQueryParameters(checked_motions, goals, allowed_collisions, goal_manifold_frames,
                                       goal_manifold_orientations)
