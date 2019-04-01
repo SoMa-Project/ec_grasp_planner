@@ -39,6 +39,9 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     # 1b. Switch after the lift time
     control_sequence.append(ha.TimeSwitch('GoUp_1', 'PrepareForEstimation', duration = lift_time))
 
+    # 1c. Switch if trik failed
+    control_sequence.append(ha.RosTopicSwitch('GoUp_1', 'PrepareForEstimation', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
     # 2a. Stay still for a bit
     control_sequence.append(ha.BlockJointControlMode(name='PrepareForEstimation'))
 
