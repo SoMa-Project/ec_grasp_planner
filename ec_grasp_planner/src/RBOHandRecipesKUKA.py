@@ -2,7 +2,7 @@ import numpy as np
 import hatools.components as ha
 from grasp_success_estimator import RESPONSES
 
-def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
+def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alternative_behavior=None):
     # Get robot specific params
     soft_joint_stiffness = handarm_params['soft_joint_stiffness']
     joint_damping = handarm_params['joint_damping']
@@ -133,8 +133,9 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
 
     return control_sequence
 
+
 # ================================================================================================
-def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transform):
+def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transform, alternative_behavior=None):
     # Get robot specific params
     soft_joint_stiffness = handarm_params['soft_joint_stiffness']
     joint_damping = handarm_params['joint_damping']

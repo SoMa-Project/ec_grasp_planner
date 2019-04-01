@@ -2,7 +2,8 @@ import numpy as np
 import hatools.components as ha
 from grasp_success_estimator import RESPONSES
 
-def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
+
+def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alternative_behavior=None):
     # Get robot specific params
     joint_damping = handarm_params['joint_damping']
     success_estimator_timeout = handarm_params['success_estimator_timeout']
@@ -133,8 +134,9 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
 
     return control_sequence
 
+
 # ================================================================================================
-def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transform):
+def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transform, alternative_behavior=None):
     # Get non grasp-specific params
     joint_damping = handarm_params['joint_damping']
     success_estimator_timeout = handarm_params['success_estimator_timeout']

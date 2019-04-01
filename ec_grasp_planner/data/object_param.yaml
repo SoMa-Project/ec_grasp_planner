@@ -1,3 +1,30 @@
+# This file defines object specific parameters used by various heuristics to evaluate grasp success.
+# Either during planning (basic black-listing heuristic, tub_feasibility_check, ocado_reachability_check, ...) or while
+# executing the grasp (grasp_success_estimator) including basic reactive behavior.
+#
+# Parameters are defined by object. Per object there are strategy (SurfaceGrasp, WallGrasp, ...) specific parameters
+# (like success or reactions) and strategy independent parameters (like mass)
+#
+# success describes the success probability for the given strategy and hand. You can either provide a single value or in
+#   case of used ecs a list of success probabilities that correspond to relative angles between object and EC(see below)
+#
+# angle describes relative object orientation to EC.
+#   The "optimal" orientation values (+/- the epsilon parameter) with their respective success probabilities are defined
+#   in this file. If the actual angle does not fall into one of these optimal intervals. The last value of the list of
+#   success values is selected. Or to put it differently, the last element in the success list represents the success
+#   probability of any other orientation that does not fall into one of those intervals defined by angle and epsilon.
+#
+# min(xy), max(xy) defines a box for the basic black-listing heuristic outside of which an object will be ignored.
+#   It is important to notice that if the box is not symetric wrt the ifco center this box has to be adapted regarding
+#   the estimated ifco pose. The current conventions allow both a y-axis pointing towards the robot or away from it.
+#   TODO work with a fixed convention in multi_object_params.py as in the tub_feasibilty_check.
+#
+# reactions defines reactions to the result of the grasp success estimator
+#   (see: https://github.com/SoMa-Project/ec_grasp_planner/pull/40)
+#
+# mass parameters for gaussian distribution model describing the mass of the object to be grasped (units are kg). Can be
+#   calculated using the convenience script soma_utils/planner_gui/scripts/calculate_success_estimator_object_params.py
+#
   dummy_object:
     SurfaceGrasp: 
       success:        
@@ -38,7 +65,6 @@
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
     mass: {'mean': 0.2025, 'stddev': 0.0374} # artificial values, since no fake mangos available. TODO get params as soon as we have the fake mangos again!
     graspable_with_any_hand_orientation: False
-
   apple:
     SurfaceGrasp:
       success: 
@@ -51,7 +77,19 @@
       max: [0.14, 0.05]
       reactions: 
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: REPLAN      
+        mass_estimation_too_many: REPLAN
+    CornerGrasp:
+      success:
+        RBOHandP24_pulpy: 1.0
+        RBOHandO2: 1.0
+        PISAHand: 1.0
+        PISAGripper: 1.0
+        ClashHand: 1.0
+      min: [-1000.0, -0.075]
+      max: [-0.05, 0.045]
+      reactions:
+        mass_estimation_no_object: REPLAN
+        mass_estimation_too_many: REPLAN
     WallGrasp:
       success: 
         RBOHandP24_pulpy: 1.0
@@ -70,7 +108,7 @@
 
   mango:
     SurfaceGrasp: 
-      success:        
+      success: 
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
         PISAHand: 1.0
@@ -116,9 +154,11 @@
         RBOHandO2: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
-        ClashHand: 1.0      
-      min: [-0.14, -0.1]
-      max: [0.14, 0.05]
+        ClashHand: 1.0
+      max: [0.14, 0.1]
+      min: [-0.14, -0.05]
+      #max: [0.14, 0.05] # values if ifco y-axis is pointing towards the robot
+      #min: [-0.14, -0.1] # values if ifco y-axis is pointing towards the robot
       reactions: 
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
@@ -134,6 +174,20 @@
       reactions:
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
+    CornerGrasp:
+      success:
+        RBOHandP24_pulpy: 1.0
+        RBOHandO2: 1.0
+        PISAHand: 1.0
+        PISAGripper: 1.0
+        ClashHand: 1.0
+      max: [1000.0, 0.075]
+      min: [0.05, -0.045]
+      #max: [-0.05, 0.045]    # values if ifco y-axis is pointing towards the robot
+      #min: [-1000.0, -0.075] # values if ifco y-axis is pointing towards the robot
+      reactions:
+        mass_estimation_no_object: REPLAN
+        mass_estimation_too_many: REPLAN
     WallGrasp:
       success: 
         RBOHandP24_pulpy: [1.0, 0.8, 0.7, 0.0]
@@ -144,8 +198,10 @@
       angle: 
         RBOHandP24_pulpy: [0, 180, 360]
       epsilon: 20
-      min: [-1000.0, -0.075]
-      max: [-0.05, 0.045]
+      max: [1000.0, 0.075]
+      min: [0.05, -0.045]
+      #max: [-0.05, 0.045]    # values if ifco y-axis is pointing towards the robot
+      #min: [-1000.0, -0.075] # values if ifco y-axis is pointing towards the robot
       reactions: 
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
@@ -157,7 +213,7 @@
   netbag:
     SurfaceGrasp:
       success: 
-        RBOHandP24_pulpy: 0.0
+        RBOHandP24_pulpy: 0.25
         RBOHandO2: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
@@ -179,15 +235,31 @@
       reactions:
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
+    CornerGrasp:
+      success:
+        RBOHandP24_pulpy: 1.0
+        RBOHandO2: 1.0
+        PISAHand: 1.0
+        PISAGripper: 1.0
+        ClashHand: 1.0
+      max: [1000.0, 0.075]
+      min: [0.05, -0.045]
+      #max: [-0.05, 0.045]    # values if ifco y-axis is pointing towards the robot
+      #min: [-1000.0, -0.075] # values if ifco y-axis is pointing towards the robot
+      reactions:
+        mass_estimation_no_object: REPLAN
+        mass_estimation_too_many: REPLAN
     WallGrasp:
       success: 
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
-        ClashHand: 1.0      
-      min: [-1000.0, -0.075]
-      max: [-0.05, 0.042]
+        ClashHand: 1.0
+      max: [1000.0, 0.075]
+      min: [0.05, -0.042]
+      #min: [-1000.0, -0.075] # values if ifco y-axis is pointing towards the robot
+      #max: [-0.05, 0.042]    # values if ifco y-axis is pointing towards the robot
       reactions: 
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
@@ -220,9 +292,21 @@
       reactions:
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
+    CornerGrasp:
+      success:
+        RBOHandP24_pulpy: 1.0
+        RBOHandO2: 1.0
+        PISAHand: 1.0
+        PISAGripper: 1.0
+        ClashHand: 1.0
+      min: [-1000.0, -0.075]
+      max: [-0.05, 0.045]
+      reactions:
+        mass_estimation_no_object: REPLAN
+        mass_estimation_too_many: REPLAN
     WallGrasp:
       success: 
-        RBOHandP24_pulpy: [0.8, 0.8, 0.0]
+        RBOHandP24_pulpy: [0.8, 0.8, 0.0, 0.0]
         RBOHandO2: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
@@ -264,6 +348,18 @@
       reactions:
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
+    CornerGrasp:
+      success:
+        RBOHandP24_pulpy: 1.0
+        RBOHandO2: 1.0
+        PISAHand: 1.0
+        PISAGripper: 1.0
+        ClashHand: 1.0
+      min: [-1000.0, -0.075]
+      max: [-0.05, 0.045]
+      reactions:
+        mass_estimation_no_object: REPLAN
+        mass_estimation_too_many: REPLAN
     WallGrasp:
       success: 
         RBOHandP24_pulpy: 0.5
@@ -283,24 +379,30 @@
   banana:
     SurfaceGrasp: {'success': {'RBOHandP24_pulpy': 1},'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': {'RBOHandP24_pulpy': 1}, 'min': [0, 0], 'max': [0, 0]}
+    CornerGrasp: {'success': {'RBOHandP24_pulpy': 0}, 'min': [0, 0], 'max': [0, 0]}
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
   bottle:
     SurfaceGrasp: {'success': {'RBOHandP24_pulpy': 1}, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': {'RBOHandP24_pulpy':[1, 0.8, 0.7, 0]} , 'angle': {'RBOHandP24_pulpy':[0, 180, 360]}, 'epsilon': 20, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
+    CornerGrasp: {'success': {'RBOHandP24_pulpy': 0}, 'min': [0, 0], 'max': [0, 0]}
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
   egg:
     SurfaceGrasp: {'success': {'RBOHandP24_pulpy': 0}, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': {'RBOHandP24_pulpy': 1}, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
+    CornerGrasp: {'success': {'RBOHandP24_pulpy': 0}, 'min': [0, 0], 'max': [0, 0]}
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
   ticket:
     SurfaceGrasp: {'success': {'RBOHandP24_pulpy': 0}, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': {'RBOHandP24_pulpy': 0}, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
+    CornerGrasp: {'success': {'RBOHandP24_pulpy': 0}, 'min': [0, 0], 'max': [0, 0]}
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 1}}
   headband:
     SurfaceGrasp: {'success': {'RBOHandP24_pulpy': 1}, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': {'RBOHandP24_pulpy': 0.5}, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
+    CornerGrasp: {'success': {'RBOHandP24_pulpy': 0}, 'min': [0, 0], 'max': [0, 0]}
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0.5}}
   plushtoy:
     SurfaceGrasp: {'success': {'RBOHandP24_pulpy': 1}, 'min': [-0.14, -0.1], 'max': [0.14, 0.05]}
     WallGrasp: {'success': {'RBOHandP24_pulpy': 1}, 'min': [-1000.0, -0.075], 'max': [-0.05, 0.045]}
+    CornerGrasp: {'success': {'RBOHandP24_pulpy': 0}, 'min': [0, 0], 'max': [0, 0]}
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 1}}

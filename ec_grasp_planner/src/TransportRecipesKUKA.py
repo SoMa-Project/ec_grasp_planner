@@ -3,7 +3,7 @@ import math
 import hatools.components as ha
 from grasp_success_estimator import RESPONSES
 
-def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, grasp_type, handarm_type):
+def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, grasp_type, handarm_type, alternative_behavior=None):
     # Get non grasp-specific specific params    
     joint_damping = handarm_params['joint_damping']
     drop_off_pose = handarm_params['drop_off_pose']

@@ -20,6 +20,9 @@ class BaseHandArm(dict):
         self['EdgeGrasp'] = {}
         self['CornerGrasp'] = {}
 
+        # The names of the supported strategies
+        self.__strategy_names = ['WallGrasp', 'EdgeGrasp', 'SurfaceGrasp', 'CornerGrasp']
+
         # surface grasp parameters for different objects
         # 'object' is the default parameter set
         self['SurfaceGrasp']['object'] = {}

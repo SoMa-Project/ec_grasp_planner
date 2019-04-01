@@ -162,6 +162,8 @@ class MassEstimator(object):
 
         self.estimator_continues_mass_pub = rospy.Publisher('/graspSuccessEstimator/continues_mass', Float64, queue_size=10, latch=True)
 
+        self.estimator_continues_mass_pub = rospy.Publisher('/graspSuccessEstimator/continues_mass', Float64, queue_size=10)
+
         # Stores the last active control mode to ensure we only start estimation once (the moment we enter the state)
         self.active_cm = None
         self.ham_state_subscriber = rospy.Subscriber("/ham_state", HAMState, self.ham_state_callback)
@@ -260,9 +262,15 @@ class MassEstimator(object):
             self.tf_listener.waitForTransform('/base_link', self.ee_frame, rospy.Time(0), rospy.Duration(4.0))
             (trans, rot) = self.tf_listener.lookupTransform('/base_link', self.ee_frame, rospy.Time(0))
 
-            R = tf.transformations.quaternion_matrix(rot)
-            T = tf.transformations.translation_matrix(trans)
-            frame_transform = tf.transformations.concatenate_matrices(T, R)
+            # This is a reminder that ignoring the translational component is intentional...
+            # The force transformation should not be affected by the translational component of
+            # the base_link -> ee_frame tf (see: https://github.com/SoMa-Project/ec_grasp_planner/issues/56)
+            # So the below code
+            #   R = tf.transformations.quaternion_matrix(rot)
+            #   T = tf.transformations.translation_matrix(trans)
+            #   frame_transform = tf.transformations.concatenate_matrices(T, R)
+            # can be simplified to:
+            frame_transform = tf.transformations.quaternion_matrix(rot)
 
             ft_measurement = [ft_measurement_msg.wrench.force.x, ft_measurement_msg.wrench.force.y,
                               ft_measurement_msg.wrench.force.z, 0]
