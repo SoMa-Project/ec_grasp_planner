@@ -623,7 +623,7 @@ class PISAHandKUKA(KUKA):
         self['WallGrasp']['mango'] = self['WallGrasp']['object'].copy()
         self['WallGrasp']['mango']['hand_preshape_goal'] = 0.3
         self['WallGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(
-                tra.translation_matrix([-0.15, -0.01, -0.12]), #15 cm above object, 12 cm behind
+                tra.translation_matrix([-0.15, -0.025, -0.12]), #15 cm above object, 12 cm behind
                 tra.concatenate_matrices(
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
@@ -652,7 +652,7 @@ class PISAHandKUKA(KUKA):
                     tra.rotation_matrix(
                         math.radians(0.0), [0, 0, 1]),
             ))
-        self['WallGrasp']['cucumber']['downward_force'] = 7
+        self['WallGrasp']['cucumber']['downward_force'] = 8
         self['WallGrasp']['cucumber']['slide_speed'] = 0.1
         self['WallGrasp']['cucumber']['wall_force'] = 22
         self['WallGrasp']['cucumber']['pre_grasp_twist'] = np.array([0.0, 0.0, 0.0, 0.0, math.radians(0.0), 0.0])
