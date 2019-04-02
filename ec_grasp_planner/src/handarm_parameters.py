@@ -473,6 +473,28 @@ class RBOGripperKUKA(KUKA):
                                                                                         math.radians(180.), [1, 0, 0])),
                                                                                     tra.translation_matrix([0.0, 0.0, -0.2]))
 
+        self['WallGrasp']['object']['hand_transform'] =  tra.concatenate_matrices(tra.concatenate_matrices(
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(-90.), [0, 0, 1]),
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(180.), [1, 0, 0])),
+                                                                                    tra.translation_matrix([0.0, 0.0, -0.2]))
+        self['CornerGrasp']['object']['hand_transform'] =  tra.concatenate_matrices(tra.concatenate_matrices(
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(-90.), [0, 0, 1]),
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(180.), [1, 0, 0])),
+                                                                                    tra.translation_matrix([0.0, 0.0, -0.2]))
+
+        self['WallGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
+
+        self['CornerGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
+                                                                                                                                                                
+
+
+
         # transformation between the control frame of the hand and the frame in which the hand transform is defined
         # this is needed for the PISA hand to enforce the grasping signature
         # This should be the same for all objects
@@ -482,7 +504,7 @@ class RBOGripperKUKA(KUKA):
 
         # Define transformations wrt the hand frame
         self['SurfaceGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.0]),
-                                                                                    tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
+                                                                                    tra.rotation_matrix(math.radians(45.0), [0, 0, 1]))
 
         # the maximum allowed force for pushing down
         self['SurfaceGrasp']['object']['downward_force'] = 4
