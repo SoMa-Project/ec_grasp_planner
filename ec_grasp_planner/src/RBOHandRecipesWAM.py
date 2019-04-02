@@ -89,12 +89,12 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alte
     control_sequence.append(ha.TimeSwitch('softhand_preshape_1_1', 'PreGrasp', duration=0.2))
 
     # 2. Go above the object - PreGrasp
-    if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
+    if alternative_behavior is not None and 'pre_approach' in alternative_behavior:
 
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
-        goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
+        goal_traj = alternative_behavior['pre_approach'].get_trajectory()
 
-        print("Use alternative GOAL_TRAJ PreGrasp Dim", goal_traj.shape)
+        print("Use alternative GOAL_TRAJ PreApproach Dim", goal_traj.shape)
         control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
                                                     v_max=pre_grasp_joint_velocity,
@@ -344,12 +344,12 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     control_sequence.append(ha.TimeSwitch('softhand_preshape_2_1', 'PreGrasp', duration=0.5))
 
     # 2. Go above the object - Pregrasp
-    if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
+    if alternative_behavior is not None and 'pre_approach' in alternative_behavior:
 
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
-        goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
+        goal_traj = alternative_behavior['pre_approach'].get_trajectory()
 
-        print("Use alternative GOAL_TRAJ PreGrasp Dim", goal_traj.shape)
+        print("Use alternative GOAL_TRAJ PreApproach Dim", goal_traj.shape)
         control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
                                                     v_max=pre_grasp_joint_velocity,
@@ -690,11 +690,11 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     control_sequence.append(ha.TimeSwitch('softhand_preshape_4_1', 'PreGrasp', duration=0.5))  # time for pre-shape
 
     # 2. Go above the object - Pregrasp
-    if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
+    if alternative_behavior is not None and 'pre_approach' in alternative_behavior:
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
-        goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
+        goal_traj = alternative_behavior['pre_approach'].get_trajectory()
 
-        print("Use alternative GOAL_TRAJ PreGrasp Dim", goal_traj.shape)
+        print("Use alternative GOAL_TRAJ PreApproach Dim", goal_traj.shape)
         control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
                                                     v_max=pre_grasp_joint_velocity,
