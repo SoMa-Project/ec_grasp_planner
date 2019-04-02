@@ -11,23 +11,13 @@ from tub_feasibility_check.srv import CheckKinematicsResponse
 from shape_msgs.msg import SolidPrimitive
 import rospy
 from functools import partial
+import planner_utils as pu
+
 
 import rospkg
 
 rospack = rospkg.RosPack()
 pkg_path = rospack.get_path('ec_grasp_planner')
-
-
-def unit_vector(vector):
-    # Returns the unit vector of the vector.
-    return vector / np.linalg.norm(vector)
-
-
-def angle_between(v1, v2):
-    # Returns the angle in radians between vectors 'v1' and 'v2'::
-    v1_u = unit_vector(v1)
-    v2_u = unit_vector(v2)
-    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 
 class EnvironmentalConstraint:
@@ -119,7 +109,7 @@ class multi_object_params:
             for idx, val in enumerate(object['angle']):
                 ec_x_axis = ec_frame[0:3, 0]
                 angle_epsilon = object['epsilon']
-                diff_angle = math.fabs(angle_between(obj_x_axis, ec_x_axis) - math.radians(val))
+                diff_angle = math.fabs(pu.angle_between(obj_x_axis, ec_x_axis) - math.radians(val))
                 # print("obj_x = {}, ec_x = {}, eps = {}, optimalDeg = {}, copare = {}".format(
                 #     obj_x_axis, ec_x_axis, angle_epsilon, val, diff_angle))
                 if diff_angle <= math.radians(angle_epsilon):
@@ -139,7 +129,7 @@ class multi_object_params:
         if strategy in ["WallGrasp", "EdgeGrasp"]:
             delta = np.linalg.inv(ec_frame).dot(object_frame)
             # this is the distance between object and EC
-            dist = delta[2, 3]
+            dist = abs(delta[2, 3]) # TODO why was this never a problem before?
             # include distance to q_val, longer distance decreases q_val
             q_val = q_val * (1/dist)
 
@@ -147,14 +137,17 @@ class multi_object_params:
 
     def black_list_walls(self, current_ec_index, all_ec_frames, strategy):
 
+        print(":::A1")
         if strategy not in ["WallGrasp", "EdgeGrasp"]:
             return 1
         # this function will blacklist all walls except
         # the one on th right side of the robot
         # y coord is the smallest
 
+        print(":::A2")
         if all_ec_frames[current_ec_index][1,3] > 0:
-                return 0
+            print(":::A3")
+            return 0
 
         min_y = 10000
         min_y_index = 0
@@ -165,8 +158,10 @@ class multi_object_params:
                 min_y_index = i
 
         if min_y_index == current_ec_index:
+            print(":::A4")
             return 1
         else:
+            print(":::A5")
             return 0
 
     def black_list_unreachable_zones(self, object, object_params, ifco_in_base_transform, strategy):
@@ -232,11 +227,13 @@ class multi_object_params:
         # curr_start_config = rospy.get_param('planner_gui/robot_view_position') # TODO check view->init config
 
         # The edges in the scene
-        edges = [e for e in all_ecs if e.label == "EdgeGrasp"]
+        edges = [multi_object_params.transform_to_pose_msg(e.transform) for e in all_ecs if e.label == "EdgeGrasp"]
 
         # The backup table frame that is used in case we don't create the table from edges
-        table_frame = None
-        table_pose = geometry_msgs.msg.Pose()
+        #table_frame = None
+        #table_pose = geometry_msgs.msg.Pose()
+        table_frame = tra.inverse_matrix(ifco_in_base_transform)  # ec_frame (does not have the correct orientation)
+        table_pose = multi_object_params.transform_to_pose_msg(table_frame)
 
         # TODO maybe move the kinematic stuff to separate file
 
@@ -251,25 +248,17 @@ class multi_object_params:
             else:
                 params = handarm_params['surface_grasp']['object']
 
-            # TODO needed ----------------------
-            #x_flip_transform = tra.concatenate_matrices(
-            #    tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(180.0), [1, 0, 0]))
-
-            # TODO needed ----------------------
-
-            #table_frame = ec_frame.dot(x_flip_transform)
-            table_frame = ec_frame
+            table_frame = tra.inverse_matrix(ifco_in_base_transform)  # ec_frame (does not have the correct orientation)
 
             # Since the surface grasp frame is at the object center we have to translate it in z direction
-            table_frame[2, 3] = table_frame[2, 3] - object['bounding_box'].z / 2.0
+            #table_frame[2, 3] = table_frame[2, 3] - object['bounding_box'].z / 2.0
 
             # Convert table frame to pose message
             table_pose = multi_object_params.transform_to_pose_msg(table_frame)
 
-            #object_frame = object_params['frame'].dot(x_flip_transform)
             object_frame = object_params['frame']
 
-            print("DBG_FRAME 1", multi_object_params.transform_to_pose_msg(object_frame))
+            #print("DBG_FRAME 1", multi_object_params.transform_to_pose_msg(object_frame))
 
             goal_ = np.copy(object_frame)
             # we rotate the frame to align the hand with the long object axis and the table surface
@@ -281,9 +270,19 @@ class multi_object_params:
             goal_[:3, 1] = y_axis / np.linalg.norm(y_axis)
             goal_[:3, 2] = z_axis
 
+            print("DBG_FRAME 1", pu.tf_dbg_call_to_string(goal_, "dbg1"))
+
+            # In the disney use case the z-axis points downwards, but the planner compensates for that already by
+            # flipping the support_surface_frame. Since the feasibilty_checker assumes the z-axis for the disney use
+            # case flipped as well, we need to apply the flip afterwards, when creating the pre-grasp pose
+            # TODO get rid of this mess (change convention in feasibility checker)
+            x_flip_transform = tra.concatenate_matrices(
+                tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(180.0), [1, 0, 0]))
+            goal_ = goal_.dot(x_flip_transform)
+
             goal_ = goal_.dot(params['hand_transform'])
 
-            print("DBG_FRAME 2",  multi_object_params.transform_to_pose_msg(goal_))
+            print("DBG_FRAME 2", pu.tf_dbg_call_to_string(goal_, "dbg2"))
 
             # Set the initial pose above the object
             #goal_ = np.copy(object_params['frame'])  # TODO: this should be support_surface_frame
@@ -509,6 +508,18 @@ class multi_object_params:
             # This is the frame of the edge we are going for
             edge_frame = np.copy(ec_frame)
 
+            # In the disney use case the z-axis of the table points downwards and the z-axis of the edge lays inside
+            # the plane, but the planner compensates for that already by rotating the edge_frame.
+            # Since the feasibilty_checker assumes the z-axis for the disney use
+            # case flipped as well, we need to apply the flip afterwards, when creating the pre-grasp pose
+            # TODO get rid of this mess (change convention in feasibility checker)
+            x_rot_transform = tra.concatenate_matrices(
+                tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(-90.0), [1, 0, 0]))
+            edge_frame = edge_frame.dot(x_rot_transform)
+
+            print("EDGE_MULTI", pu.tf_dbg_call_to_string(edge_frame, "EDGE_MULTI"))
+            print("OBJ_MULTI", pu.tf_dbg_call_to_string(object_params['frame'], "OBJ_MULTI"))
+
             # this is the EC frame. It is positioned like object and oriented to the edge?
             initial_slide_frame = np.copy(edge_frame)
             initial_slide_frame[:3, 3] = tra.translation_from_matrix(object_params['frame'])
@@ -523,6 +534,8 @@ class multi_object_params:
             # - fingers pointing toward the edge (edge x-axis orthogonal to palm frame x-axis)
             # - palm normal perpendicualr to surface normal
             pre_approach_pose = initial_slide_frame.dot(pre_approach_transform)
+
+            print("PREEE", pu.tf_dbg_call_to_string(pre_approach_pose, "PRE1"))
 
             # down_dist = params['down_dist']  #  dist lower than ifco bottom: behavior of the high level planner
             # dist = z difference to object centroid (both transformations are w.r.t. to world frame
@@ -627,24 +640,28 @@ class multi_object_params:
 
         # Try to create the table from edges. As fall back use SurfaceGrasp frame (which might have a wrong orientation)
         table_from_edges = True
-        if len(edges) < 2 and table_frame is None:
+        if len(edges) < 2:
 
+                # we use the SurfaceGrasp frame as a backup
                 table_from_edges = False
-                # The potential SurfaceGrasp frames that can be used as a backup for table frames
-                pot_table_frames = [e.transform for e in all_ecs if all_ecs.label == 'SurfaceGrasp']
 
-                if len(pot_table_frames) > 0:
-                    table_frame = pot_table_frames[0]
+        #        if table_frame is None:
+        #            # we did not already compute a table pose backup...
+        #            # Find potential SurfaceGrasp frames that can be used as a backup for table frames
+        #            pot_table_frames = [e.transform for e in all_ecs if e.label == 'SurfaceGrasp']
 
-                    # Since the surface grasp frame is at the object center we have to translate it in z direction
-                    table_frame[2, 3] = table_frame[2, 3] - object['bounding_box'].z / 2.0
+        #            if len(pot_table_frames) > 0:
+        #                table_frame = pot_table_frames[0]
 
-                    # Convert table frame to pose message
-                    table_pose = multi_object_params.transform_to_pose_msg(table_frame)
+        #                # Since the surface grasp frame is at the object center we have to translate it in z direction
+        #                table_frame[2, 3] = table_frame[2, 3] - object['bounding_box'].z / 2.0
 
-                else:
-                    # TODO limitation of the feasibility checker which needs at least two edges to create a table
-                    raise ValueError("Planning for {}, but not enough edges/table frames found".format(strategy))
+                        # Convert table frame to pose message
+        #                table_pose = multi_object_params.transform_to_pose_msg(table_frame)
+
+        #            else:
+        #                # TODO limitation of the feasibility checker which needs at least two edges to create a table
+        #                raise ValueError("Planning for {}, but not enough edges/table frames found".format(strategy))
 
         if table_frame is not None:
             print("TABLE POSE", table_pose)
@@ -685,11 +702,11 @@ class multi_object_params:
 
             print("allowed", allowed_collisions[motion])
 
-            print("Call check kinematics for " + motion + " " + str(curr_goal))#Arguments: \n" + yaml.safe_dump(args))
+            print("Call check kinematics for " + motion + " (" + strategy + ")\nGoal:\n" + str(curr_goal))
 
             res = check_feasibility(initial_configuration=curr_start_config,
                                     goal_pose=goal_pose,
-                                    table_pose=table_pose,
+                                    table_surface_pose=table_pose,
                                     bounding_boxes_with_poses=bounding_boxes,
                                     goal_manifold_frame=goal_manifold_frame,
                                     min_position_deltas=params[manifold_name]['min_position_deltas'],
@@ -730,8 +747,8 @@ class multi_object_params:
             self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
             pass
 
-        return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,
-                                                                            strategy)
+        #return self.pdf_object_strategy(object_params) * self.pdf_object_ec(object_params, ec_frame,strategy)
+        return 1
 
     def black_list_risk_regions(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames,
                                 ifco_in_base_transform):
@@ -787,13 +804,22 @@ class multi_object_params:
             all_ec_frames = [ec.transform for ec in all_ecs]
             feasibility_fun = partial(self.black_list_walls, current_ec_index, all_ec_frames, strategy)
 
+        print("---------------------")
+        print(self.pdf_object_strategy(object_params))
+        print(self.pdf_object_ec(object_params, ec_frame, strategy))
+        f = feasibility_fun()
+        print(f)
+
+        print("---------------------")
+
         q_val = 1
         q_val = q_val * \
             self.pdf_object_strategy(object_params) * \
             self.pdf_object_ec(object_params, ec_frame, strategy) * \
-            feasibility_fun()
+            f#feasibility_fun()
 
-        # print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
+        print("qval", q_val)
+        #print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
         return q_val
 
 ## --------------------------------------------------------- ##

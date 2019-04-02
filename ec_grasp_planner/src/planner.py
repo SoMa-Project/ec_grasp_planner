@@ -59,6 +59,7 @@ sys.path.append(pkg_path + '/../hybrid-automaton-tools-py/')
 import hatools.components as ha
 import hatools.cookbook as cookbook
 import tf_conversions.posemath as pm
+import planner_utils as pu
 
 import handarm_parameters
 
@@ -1106,6 +1107,9 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     # if initial_slide_frame[0][0]<0:
     #     goal_ = initial_slide_frame.dot(zflip_transform)
 
+    print("EDGE_PLN", pu.tf_dbg_call_to_string(edge_frame, "EDGE_PLN"))
+    print("OBJ_PLN", pu.tf_dbg_call_to_string(object_frame, "OBJ_PLN"))
+
 
     # the pre-approach pose should be:
     # - floating above the object
@@ -1509,9 +1513,9 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
     print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == 'EdgeGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
-        support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
+        support_surface_frame = T_robot_base_frame.dot(pu.convert_transform_msg_to_homogeneous_tf(support_surface_frame_node.transform))
         edge_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
-        edge_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(edge_frame_node.transform))
+        edge_frame = T_robot_base_frame.dot(pu.convert_transform_msg_to_homogeneous_tf(edge_frame_node.transform))
 
         #we need to flip the z axis in the old convention
         if frame_convention == 1:
