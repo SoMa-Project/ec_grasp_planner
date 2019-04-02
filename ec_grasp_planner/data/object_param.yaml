@@ -256,7 +256,7 @@
       success:
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
-        PISAHand: 1.0
+        PISAHand: 0.0
         PISAGripper: 1.0
         ClashHand: 0.66 
       min: [-1000.0, -0.075]
@@ -268,7 +268,7 @@
       success: 
         RBOHandP24_pulpy: 0.5
         RBOHandO2: 1.0
-        PISAHand: 1.0
+        PISAHand: 0.0
         PISAGripper: 1.0
         ClashHand: 0.66     
       min: [-1000.0, -0.075]
