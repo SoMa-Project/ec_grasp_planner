@@ -36,6 +36,7 @@ import handarm_parameters
 
 import PISAHandRecipes
 import RBOHandRecipesKUKA
+import RBOGripperRecipesKUKA
 import RBOHandRecipesWAM
 import PISAGripperRecipes
 import ClashHandRecipes
@@ -263,6 +264,11 @@ def get_hand_recipes(handarm_type, robot_name):
             return RBOHandRecipesWAM
         elif robot_name == "KUKA":
             return RBOHandRecipesKUKA
+        else:
+            raise Exception("Unknown robot_name: " + robot_name)
+    elif "RBOGripper" in handarm_type:
+        if robot_name == "KUKA":
+            return RBOGripperRecipesKUKA
         else:
             raise Exception("Unknown robot_name: " + robot_name)
     elif "ClashHand" in handarm_type:

@@ -3,6 +3,7 @@
       success:        
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.66      
@@ -15,6 +16,7 @@
       success:
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.66 
@@ -27,6 +29,7 @@
       success: 
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.66
@@ -44,6 +47,7 @@
       success: 
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 1.0
@@ -56,6 +60,7 @@
       success: 
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 1.0
@@ -73,6 +78,7 @@
       success:        
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.66      
@@ -85,6 +91,7 @@
       success:
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.66 
@@ -97,6 +104,7 @@
       success: 
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.66
@@ -114,6 +122,7 @@
       success: 
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 1.0      
@@ -126,6 +135,7 @@
       success:
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.66 
@@ -138,6 +148,7 @@
       success: 
         RBOHandP24_pulpy: [1.0, 0.8, 0.7, 0.0]
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.1            
@@ -159,6 +170,7 @@
       success: 
         RBOHandP24_pulpy: 0.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.33     
@@ -171,6 +183,7 @@
       success:
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.66 
@@ -183,6 +196,7 @@
       success: 
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 1.0      
@@ -200,6 +214,7 @@
       success: 
         RBOHandP24_pulpy: 0.5
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 1.0     
@@ -212,6 +227,7 @@
       success:
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.66 
@@ -224,6 +240,7 @@
       success: 
         RBOHandP24_pulpy: [0.8, 0.8, 0.0]
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.0           
@@ -244,6 +261,7 @@
       success: 
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 1.0     
@@ -256,6 +274,7 @@
       success:
         RBOHandP24_pulpy: 1.0
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.66 
@@ -268,6 +287,7 @@
       success: 
         RBOHandP24_pulpy: 0.5
         RBOHandO2: 1.0
+        RBOGripper: 1.0
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 0.66     

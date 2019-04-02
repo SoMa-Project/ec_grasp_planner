@@ -448,7 +448,56 @@ class RBOHandO2KUKA(KUKA):
                     math.radians(0.0), [0, 0, 1]),
         ))
         
-            
+class RBOGripperKUKA(KUKA):
+    def __init__(self, **kwargs):
+        super(RBOGripperKUKA, self).__init__()
+
+        self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.33755, -0.53554, 0.29871]), tra.quaternion_matrix([0.99961, 0.021784, 0.013722, 0.010751]))
+        self['view_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.5452, -0.4836, 0.35]), 
+                                                        tra.quaternion_matrix([1, 0, 0, 0]))
+        
+        ####################################################################################
+        # RBOGripper specific params
+        ####################################################################################
+
+        self['SurfaceGrasp']['object']['low_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 200, 10, 10])
+
+        self['SurfaceGrasp']['object']['high_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 200, 100, 100])
+
+        # This is the same for all objects
+        # Prepend transforms to this one to transform on the object frame (guarantees that hand z will go through the object center)
+        self['SurfaceGrasp']['object']['hand_transform'] =  tra.concatenate_matrices(tra.concatenate_matrices(
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(-90.), [0, 0, 1]),
+                                                                                    tra.rotation_matrix(
+                                                                                        math.radians(180.), [1, 0, 0])),
+                                                                                    tra.translation_matrix([0.0, 0.0, -0.2]))
+
+        # transformation between the control frame of the hand and the frame in which the hand transform is defined
+        # this is needed for the PISA hand to enforce the grasping signature
+        # This should be the same for all objects
+        # self['SurfaceGrasp']['object']['ee_in_goal_frame'] = tra.inverse_matrix(tra.translation_matrix([-0.001, -0.002, 0.003]).dot(tra.quaternion_matrix([0.595, 0.803, -0.024, -0.013])))
+
+        self['SurfaceGrasp']['object']['ee_in_goal_frame'] = tra.translation_matrix([0, 0, 0])
+
+        # Define transformations wrt the hand frame
+        self['SurfaceGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
+
+        # the maximum allowed force for pushing down
+        self['SurfaceGrasp']['object']['downward_force'] = 4
+
+        # speed of approaching the object
+        self['SurfaceGrasp']['object']['down_speed'] = 0.03
+
+        self['SurfaceGrasp']['object']['up_speed'] = 0.03
+
+        # time of soft hand closing
+        self['SurfaceGrasp']['object']['hand_closing_duration'] = 5
+
+        # duration of lifting the object
+        self['SurfaceGrasp']['object']['lift_duration'] = 11
+         
         
 class PISAHandKUKA(KUKA):
     def __init__(self, **kwargs):
