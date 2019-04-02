@@ -107,7 +107,7 @@
         mass_estimation_too_many: CONTINUE
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
     mass: {'mean': 0.394, 'stddev': 0.0862365078961} # values for fake mangos
-    graspable_with_any_hand_orientation: False
+    graspable_with_any_hand_orientation: True
 
   cucumber:
     SurfaceGrasp: 
