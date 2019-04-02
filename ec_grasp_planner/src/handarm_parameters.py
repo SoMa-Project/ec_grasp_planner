@@ -259,7 +259,7 @@ class RBOHandP24WAM(RBOHand2):
             ))
 
         # Defines the general manifold for pre_approach in which alternative goal poses are sampled during kinematics
-        # checks. You can also define special manifolds per obejct
+        # checks. You can also define special manifolds per object
         self['WallGrasp']['object']['pre_approach_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.01, -0.02],
                                                                          'max_position_deltas': [0.01, 0.01, 0.02],
                                                                          'min_orientation_deltas': [0, 0, -0.17],
@@ -446,7 +446,7 @@ class RBOHandP24WAM(RBOHand2):
         self['CornerGrasp']['object']['hand_closing_synergy'] = 0
 
         # time of soft hand closing
-        self['CornerGrasp']['object']['hand_closing_duration'] = 2.0
+        self['CornerGrasp']['object']['hand_closing_duration'] = 3  # Old val: 2.0
 
         # ---- Drop off parameters ----
         # first motion after grasp, in hand palm frame
@@ -671,6 +671,10 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         # object specific parameters for mango (corner grasp)
         self['CornerGrasp']['mango'] = self['CornerGrasp']['object'].copy()
         self['CornerGrasp']['mango']['wall_force'] = 12.0  # since they are quite heavy be more aggressive
+
+        # object specific parameters for punnet (corner grasp)
+        self['CornerGrasp']['punnet'] = self['CornerGrasp']['object'].copy()
+        self['CornerGrasp']['punnet']['wall_force'] = 12.0  # since they are quite heavy be more aggressive
 
 
 # ----------------------------------------------------------------- #
