@@ -322,8 +322,8 @@ def prepare_surface_grasp_parameter(objects, current_object_idx, object_params, 
     # goal pose for go down movement
     go_down_pose = tra.translation_matrix([0, 0, -down_dist]).dot(pre_grasp_pose)
 
-    post_grasp_pose = params['post_grasp_transform'].dot(
-        go_down_pose)  # TODO it would be better to allow relative motion as goal frames
+    # post_grasp_pose = params['post_grasp_transform'].dot(
+    #     go_down_pose)  # TODO it would be better to allow relative motion as goal frames
 
     checked_motions = ["pre_approach",
                        "go_down"]  # , "post_grasp_rot"] ,go_up, go_drop_off  # TODO what about remaining motions? (see wallgrasp)

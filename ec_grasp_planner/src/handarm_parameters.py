@@ -3,11 +3,55 @@
 import math
 import itertools
 import numpy as np
+import copy
 from tf import transformations as tra
 
 # python ec_grasps.py --angle 69.0 --inflation .29 --speed 0.04 --force 3. --wallforce -11.0 --positionx 0.0 --grasp WallGrasp wall_chewinggum
 # python ec_grasps.py --anglesliding -10.0 --inflation 0.02 --speed 0.04 --force 4.0 --grasp EdgeGrasp --edgedistance -0.007 edge_chewinggum/
 # python ec_grasps.py --anglesliding 0.0 --inflation 0.33 --force 7.0 --grasp SurfaceGrasp test_folder
+
+class Manifold(dict):
+    def __init__(self, initializer_dict=None, position_deltas=None, orientation_deltas=None):
+        super(dict, self).__init__()
+
+        # Parse convenient parameters for symmetric manifolds (min == max)
+        if position_deltas is not None:
+            self['max_position_deltas'] = [max(-pd, pd) for pd in position_deltas]
+            self['min_position_deltas'] = [min(-pd, pd) for pd in position_deltas]
+        if orientation_deltas is not None:
+            self['max_orientation_deltas'] = [max(-od, od) for od in orientation_deltas]
+            self['min_orientation_deltas'] = [min(-od, od) for od in orientation_deltas]
+
+        # parse (and overwrite) any paramters given in the initializer list
+        if initializer_dict:
+            for k in initializer_dict.keys():
+                self[k] = copy.copy(initializer_dict[k])
+
+    def check_if_valid(self):
+
+        if not len(self) == 4:
+            AssertionError("Manifold: Illegal Number of attributes. Expected 4, but was {}".format(len(self)))
+
+        required_keys = ['min_position_deltas', 'max_position_deltas', 'min_orientation_deltas',
+                         'min_orientation_deltas']
+        for k in required_keys:
+            if k not in self:
+                AssertionError("Manifold: Required key {} missing".format(k))
+
+            if len(self[k]) != 3:
+                AssertionError("Manifold: Key {0} has wrong number of coordinates. Expected 3, but was {1}".format(
+                    k, len(self[k])))
+
+        return True
+
+    def __copy__(self):
+        # ensures that every copy is automatically also a deep copy
+        return copy.deepcopy(self)
+
+    @staticmethod
+    def deg_to_rad(angles_degree):
+        return [ad * np.pi / 180.0 for ad in angles_degree]
+
 
 class BaseHandArm(dict):
     def __init__(self):
@@ -238,6 +282,29 @@ class KUKA(BaseHandArm):
         self['cartesian_damping'] = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7]) 
         self['nullspace_stiffness'] = 200 
         self['nullspace_damping'] = 0.7
+
+        self['WallGrasp']['object']['initial_goal'] = np.array([-0.3900003118881745, 0.4000010613028202, -0.569998721768636, -1.7200005331460453, -2.390001011141959, -0.4700010134738877, -0.9299999347471939])        
+        self['SurfaceGrasp']['object']['initial_goal'] = np.array([-0.3900003118881745, 0.4000010613028202, -0.569998721768636, -1.7200005331460453, -2.390001011141959, -0.4700010134738877, -0.9299999347471939])        
+        
+        #self['SurfaceGrasp']['object']['initial_goal'] = np.array([-0.38999996913282775, 0.4000010803526841, -0.5699984584349957, -1.7200005178759445, -2.390000997526764, -0.47000110194299616, -0.9299999496949329])
+        self['CornerGrasp']['object']['initial_goal'] = np.array([-0.3900003118881745, 0.4000010613028202, -0.569998721768636, -1.7200005331460453, -2.390001011141959, -0.4700010134738877, -0.9299999347471939])
+
+        self['SurfaceGrasp']['object']['pre_approach_manifold'] = Manifold({'min_position_deltas': [-0.05, -0.05, -0.05],
+                                                                          'max_position_deltas': [0.05, 0.05, 0.05],
+                                                                          'min_orientation_deltas': [0, 0, 0],
+                                                                          'max_orientation_deltas': [0, 0, 0],
+                                                                         })
+
+        self['SurfaceGrasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.055, -0.055, -0.1],
+                                                                       'max_position_deltas': [0.055, 0.055, 0.2],
+                                                                       'min_orientation_deltas': [0, 0, -np.pi],
+                                                                       'max_orientation_deltas': [0, 0, np.pi]
+                                                                       })
+
+        self['SurfaceGrasp']['object']['go_down_allow_touching_other_objects'] = False
+
+
+
             
 
 
@@ -248,6 +315,12 @@ class RBOHandO2KUKA(KUKA):
 
         self['mesh_file'] = "package://ec_grasp_planner/data/softhand_right_colored.dae"
 
+        self['SurfaceGrasp']['object']['soft_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 200, 10, 10])
+
+        self['SurfaceGrasp']['object']['low_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 200, 10, 10])
+
+        self['SurfaceGrasp']['object']['high_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 200, 100, 100])
+        
         self['mesh_file_scale'] = 0.1
 
         self['drop_off_pose'] = tra.concatenate_matrices(tra.translation_matrix([0.29692, -0.57419, 0.16603]), tra.quaternion_matrix([0.6986, -0.68501, -0.11607, -0.171]))

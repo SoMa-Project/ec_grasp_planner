@@ -405,12 +405,14 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
         grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_wall_grasp(chosen_object, wall_on_object_frame,
                                                                                        handarm_params, pre_grasp_pose,
                                                                                        alternative_behavior)
+        recovery_recipe = RecoveryRecipesKUKA.get_recovery_recipe(handarm_params, handarm_type, grasp_type, wall_frame)
         rviz_frames.append(wall_frame)
         rviz_frames.append(wall_on_object_frame)       
     elif grasp_type == 'SurfaceGrasp':
         grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_surface_grasp(chosen_object, handarm_params,
                                                                                           pre_grasp_pose,
                                                                                           alternative_behavior)
+        recovery_recipe = RecoveryRecipesKUKA.get_recovery_recipe(handarm_params, handarm_type, grasp_type)
     elif grasp_type == 'CornerGrasp':
         corner_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))
         corner_frame_alpha_zero = get_derived_corner_grasp_frames(corner_frame, chosen_object['frame'])[1]

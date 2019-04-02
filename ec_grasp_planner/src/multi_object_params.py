@@ -56,6 +56,10 @@ def get_derived_corner_grasp_frames(corner_frame, object_pose):
 
     return ec_frame, corner_frame_alpha_zero
 
+def convert_homogenous_tf_to_pose_msg(htf):
+    return pm.toMsg(pm.fromMatrix(htf))
+
+
 
 
 class multi_object_params:
@@ -328,6 +332,8 @@ class multi_object_params:
         object_params = self.data[object['type']][strategy]
         object_params['frame'] = object['frame']
 
+        return 1
+
         zone_fac = self.black_list_unreachable_zones(object, object_params, ifco_in_base_transform, strategy)
         wall_fac = self.black_list_walls(current_ec_index, all_ec_frames, strategy)
         corner_fac = self.black_list_corners(current_ec_index, all_ec_frames, strategy)
@@ -482,24 +488,22 @@ class multi_object_params:
 
         if self.heuristic_type == 'ocado':
             srv = rospy.ServiceProxy('generate_q_matrix', target_selection_srv.GenerateQmatrix)
-            object_data = self.data[
-                object_type]  # using the first object, in theory in the ocado use case we work with the same objects
+            object_data = self.data[object_type] #using the first object, in theory in the ocado use case we work with the same objects
             SG_success_rate = object_data['SurfaceGrasp']['success'][self.hand_name]
             WG_success_rate = object_data['WallGrasp']['success'][self.hand_name]
             CG_success_rate = object_data['CornerGrasp']['success'][self.hand_name]
             graspable_with_any_hand_orientation = object_data['graspable_with_any_hand_orientation']
 
             # currently camera_in_base = graph_in_base
-            camera_in_ifco = np.linalg.inv(ifco_in_base_transform).dot(graph_in_base)
-            camera_in_ifco_msg = convert_homogeneous_tf_to_pose_msg(camera_in_ifco)
+            camera_in_ifco = np.linalg.inv(ifco_in_base_transform).dot(graph_in_base) 
+            camera_in_ifco_msg = convert_homogenous_tf_to_pose_msg(camera_in_ifco)
 
-            SG_pre_grasp_in_object_frame_msg = convert_homogeneous_tf_to_pose_msg(SG_pre_grasp_in_object_frame)
-            WG_pre_grasp_in_object_frame_msg = convert_homogeneous_tf_to_pose_msg(WG_pre_grasp_in_object_frame)
-            ifco_in_base_msg = convert_homogeneous_tf_to_pose_msg(ifco_in_base_transform)
+            SG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(SG_pre_grasp_in_object_frame)
+            WG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(WG_pre_grasp_in_object_frame)
+            CG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(CG_pre_grasp_in_object_frame)
+            ifco_in_base_msg = convert_homogenous_tf_to_pose_msg(ifco_in_base_transform)
 
-            res = srv(grasp_type, object_list_msg, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg,
-                      WG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation,
-                      SG_success_rate, WG_success_rate)
+            res = srv(grasp_type, object_list_msg, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, CG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate, CG_success_rate)
             Q_list = res.Q_mat.data
             number_of_columns = len(ecs)
             Q_matrix = np.array(Q_list).reshape((len(object_list_msg.objects), number_of_columns))

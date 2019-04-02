@@ -1,10 +1,13 @@
 import numpy as np
 import hatools.components as ha
 from grasp_success_estimator import RESPONSES
+from tf import transformations as tra
+import math
 
 def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alternative_behavior=None):
+    print alternative_behavior
     # Get robot specific params
-    soft_joint_stiffness = handarm_params['soft_joint_stiffness']
+    soft_joint_stiffness = handarm_params['SurfaceGrasp']['object']['soft_joint_stiffness']
     joint_damping = handarm_params['joint_damping']
     
     object_type = chosen_object['type']
@@ -34,20 +37,50 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alte
     # Slow Up speed is also positive because it is defined on the world frame
     up_twist = np.array([0, 0, up_speed, 0, 0, 0])
 
+    # the 1 in softhand_close_1 represents a surface grasp. This way the strategy is encoded in the HA.
+    mode_name_hand_closing = 'softhand_close_1_0'
+
     # assemble controller sequence
     control_sequence = []
 
     # 0. Trigger pre-shaping the hand (if there is a synergy). The first 1 in the name represents a surface grasp.
-    control_sequence.append(ha.BlockJointControlMode(name = 'softhand_preshape_1_1'))
+    # control_sequence.append(ha.BlockJointControlMode(name = 'softhand_preshape_1_1'))
     
-    # 0b. Time to trigger pre-shape
-    control_sequence.append(ha.TimeSwitch('softhand_preshape_1_1', 'PreGrasp', duration = hand_preshaping_time))
+    # # 0b. Time to trigger pre-shape
+    # control_sequence.append(ha.TimeSwitch('softhand_preshape_1_1', 'PreGrasp', duration = hand_preshaping_time))
 
-    # 1. Go above the object - Pregrasp
-    control_sequence.append(ha.InterpolatedHTransformControlMode(pregrasp_transform, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'PreGrasp', reference_frame = 'world'))
 
-    # 1b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement', controller = 'GoAboveObject', epsilon = '0.03'))
+    #  # 2. Go above the object - PreGrasp
+    # print('{}'.format(alternative_behavior))
+    
+    if alternative_behavior is not None and 'pre_approach' in alternative_behavior:
+
+        # we can not use the initially generated plan, but have to include the result of the feasibility checks
+        goal_traj = alternative_behavior['pre_approach'].get_trajectory()
+
+        print("Use alternative GOAL_TRAJ PreGrasp Dim", goal_traj.shape)
+        control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
+                                                    goal_is_relative='0',
+                                                    v_max=np.array([0.005]),
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear'))
+
+        # 2b. Switch when hand reaches the goal configuration
+        control_sequence.append(ha.JointConfigurationSwitch('PreGrasp', 'PrepareForMassMeasurement',
+                                                            controller='GoAboveObject', epsilon=str(math.radians(7.))))
+
+    else:
+        # we can use the original motion
+        control_sequence.append(ha.InterpolatedHTransformControlMode(pregrasp_transform,
+                                                                     name='PreGrasp',
+                                                                     controller_name='GoAboveObject',
+                                                                     goal_is_relative='0',
+                                                                    #  v_max=pre_grasp_velocity,
+                                                                      reference_frame = 'world'))
+
+        # 1b. Switch when hand reaches the goal pose
+        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForMassMeasurement',
+                                                   controller='GoAboveObject', epsilon='0.03'))    
     
     # 1c. Switch to finished if no plan is found
     control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'softhand_open_after_preshape', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
@@ -87,15 +120,51 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alte
     # 3b.4 There is no special switch for unknown error response (estimator signals REFERENCE_MEASUREMENT_FAILURE)
     #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
 
-    # 4. Go down onto the object (relative in EE frame) - Godown
-    control_sequence.append(ha.CartesianVelocityControlMode(down_twist,
-                                             controller_name='GoDown',
-                                             name="GoDown",
-                                             reference_frame="EE"))
-
-    # force threshold that if reached will trigger the closing of the hand
+        # force threshold that if reached will trigger the closing of the hand
     force = np.array([0, 0, downward_force, 0, 0, 0])
-    
+      
+    # 5. Go down onto the object - Godown
+    if alternative_behavior is not None and 'go_down' in alternative_behavior:
+        # we can not use the initially generated plan, but have to include the result of the feasibility checks
+        # Go down onto the object (joint controller + relative world frame motion)
+
+        goal_traj = alternative_behavior['go_down'].get_trajectory()
+
+        print("Use alternative GOAL_TRAJ GoDown Dim:", goal_traj.shape)  # TODO Check if the dimensions are correct and the via points are as expected
+        control_sequence.append(ha.JointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
+                                                    goal_is_relative='0',
+                                                    # v_max=go_down_joint_velocity,
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear'))
+
+        # Relative motion that ensures that the actual force/torque threshold is reached
+        
+        control_sequence.append(ha.CartesianVelocityControlMode(down_twist,
+                                                                controller_name='GoDownFurther',
+                                                                name="GoDownFurther",
+                                                                reference_frame="EE"))
+
+        # Switch when goal is reached to trigger the relative go down further motion
+        control_sequence.append(ha.JointConfigurationSwitch('GoDown', 'GoDownFurther', controller='GoDown',
+                                                            epsilon=str(math.radians(7.))))
+
+        # Force/Torque switch for the additional relative go down further
+        control_sequence.append(ha.ForceTorqueSwitch('GoDownFurther',
+                                                     mode_name_hand_closing,
+                                                     goal=force,
+                                                     norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+                                                     jump_criterion="THRESH_UPPER_BOUND",
+                                                     goal_is_relative='1',
+                                                     frame_id='world',
+                                                     port='2'))
+
+    else:
+        # Go down onto the object (relative in world frame)
+        control_sequence.append(ha.CartesianVelocityControlMode(down_twist,
+                                                                controller_name='GoDown',
+                                                                name="GoDown",
+                                                                reference_frame="EE"))
+
     # 4b. Switch when force-torque sensor is triggered
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
                                                  'LiftHand',
@@ -113,8 +182,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alte
         ha.CartesianVelocityControlMode(up_twist, controller_name='CorrectiveLift', name="LiftHand",
                                              reference_frame="world"))
 
-    # the 1 in softhand_close_1 represents a surface grasp. This way the strategy is encoded in the HA.
-    mode_name_hand_closing = 'softhand_close_1_0'
+
 
     # 5b. We switch after a short time 
     control_sequence.append(ha.TimeSwitch('LiftHand', 'GoSoft', duration=lift_time))
