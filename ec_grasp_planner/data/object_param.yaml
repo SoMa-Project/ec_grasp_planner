@@ -125,10 +125,10 @@
     CornerGrasp:
       success:
         RBOHandP24_pulpy: 1.0
-        RBOHandO2: 1.0
-        PISAHand: 1.0
-        PISAGripper: 1.0
-        ClashHand: 0.66 
+        RBOHandO2: 0.0
+        PISAHand: 0.0
+        PISAGripper: 0.0
+        ClashHand: 0.0 
       min: [-1000.0, -0.075]
       max: [-0.05, 0.045]
       reactions:
