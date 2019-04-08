@@ -201,7 +201,7 @@
         RBOHandP24_pulpy: 0.5
         RBOHandO2: 1.0
         PISAHand: 1.0
-        PISAGripper: 1.0
+        PISAGripper: 0.0
         ClashHand: 1.0     
       min: [-0.14, -0.1]
       max: [0.14, 0.05]
@@ -211,10 +211,10 @@
     CornerGrasp:
       success:
         RBOHandP24_pulpy: 1.0
-        RBOHandO2: 1.0
-        PISAHand: 1.0
-        PISAGripper: 1.0
-        ClashHand: 0.66 
+        RBOHandO2: 0.0
+        PISAHand: 0.0
+        PISAGripper: 0.0
+        ClashHand: 0.0 
       min: [-1000.0, -0.075]
       max: [-0.05, 0.045]
       reactions:
@@ -225,7 +225,7 @@
         RBOHandP24_pulpy: [0.8, 0.8, 0.0]
         RBOHandO2: 1.0
         PISAHand: 1.0
-        PISAGripper: 1.0
+        PISAGripper: 0.0
         ClashHand: 0.0           
       angle: 
         RBOHandP24_pulpy: [0, 180, 360]
