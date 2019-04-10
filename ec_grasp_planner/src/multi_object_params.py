@@ -128,6 +128,14 @@ class multi_object_params:
         else:
             q_val = success
 
+        # favor edges that are perpendicular to long object axis (x-axis)
+        if strategy in ["EdgeGrasp"]:
+            e_x_object = object_frame[:3, 0]
+            # e_y_object = object_frame[:3, 1]
+            e_y_ec = ec_frame[:3, 1]
+
+            q_val *= abs(np.dot(e_y_ec, e_x_object))
+
         # distance form EC (wall end edge)
         # this is the tr from object_frame to ec_frame in object frame
         if strategy in ["WallGrasp", "EdgeGrasp"]:
@@ -135,7 +143,7 @@ class multi_object_params:
             # this is the distance between object and EC
             dist = delta[2, 3]
             # include distance to q_val, longer distance decreases q_val
-            q_val = q_val * (1/dist)
+            q_val = q_val * (1/abs(dist))
 
         return q_val
 
@@ -162,6 +170,25 @@ class multi_object_params:
             return 1
         else:
             return 0
+
+    def black_list_edges(self, current_ec_index, all_ec_frames, strategy, table_frame):
+
+        if strategy not in ["EdgeGrasp"]:
+            return 1
+
+        e_x_table = table_frame[:3, 0]
+        e_y_table = table_frame[:3, 1]
+
+        ec = all_ec_frames[current_ec_index]
+
+        # e_x_ec = ec[:3, 0]
+        e_y_ec = ec[:3, 1]
+
+        if np.dot(e_y_ec, e_x_table) < -0.8 or np.dot(e_y_ec, e_y_table) > 0.8:
+            return 0
+
+        else:
+            return 1
 
     def black_list_unreachable_zones(self, object, object_params, ifco_in_base_transform, strategy):
 
@@ -245,6 +272,9 @@ class multi_object_params:
 
             # Since the surface grasp frame is at the object center we have to translate it in z direction
             table_frame[2, 3] = table_frame[2, 3] - object['bounding_box'].z / 2.0
+
+            # TODO: temporary workaround, this is needed to have the correct table orientation in the feasibility module
+            table_frame = ifco_in_base_transform
 
             #object_frame = object_params['frame'].dot(x_flip_transform)
             object_frame = object_params['frame']
@@ -632,7 +662,7 @@ class multi_object_params:
 
         else:
             # Since we are in disney use case, only black list wall, but not regions.
-            feasibility_fun = partial(self.black_list_walls, current_ec_index, all_ec_frames, strategy)
+            feasibility_fun = partial(self.black_list_edges, current_ec_index, all_ec_frames, strategy, ifco_in_base_transform)
 
         q_val = 1
         q_val = q_val * \

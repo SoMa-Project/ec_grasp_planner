@@ -275,14 +275,31 @@ class GraspPlanner:
         (ifco_in_base_translation, ifco_in_base_rot) = self.tf_listener.lookupTransform('table', robot_base_frame,
                                                                                         rospy.Time(
                                                                                             0))  # transform_msg_to_homogenous_tf()
+        # TODO: hack; we're using the ifco_in_base_transform argument to pass along our fixed pose table frame
+        (ifco_in_base_translation, ifco_in_base_rot) = self.tf_listener.lookupTransform(
+            robot_base_frame, 'table_static',
+            rospy.Time(0)
+        )
+
+        # orient table z-axis down
+        q_flip_z = tra.quaternion_about_axis(math.radians(180), [1, 0, 0])
+        ifco_in_base_rot = tra.quaternion_multiply(ifco_in_base_rot, q_flip_z)
+
         tf_transformer = tf.TransformerROS()
         ifco_in_base_transform = tf_transformer.fromTranslationRotation(ifco_in_base_translation, ifco_in_base_rot)
         object_heuristic_function = "Deterministic"
         print ifco_in_base_transform
 
+        # TODO: this hack can be removed once Disney switched to myP 1.4, which allows for preempting the trajectory controller
+        # we raise the object frame a bit to make the go_down trajectory stop quite a bit above the object
+        object_list_elevated = object_list
+
+        for object in object_list_elevated:
+            object['frame'][2, 3] += 0.06
+
         # we assume that all objects are on the same plane, so all EC can be exploited for any of the objects
 		# TODO: there is no base transform for ifco, and we dont need it, but we might need another transform!
-        (chosen_object_idx, chosen_node_idx) = self.multi_object_handler.process_objects_ecs(object_list,
+        (chosen_object_idx, chosen_node_idx) = self.multi_object_handler.process_objects_ecs(object_list_elevated,#object_list,
                                                                                      node_list,
                                                                                      graph_in_base_transform,
                                                                                      ifco_in_base_transform,
@@ -325,14 +342,19 @@ class GraspPlanner:
             rospy.sleep(0.3)
 
         # --------------------------------------------------------
+        # TODO: get_alternative_behavior(..) not supported for edge grasp yet
+        if self.grasp_type == 'EdgeGrasp':
+            alt_behaviour = None
+        else:
+            alt_behaviour = self.multi_object_handler.get_alternative_behavior(chosen_object_idx, chosen_node_idx)
+
         # Turn grasp into hybrid automaton
         ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
                                                                      self.handarm_params, self.object_type,
                                                                      frame_convention, self.handover,
                                                                      self.multi_object_handler.get_object_params(),
-                                                                     self.multi_object_handler.get_alternative_behavior(
-                                                                         chosen_object_idx, chosen_node_idx)
-                                                                     )
+                                                                     alt_behaviour)
+
 
         # --------------------------------------------------------
         # Output the hybrid automaton
@@ -488,13 +510,21 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         pre_grasp_velocity = params['pre_grasp_joint_velocity']
         goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
 
+        if 'pre_grasp' in alternative_behavior and 'go_down' in alternative_behavior:
+            # fuse both trajectories for a smoother execution
+            go_down_traj = alternative_behavior['go_down'].get_trajectory()
+            goal_traj = np.hstack((goal_traj, go_down_traj))
+
         print("GOAL TRAJ PreGrasp", goal_traj) 
         control_sequence.append(ha.InterpolatedJointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
                                                     v_max=pre_grasp_velocity,
                                                     # for the close trajectory points linear interpolation works best.
                                                     interpolation_type='linear',
-                                                    completion_times=np.array([0.1]*goal_traj.shape[1]).reshape(1,goal_traj.shape[1])))
+                                                    # completion_times=np.array([0.03]*goal_traj.shape[1]).reshape(1,goal_traj.shape[1])))
+                                                                ))
+        ## only take last joint configuration of trajectory and pass to joint controller
+        # control_sequence.append(ha.JointControlMode(goal_traj.T[-1], name='PreGrasp', controller_name='GoAboveObject'))
 
         # 2b. Switch when hand reaches the goal configuration
         control_sequence.append(ha.JointConfigurationSwitch('PreGrasp', 'ReferenceMassMeasurement',
@@ -547,26 +577,36 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         goal_traj = alternative_behavior['go_down'].get_trajectory()
 
         print("GOAL_TRAJ GoDown", goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
-        control_sequence.append(ha.InterpolatedJointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
-                                                    goal_is_relative='0',
-                                                    v_max=go_down_joint_velocity,
-                                                    # for the close trajectory points linear interpolation works best.
-                                                    interpolation_type='linear',
-                                                    completion_times=np.array([0.1]*goal_traj.shape[1]).reshape(1, goal_traj.shape[1])))
+
+        if 'pre_grasp' in alternative_behavior and 'go_down' in alternative_behavior:
+            # TODO: We already fused the two trajecories to one in step 2, nothing to do here.
+            control_sequence.append(ha.BlockJointControlMode(name='GoDown'))
+            control_sequence.append(ha.TimeSwitch('GoDown', 'GoDownFurther', duration=0))
+
+        elif 'go_down' in alternative_behavior:
+            control_sequence.append(ha.InterpolatedJointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
+                                                        goal_is_relative='0',
+                                                        v_max=go_down_joint_velocity,
+                                                        # for the close trajectory points linear interpolation works best.
+                                                        interpolation_type='linear',
+                                                        # completion_times=np.array([0.03]*goal_traj_short.shape[1]).reshape(1, goal_traj_short.shape[1])))
+                                                                    ))
+
+            # Switch when goal is reached to trigger the relative go down further motion
+            control_sequence.append(ha.JointConfigurationSwitch('GoDown', 'GoDownFurther', controller='GoDown',
+                                                                epsilon=str(math.radians(7.)),#str(math.radians(7.)),
+                                                                norm_weights=np.ones(6)))
+
 
         # Relative motion that ensures that the actual force/torque threshold is reached
         control_sequence.append(
-            ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, -0.05]),
+            ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, -0.10]),
                                                  controller_name='GoDownFurther',
                                                  goal_is_relative='1',
                                                  name="GoDownFurther",
                                                  reference_frame="world",
                                                  v_max=go_down_velocity))
 
-        # Switch when goal is reached to trigger the relative go down further motion
-        control_sequence.append(ha.JointConfigurationSwitch('GoDown', 'GoDownFurther', controller='GoDown',
-                                                            epsilon=str(math.radians(7.)),
-                                                            norm_weights=np.zeros(6)))
 
         # Force/Torque switch for the additional relative go down further
         control_sequence.append(ha.ForceTorqueSwitch('GoDownFurther',
@@ -631,14 +671,47 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp_1', controller='PostGraspRotate',
                                                epsilon='0.01', goal_is_relative='1', reference_frame='EE'))
 
-    # 7. Lift upwards a little bit (half way up)
-    control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform',
-                                                                 name='GoUp_1', goal_is_relative='1',
-                                                                 reference_frame="world"))
+    if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
+        # override the GoUp_1 controller pose with the first trajectory waypoint of go_down_traj
+        go_down_traj = alternative_behavior['go_down'].get_trajectory()
 
-    # 7b. Switch when joint configuration (half way up) is reached
-    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'EstimationMassMeasurement', controller='GoUpHTransform',
-                                               epsilon='0.01', goal_is_relative='1', reference_frame="world"))
+        # we simply invert the
+        go_up_traj = np.fliplr(go_down_traj)
+
+        control_sequence.append(ha.InterpolatedJointControlMode(go_up_traj, name='GoUp_1', controller_name='GoUp_1JointCfg',
+                                                    goal_is_relative='0',
+                                                    v_max=go_down_joint_velocity,
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear',
+                                                    # completion_times=np.array([0.03]*goal_traj_short.shape[1]).reshape(1, goal_traj_short.shape[1])))
+                                                                ))
+
+        # Switch when goal is reached to trigger the relative go down further motion
+        # control_sequence.append(ha.JointConfigurationSwitch('GoUp_1', 'GoUp_pre', controller='GoUp_1JointCfg',
+        control_sequence.append(ha.JointConfigurationSwitch('GoUp_1', 'EstimationMassMeasurement', controller='GoUp_1JointCfg',
+                                                            epsilon=str(math.radians(7.)),#str(math.radians(7.)),
+                                                            norm_weights=np.ones(6)))
+
+    else:
+        # 7. Lift upwards a little bit (half way up)
+        control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform',
+                                                                     name='GoUp_1', goal_is_relative='1',
+                                                                     reference_frame="world"))
+
+        # 7b. Switch when joint configuration (half way up) is reached
+        control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'GoUp_pre', controller='GoUpHTransform',
+                                                   epsilon='0.01', goal_is_relative='1', reference_frame="world"))
+
+        # TODO: this config ensures that the hand doesn't bump into the table when goint to handover / drop off config
+        # belongs into handarm_parameters.py
+        go_up_pre_config = np.array([0.021647231988052212, 0.6897863795066091, 0.14012470783885214, -0.013760263305192895, 1.7722793875087848, -0.11635472095042249])
+        control_sequence.append(
+            ha.JointControlMode(go_up_pre_config, name='GoUp_pre', controller_name='GoUpJointCtrl'))
+
+        control_sequence.append(ha.JointConfigurationSwitch('GoUp_pre', 'EstimationMassMeasurement',
+                                                            controller='GoUpJointCtrl',
+                                                            epsilon=str(math.radians(7.)),
+                                                            norm_weights=np.ones(6)))
 
     # 8. Measure the mass again and estimate number of grasped objects (grasp success estimation)
     control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
@@ -699,18 +772,34 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         ha.JointControlMode(hand_over_config, controller_name='GoToHandoverJointConfig', name='Handover'))
 
     # 9.3b Switch when joint configuration is reached
-    control_sequence.append(ha.JointConfigurationSwitch('Handover', 'wait_for_handover',
+    control_sequence.append(ha.JointConfigurationSwitch('Handover', 'wait_for_handover_pre',
                                                         controller='GoToHandoverJointConfig',
                                                         epsilon=str(math.radians(7.)),
-                                                        norm_weights=np.zeros(6)))
+                                                        norm_weights=np.ones(6)))
 
     # 10. Block joints to hold object in air util human takes over
+    control_sequence.append(ha.BlockJointControlMode(name='wait_for_handover_pre'))
+
+    # for 0.3 seconds, only allow to transition to softhand_open_1_handover for really high ft-sensor thresholds
+    control_sequence.append(ha.TimeSwitch('wait_for_handover_pre', 'wait_for_handover', duration=0.3))
+
+    ## wait for motion to fully stop
+    # control_sequence.append(ha.JointVelocitySwitch('wait_for_handover_meas', 'wait_for_handover',
+    #                                                  goal=np.zeros(6),
+    #                                                  norm_weights=np.array([1, 1, 1, 1, 1, 1]),
+    #                                                  jump_criterion='2', epsilon='0.001', negate='0'))
+
     control_sequence.append(ha.BlockJointControlMode(name='wait_for_handover'))
+
+    control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover_pre', 'softhand_open_1_handover',
+                                                 name='human_interaction_handover', goal=np.zeros(6),
+                                                 norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='1',# <- L2 Norm #'0', <- L1 Norm
+                                                 goal_is_relative='1', epsilon=hand_over_force*3, negate='1'))
 
     # 10b.1 Wait until force is exerted by human on EE while taking the object to release object
     control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open_1_handover',
                                                  name='human_interaction_handover', goal=np.zeros(6),
-                                                 norm_weights=np.array([1, 1, 1, 0, 0, 0]),  jump_criterion='0',
+                                                 norm_weights=np.array([1, 1, 1, 0, 0, 0]),  jump_criterion='1',# <- L2 Norm #'0', <- L1 Norm
                                                  goal_is_relative='1', epsilon=hand_over_force, negate='1'))
 
     # 10b.2 Reaction if human is not taking the object in time, robot drops off the object
@@ -732,7 +821,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.JointConfigurationSwitch('GoDropOff', 'softhand_open_1_dropoff',
                                                         controller = 'GoToDropJointConfig',
                                                         epsilon = str(math.radians(7.)),
-                                                        norm_weights=np.zeros(6)))
+                                                        norm_weights=np.ones(6)))
     # 13. open hand (drop off)
     ## TODO
     # control_sequence.append(ha.ControlMode(name='softhand_open_1_dropoff'))
@@ -1243,7 +1332,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     # 3b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'Pause_1',
+                                                 'SlideToEdge',
                                                  goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND",
@@ -1251,13 +1340,14 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                                  frame_id='world',
                                                  port='2'))
 
-    # gravity compensation before sliding due to safety reasons
-    # safety_force_3 triggers at the begining of slide controller on WAM
-    # bypasseing issue by pause between Control Modes
-    # TODO: fix issue on WAM controller
-    control_sequence.append(ha.GravityCompensationMode(name = 'Pause_1'))
-    # time switch - to end pause
-    control_sequence.append(ha.TimeSwitch('Pause_1', 'SlideToEdge', duration=0.02))
+    # not needed for disney use case
+    # # gravity compensation before sliding due to safety reasons
+    # # safety_force_3 triggers at the begining of slide controller on WAM
+    # # bypasseing issue by pause between Control Modes
+    # # TODO: fix issue on WAM controller
+    # control_sequence.append(ha.GravityCompensationMode(name = 'Pause_1'))
+    # # time switch - to end pause
+    # control_sequence.append(ha.TimeSwitch('Pause_1', 'SlideToEdge', duration=0.02))
 
     # 4. Go towards the edge to slide object to edge
     #this is the tr from initial_slide_frame to edge frame in initial_slide_frame
@@ -1266,6 +1356,8 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     # this is the distance to the edge, given by the z axis of the edge frame
     # add some extra forward distance to avoid grasping the edge of the table palm_edge_offset
     dist = delta[2,3] + np.sign(delta[2,3])*palm_edge_offset
+    dist *= -1
+    # dist *= 0.62 ## Not needed for disney use case
 
     # handPalm pose on the edge right before grasping
     hand_on_edge_pose = initial_slide_frame.dot(tra.translation_matrix([dist, 0, 0]))
@@ -1287,10 +1379,31 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                              v_max=slide_velocity))
 
     # 4b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('SlideToEdge', mode_name_hand_closing,
+    control_sequence.append(ha.FramePoseSwitch('SlideToEdge', 'PreGraspRotate',
                                                controller='SlideToEdge',
                                                epsilon='0.01',
                                                reference_frame="world",
+                                               goal_is_relative='1'))
+
+    # TODO: hand slightly rotates and moves downwards to get a better grasping pose, this needs to move to handarm_parameters.py
+
+    dirPreGrasp = np.dot(tra.rotation_matrix(math.radians(0.0), [1,0,0]),tra.rotation_matrix(math.radians(30.0), [0,1,0]))
+
+    dirPreGrasp = np.dot(dirPreGrasp, tra.rotation_matrix(math.radians(10.0), [0,0,1]))
+
+    dirPreGrasp[0, 3] = 0.02
+    dirPreGrasp[2, 3] = 0.08
+
+    control_sequence.append(
+        ha.InterpolatedHTransformControlMode(dirPreGrasp, controller_name='PreGraspRotate', goal_is_relative='1',
+                                             name="PreGraspRotate", reference_frame="EE",
+                                             v_max=slide_velocity))
+
+    # 4b. Switch when hand reaches the goal pose
+    control_sequence.append(ha.FramePoseSwitch('PreGraspRotate', mode_name_hand_closing,
+                                               controller='PreGraspRotate',
+                                               epsilon='0.01',
+                                               reference_frame="EE",
                                                goal_is_relative='1'))
 
     # 5. Maintain contact while closing the hand
@@ -1324,7 +1437,8 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                                goal_is_relative='1', reference_frame='EE'))
 
     # 7. Lift upwards (+z in world frame)
-    dirUp = tra.translation_matrix([0, 0, up_dist])
+    # TODO: this should come from handarm_param.py
+    dirUp = tra.translation_matrix([0.01, 0.05, up_dist])
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform', name='GoUp', goal_is_relative='1',
                                              reference_frame="world"))
@@ -1337,7 +1451,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
 
     # 8b. Switches after estimation measurement was done
-    target_cm_okay = 'Handover' if handover else 'GoDropOff'
+    target_cm_okay = 'HandoverPre' if handover else 'GoDropOff'
 
     # 8b.1 No object was grasped => go to failure mode.
     target_cm_estimation_no_object = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_NO_OBJECT, default=target_cm_okay)
@@ -1389,6 +1503,18 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     print("hand over conf:{}".format(hand_over_config))
 
+    # TODO: without this intermediate joint config the hand_over_config could potentially bump into the table
+    hand_over_config_pre = np.array(
+        [-0.5324056673681203, 0.9823670132606176, 0.6746219309632386, 1.0329310236050429, 1.6687888420765724,
+         -2.2275679229389915])
+
+    control_sequence.append(
+        ha.JointControlMode(hand_over_config_pre, controller_name='GoToHandoverJointConfigPre', name='HandoverPre'))
+
+    control_sequence.append(ha.JointConfigurationSwitch('HandoverPre', 'Handover',
+                                                        controller='GoToHandoverJointConfigPre',
+                                                        epsilon=str(math.radians(7.))))
+
     # 8h. Go to handover cfg
     control_sequence.append(
         ha.JointControlMode(hand_over_config, controller_name='GoToHandoverJointConfig', name='Handover'))
@@ -1399,12 +1525,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                                         epsilon=str(math.radians(7.))))
 
     # 9h. Block joints to hold object in air util human takes over
-    waitForHandoverMode = ha.ControlMode(name='wait_for_handover')
-    waitForHandoverSet = ha.ControlSet()
-    waitForHandoverSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
-                                  goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
-    waitForHandoverMode.set(waitForHandoverSet)
-    control_sequence.append(waitForHandoverMode)
+    control_sequence.append(ha.BlockJointControlMode(name='wait_for_handover'))
 
     #9h.b wait until force is exerted by human on EE while taking the object to release object
     control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open', name='human_interaction_handover', goal=np.zeros(6),
@@ -1420,12 +1541,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
 
     # 11. Block joints to hold object in air util human takes over
-    finishedMode = ha.ControlMode(name='finished')
-    finishedSet = ha.ControlSet()
-    finishedSet.add(ha.Controller(name='JointSpaceController', type='JointController', goal=np.zeros(7),
-                                  goal_is_relative=1, v_max='[0,0]', a_max='[0,0]'))
-    finishedMode.set(finishedSet)
-    control_sequence.append(finishedMode)
+    control_sequence.append(ha.BlockJointControlMode(name='finished'))
 
     # 9.1h. b Reaction if human is not taking the object in time, robot drops off the object
     control_sequence.append(ha.TimeSwitch('wait_for_handover', 'GoDropOff',
@@ -1485,9 +1601,9 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
     print("Creating hybrid automaton for object {} and grasp type {}.".format(object_type, grasp_type))
     if grasp_type == 'EdgeGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
-        support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(support_surface_frame_node.transform))
+        support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogeneous_tf(support_surface_frame_node.transform))
         edge_frame_node = get_node_from_actions(motion_sequence, 'grasp_object', graph)
-        edge_frame = T_robot_base_frame.dot(transform_msg_to_homogenous_tf(edge_frame_node.transform))
+        edge_frame = T_robot_base_frame.dot(transform_msg_to_homogeneous_tf(edge_frame_node.transform))
 
         #we need to flip the z axis in the old convention
         if frame_convention == 1:
@@ -1502,7 +1618,7 @@ def hybrid_automaton_from_motion_sequence(motion_sequence, graph, T_robot_base_f
 
 
         return create_edge_grasp(T_object_in_base, support_surface_frame, edge_frame, handarm_params, object_type,
-                                 handover, object_params, alternative_behavior)
+                                 handover, object_params)#, alternative_behavior)
     elif grasp_type == 'WallGrasp':
         support_surface_frame_node = get_node_from_actions(motion_sequence, 'move_object', graph)
         support_surface_frame = T_robot_base_frame.dot(transform_msg_to_homogeneous_tf(support_surface_frame_node.transform))
