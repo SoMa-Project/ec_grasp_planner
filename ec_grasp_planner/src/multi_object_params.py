@@ -184,7 +184,8 @@ class multi_object_params:
         # e_x_ec = ec[:3, 0]
         e_y_ec = ec[:3, 1]
 
-        if np.dot(e_y_ec, e_x_table) < -0.8 or np.dot(e_y_ec, e_y_table) > 0.8:
+        # we only allow the edge below the table x-axis and the edge left of the table y-axis to be considered
+        if np.dot(e_y_ec, e_x_table) < -0.8 or np.dot(e_y_ec, e_y_table) < -0.8:
             return 0
 
         else:

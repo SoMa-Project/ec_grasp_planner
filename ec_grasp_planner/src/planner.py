@@ -283,7 +283,7 @@ class GraspPlanner:
 
         # orient table z-axis down
         q_flip_z = tra.quaternion_about_axis(math.radians(180), [1, 0, 0])
-        ifco_in_base_rot = tra.quaternion_multiply(ifco_in_base_rot, q_flip_z)
+        # ifco_in_base_rot = tra.quaternion_multiply(ifco_in_base_rot, q_flip_z)
 
         tf_transformer = tf.TransformerROS()
         ifco_in_base_transform = tf_transformer.fromTranslationRotation(ifco_in_base_translation, ifco_in_base_rot)
