@@ -259,14 +259,19 @@ class MassEstimator(object):
             # the ft sensor values as the z-axis (ft_sensor_wrench is in ee frame)
             (trans, rot) = self.tf_listener.lookupTransform('/base_link', self.ee_frame, rospy.Time(0))
 
-            R = tf.transformations.quaternion_matrix(rot)
-            T = tf.transformations.translation_matrix(trans)
-            frame_transform = tf.transformations.concatenate_matrices(T, R)
+            # This is a reminder that ignoring the translational component is intentional...
+            # The force transformation should not be affected by the translational component of
+            # the base_link -> ee_frame tf (see: https://github.com/SoMa-Project/ec_grasp_planner/issues/56)
+            # So the below code
+            #   R = tf.transformations.quaternion_matrix(rot)
+            #   T = tf.transformations.translation_matrix(trans)
+            #   frame_transform = tf.transformations.concatenate_matrices(T, R)
+            # can be simplified to:
+            frame_transform = tf.transformations.quaternion_matrix(rot)
 
             ft_measurement = [ft_measurement_msg.wrench.force.x, ft_measurement_msg.wrench.force.y,
                               ft_measurement_msg.wrench.force.z, 1]
-            # print("4", frame_transform, ft_measurement)
-            # print("4", type(frame_transform), type(ft_measurement))
+
             return frame_transform.dot(ft_measurement)
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             rospy.logerr("MassEstimator: Could not lookup transform from /ee to /base_link")
