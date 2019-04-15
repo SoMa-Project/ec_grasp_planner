@@ -34,13 +34,18 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     if grasp_type == 'SurfaceGrasp':
         control_sequence.append(ha.CartesianVelocityControlMode(up_EE_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="EE"))
     elif grasp_type == 'WallGrasp' or grasp_type == 'CornerGrasp':
-        control_sequence.append(ha.CartesianVelocityControlMode(up_world_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="world"))
+        control_sequence.append(ha.CartesianVelocityControlMode(up_world_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="world"))    
     
     # 1b. Switch after the lift time
-    control_sequence.append(ha.TimeSwitch('GoUp_1', 'PrepareForEstimation', duration = lift_time))
+    control_sequence.append(ha.TimeSwitch('GoUp_1', 'GoStiff1', duration = lift_time))
+
+    control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff1', mode_id = 'joint_impedance', 
+                                                        joint_stiffness = high_joint_stiffness, joint_damping = joint_damping))
+    # 0b. We switch after a short time 
+    control_sequence.append(ha.TimeSwitch('GoStiff1', 'PrepareForEstimation', duration=1.0))
 
     # 1c. Switch if trik failed
-    control_sequence.append(ha.RosTopicSwitch('GoUp_1', 'PrepareForEstimation', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('GoUp_1', 'GoStiff1', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 2a. Stay still for a bit
     control_sequence.append(ha.BlockJointControlMode(name='PrepareForEstimation'))
