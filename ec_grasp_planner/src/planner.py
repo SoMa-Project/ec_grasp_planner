@@ -297,7 +297,9 @@ class GraspPlanner:
         ha, self.rviz_frames = hybrid_automaton_from_motion_sequence(grasp_path, graph, graph_in_base, object_in_base,
                                                                      self.handarm_params, self.object_type,
                                                                      frame_convention, self.handover,
-                                                                     self.multi_object_handler.get_object_params())
+                                                                     self.multi_object_handler.get_object_params(),
+                                                                     self.multi_object_handler.get_alternative_behavior(
+                                                                         chosen_object_idx, chosen_node_idx))
 
         # --------------------------------------------------------
         # Output the hybrid automaton
