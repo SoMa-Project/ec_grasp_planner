@@ -137,16 +137,13 @@ class multi_object_params:
 
     def black_list_walls(self, current_ec_index, all_ec_frames, strategy):
 
-        print(":::A1")
         if strategy not in ["WallGrasp", "EdgeGrasp"]:
             return 1
         # this function will blacklist all walls except
         # the one on th right side of the robot
         # y coord is the smallest
 
-        print(":::A2")
         if all_ec_frames[current_ec_index][1,3] > 0:
-            print(":::A3")
             return 0
 
         min_y = 10000
@@ -158,10 +155,8 @@ class multi_object_params:
                 min_y_index = i
 
         if min_y_index == current_ec_index:
-            print(":::A4")
             return 1
         else:
-            print(":::A5")
             return 0
 
     def black_list_unreachable_zones(self, object, object_params, ifco_in_base_transform, strategy):
@@ -230,8 +225,6 @@ class multi_object_params:
         edges = [multi_object_params.transform_to_pose_msg(e.transform) for e in all_ecs if e.label == "EdgeGrasp"]
 
         # The backup table frame that is used in case we don't create the table from edges
-        #table_frame = None
-        #table_pose = geometry_msgs.msg.Pose()
         table_frame = tra.inverse_matrix(ifco_in_base_transform)  # ec_frame (does not have the correct orientation)
         table_pose = multi_object_params.transform_to_pose_msg(table_frame)
 
@@ -638,30 +631,11 @@ class multi_object_params:
         # initialize stored trajectories for the given object
         self.stored_trajectories[(current_object_idx, current_ec_index)] = {}
 
-        # Try to create the table from edges. As fall back use SurfaceGrasp frame (which might have a wrong orientation)
+        # Try to create the table from edges.
         table_from_edges = True
         if len(edges) < 2:
-
-                # we use the SurfaceGrasp frame as a backup
+                # we use the backup table frame (constant table dimensions)
                 table_from_edges = False
-
-        #        if table_frame is None:
-        #            # we did not already compute a table pose backup...
-        #            # Find potential SurfaceGrasp frames that can be used as a backup for table frames
-        #            pot_table_frames = [e.transform for e in all_ecs if e.label == 'SurfaceGrasp']
-
-        #            if len(pot_table_frames) > 0:
-        #                table_frame = pot_table_frames[0]
-
-        #                # Since the surface grasp frame is at the object center we have to translate it in z direction
-        #                table_frame[2, 3] = table_frame[2, 3] - object['bounding_box'].z / 2.0
-
-                        # Convert table frame to pose message
-        #                table_pose = multi_object_params.transform_to_pose_msg(table_frame)
-
-        #            else:
-        #                # TODO limitation of the feasibility checker which needs at least two edges to create a table
-        #                raise ValueError("Planning for {}, but not enough edges/table frames found".format(strategy))
 
         if table_frame is not None:
             print("TABLE POSE", table_pose)
