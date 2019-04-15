@@ -92,7 +92,7 @@
       max: [-0.05, 0.045]
       reactions:
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: REPLAN
+        mass_estimation_too_many: CONTINUE
     WallGrasp: 
       success: 
         RBOHandP24_pulpy: 1.0
@@ -133,7 +133,7 @@
       max: [-0.05, 0.045]
       reactions:
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: REPLAN
+        mass_estimation_too_many: CONTINUE
     WallGrasp:
       success: 
         RBOHandP24_pulpy: [1.0, 0.8, 0.7, 0.0]
@@ -178,7 +178,7 @@
       max: [-0.05, 0.045]
       reactions:
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: REPLAN
+        mass_estimation_too_many: CONTINUE
     WallGrasp:
       success: 
         RBOHandP24_pulpy: 1.0
@@ -219,7 +219,7 @@
       max: [-0.05, 0.045]
       reactions:
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: REPLAN
+        mass_estimation_too_many: CONTINUE
     WallGrasp:
       success: 
         RBOHandP24_pulpy: [0.8, 0.8, 0.0]
@@ -250,8 +250,8 @@
       min: [-0.14, -0.1]
       max: [0.14, 0.05]
       reactions: 
-        mass_estimation_no_object: CONTINUE
-        mass_estimation_too_many: REPLAN
+        mass_estimation_no_object: REPLAN
+        mass_estimation_too_many: CONTINUE
     CornerGrasp:
       success:
         RBOHandP24_pulpy: 1.0
@@ -263,7 +263,7 @@
       max: [-0.05, 0.045]
       reactions:
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: REPLAN
+        mass_estimation_too_many: CONTINUE
     WallGrasp:
       success: 
         RBOHandP24_pulpy: 0.5
@@ -274,8 +274,8 @@
       min: [-1000.0, -0.075]
       max: [-0.05, 0.045]
       reactions: 
-        mass_estimation_no_object: CONTINUE
-        mass_estimation_too_many: REPLAN
+        mass_estimation_no_object: REPLAN
+        mass_estimation_too_many: CONTINUE
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0.25}}
     mass: {'mean': 0.11, 'stddev': 0.0862365078961} # values for fake lettuce
     graspable_with_any_hand_orientation: True
