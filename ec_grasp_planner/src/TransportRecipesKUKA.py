@@ -27,6 +27,9 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     # Up speed is negative because it is defined on the EE frame
     up_EE_twist = np.array([0, 0, -up_speed, 0, 0, 0])
 
+    # Default srtiffen on Transport
+    next_control_mode = 'GoStiff1'
+
     # assemble controller sequence
     control_sequence = []
 
@@ -36,8 +39,12 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     elif grasp_type == 'WallGrasp' or grasp_type == 'CornerGrasp':
         control_sequence.append(ha.CartesianVelocityControlMode(up_world_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="world"))    
     
+    # Do not stiffen the arm for the Pisa hand case
+    if "pisa_hand" in handarm_type:
+        next_control_mode = 'PrepareForEstimation'
+
     # 1b. Switch after the lift time
-    control_sequence.append(ha.TimeSwitch('GoUp_1', 'GoStiff1', duration = lift_time))
+    control_sequence.append(ha.TimeSwitch('GoUp_1', next_control_mode, duration = lift_time))
 
     control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff1', mode_id = 'joint_impedance', 
                                                         joint_stiffness = high_joint_stiffness, joint_damping = joint_damping))
@@ -45,7 +52,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
     control_sequence.append(ha.TimeSwitch('GoStiff1', 'PrepareForEstimation', duration=1.0))
 
     # 1c. Switch if trik failed
-    control_sequence.append(ha.RosTopicSwitch('GoUp_1', 'GoStiff1', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+    control_sequence.append(ha.RosTopicSwitch('GoUp_1', next_control_mode, ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
     # 2a. Stay still for a bit
     control_sequence.append(ha.BlockJointControlMode(name='PrepareForEstimation'))
