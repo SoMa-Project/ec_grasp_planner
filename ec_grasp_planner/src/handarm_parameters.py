@@ -757,7 +757,7 @@ class PISAGripperKUKA(KUKA):
                                                                                     tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
 
         # the maximum allowed force for pushing down
-        self['SurfaceGrasp']['object']['downward_force'] = 4
+        self['SurfaceGrasp']['object']['downward_force'] = 10
 
         # speed of approaching the object
         self['SurfaceGrasp']['object']['down_speed'] = 0.03
@@ -828,7 +828,7 @@ class PISAGripperKUKA(KUKA):
         self['WallGrasp']['object']['down_speed'] = 0.03
         self['WallGrasp']['object']['corrective_lift_duration'] = 1.5
         self['WallGrasp']['object']['up_speed'] = 0.03
-        self['WallGrasp']['object']['wall_force'] = 12.0
+        self['WallGrasp']['object']['wall_force'] = 15.0
         self['WallGrasp']['object']['slide_speed'] = 0.05 #sliding speed
         self['WallGrasp']['object']['pre_grasp_twist'] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         self['WallGrasp']['object']['pre_grasp_rotation_duration'] = 0
