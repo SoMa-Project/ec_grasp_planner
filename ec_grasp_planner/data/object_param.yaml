@@ -106,7 +106,7 @@
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
-    mass: {'mean': 0.394, 'stddev': 0.0862365078961} # values for fake mangos
+    mass: {'mean': 0.394, 'stddev': 0.0170939915015} # values for fake mangos
     graspable_with_any_hand_orientation: True
 
   cucumber:
@@ -121,7 +121,7 @@
       max: [0.14, 0.05]
       reactions: 
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: CONTINUE
+        mass_estimation_too_many: REPLAN
     CornerGrasp:
       success:
         RBOHandP24_pulpy: 1.0
@@ -133,7 +133,7 @@
       max: [-0.05, 0.045]
       reactions:
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: CONTINUE
+        mass_estimation_too_many: REPLAN
     WallGrasp:
       success: 
         RBOHandP24_pulpy: [1.0, 0.8, 0.7, 0.0]
@@ -148,9 +148,9 @@
       max: [-0.05, 0.045]
       reactions: 
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: CONTINUE
+        mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
-    mass: {'mean': 0.293, 'stddev': 0.0862365078961} # values for fake cucumbers
+    mass: {'mean': 0.293, 'stddev': 0.0170939915015} # values for fake cucumbers
     # mass: {'mean': 0.3781, 'stddev': 0.058248237} # values for real cucumbers
     graspable_with_any_hand_orientation: False
 
@@ -166,7 +166,7 @@
       max: [0.14, 0.05]
       reactions: 
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: CONTINUE
+        mass_estimation_too_many: REPLAN
     CornerGrasp:
       success:
         RBOHandP24_pulpy: 1.0
@@ -178,7 +178,7 @@
       max: [-0.05, 0.045]
       reactions:
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: CONTINUE
+        mass_estimation_too_many: REPLAN
     WallGrasp:
       success: 
         RBOHandP24_pulpy: 1.0
@@ -190,9 +190,9 @@
       max: [-0.05, 0.042]
       reactions: 
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: CONTINUE
+        mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0}}
-    mass: {'mean': 0.2158, 'stddev': 0.0852946818894} # values for fake lime netbags
+    mass: {'mean': 0.2158, 'stddev': 0.0170740646658} # values for fake lime netbags
     graspable_with_any_hand_orientation: False
 
   punnet:
@@ -236,7 +236,7 @@
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: CONTINUE
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 1}}
-    mass: {'mean': 0.2203, 'stddev': 0.08625014919} # values for fake new punnets
+    mass: {'mean': 0.2203, 'stddev': 0.017164754233} # values for fake new punnets
     graspable_with_any_hand_orientation: False
 
   lettuce:
@@ -251,7 +251,7 @@
       max: [0.14, 0.05]
       reactions: 
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: CONTINUE
+        mass_estimation_too_many: REPLAN
     CornerGrasp:
       success:
         RBOHandP24_pulpy: 1.0
@@ -263,7 +263,7 @@
       max: [-0.05, 0.045]
       reactions:
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: CONTINUE
+        mass_estimation_too_many: REPLAN
     WallGrasp:
       success: 
         RBOHandP24_pulpy: 0.5
@@ -275,9 +275,9 @@
       max: [-0.05, 0.045]
       reactions: 
         mass_estimation_no_object: REPLAN
-        mass_estimation_too_many: CONTINUE
+        mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0.25}}
-    mass: {'mean': 0.11, 'stddev': 0.0862365078961} # values for fake lettuce
+    mass: {'mean': 0.11, 'stddev': 0.0170939915015} # values for fake lettuce
     graspable_with_any_hand_orientation: True
 
   banana:
