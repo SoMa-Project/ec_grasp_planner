@@ -286,12 +286,16 @@ class RBOHandO2KUKA(KUKA):
 
         # duration of lifting the object
         self['SurfaceGrasp']['object']['lift_duration'] = 8
+
+        self['SurfaceGrasp']['object']['high_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 200, 100, 100])
         
         # Object specific params
         self['SurfaceGrasp']['cucumber'] = self['SurfaceGrasp']['object'].copy()
         self['SurfaceGrasp']['cucumber']['corrective_lift_duration'] = 1.0
 
-        self['SurfaceGrasp']['object']['high_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 200, 100, 100])
+        self['SurfaceGrasp']['netbag'] = self['SurfaceGrasp']['object'].copy()
+        self['SurfaceGrasp']['netbag']['downward_force'] = 6
+        
 
         #####################################################################################
         # below are parameters for wall grasp with O2 fingers (Ocado RBO hand)
@@ -342,7 +346,7 @@ class RBOHandO2KUKA(KUKA):
 
         self['WallGrasp']['object']['slide_speed'] = 0.03 #sliding speed
 
-        self['WallGrasp']['object']['pre_grasp_twist'] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])              
+        self['WallGrasp']['object']['pre_grasp_twist'] = np.array([0.0, 0.0, -0.03, 0.0, 0.0, 0.0])              
 
         self['WallGrasp']['object']['pre_grasp_rotation_duration'] = 0
 
