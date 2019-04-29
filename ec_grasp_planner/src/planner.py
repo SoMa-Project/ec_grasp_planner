@@ -423,6 +423,10 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     hand_synergy = params['hand_closing_synergy']
     pre_grasp_velocity = params['pre_grasp_velocity']
 
+    ft_settle_before_ref_meas = params['ft_settle_before_ref_meas']
+    ft_settle_before_mass_est = params['ft_settle_before_mass_est']
+    ft_settle_before_handover = params['ft_settle_before_handover']
+
     use_null_space_posture = handarm_params['use_null_space_posture']
 
     wait_handing_over_duration=handarm_params['wait_handing_over_duration']
@@ -529,7 +533,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         # control_sequence.append(ha.JointControlMode(goal_traj.T[-1], name='PreGrasp', controller_name='GoAboveObject'))
 
         # 2b. Switch when hand reaches the goal configuration
-        control_sequence.append(ha.JointConfigurationSwitch('PreGrasp', 'ReferenceMassMeasurement',
+        control_sequence.append(ha.JointConfigurationSwitch('PreGrasp', 'ftSettle_ReferenceMassMeasurement',
                                                             controller='GoAboveObject', epsilon=str(math.radians(7.))))
 
     else:
@@ -544,11 +548,16 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                                      ))
 
         # 2b. Switch when hand reaches the goal pose
-        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ReferenceMassMeasurement', controller='GoAboveObject',
+        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'ftSettle_ReferenceMassMeasurement', controller='GoAboveObject',
                                                    epsilon='0.01'))
 
-    # TODO add a time switch and short waiting time before the reference measurement is actually done?
-    # 3. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
+    #  wait a while to initialize the relative ft values correctly
+    control_sequence.append(ha.BlockJointControlMode(name='ftSettle_ReferenceMassMeasurement'))
+
+    control_sequence.append(
+        ha.TimeSwitch('ftSettle_ReferenceMassMeasurement', 'ReferenceMassMeasurement', duration=ft_settle_before_ref_meas))
+
+    # 3. Reference mass measurement with empty hand
     control_sequence.append(ha.BlockJointControlMode(name='ReferenceMassMeasurement'))  # TODO use gravity comp instead?
 
     # 3b. Switches when reference measurement was done
@@ -691,7 +700,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
         # Switch when goal is reached to trigger the relative go down further motion
         # control_sequence.append(ha.JointConfigurationSwitch('GoUp_1', 'GoUp_pre', controller='GoUp_1JointCfg',
-        control_sequence.append(ha.JointConfigurationSwitch('GoUp_1', 'EstimationMassMeasurement',
+        control_sequence.append(ha.JointConfigurationSwitch('GoUp_1', 'ftSettle_EstimationMassMeasurement',
                                                             controller='GoUp_1JointCfg',
                                                             epsilon=str(math.radians(7.)),#str(math.radians(7.)),
                                                             norm_weights=np.ones(6)))
@@ -709,10 +718,15 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         control_sequence.append(
             ha.JointControlMode(drop_off_config_pre, name='GoUp_pre', controller_name='GoUpJointCtrl'))
 
-        control_sequence.append(ha.JointConfigurationSwitch('GoUp_pre', 'EstimationMassMeasurement',
+        control_sequence.append(ha.JointConfigurationSwitch('GoUp_pre', 'ftSettle_EstimationMassMeasurement',
                                                             controller='GoUpJointCtrl',
                                                             epsilon=str(math.radians(7.)),
                                                             norm_weights=np.ones(6)))
+
+    #  wait a while to initialize the relative ft values correctly
+    control_sequence.append(ha.BlockJointControlMode(name='ftSettle_EstimationMassMeasurement'))
+
+    control_sequence.append(ha.TimeSwitch('ftSettle_EstimationMassMeasurement', 'EstimationMassMeasurement', duration=ft_settle_before_mass_est))
 
     # 8. Measure the mass again and estimate number of grasped objects (grasp success estimation)
     control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
@@ -773,29 +787,19 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         ha.JointControlMode(hand_over_config, controller_name='GoToHandoverJointConfig', name='Handover'))
 
     # 9.3b Switch when joint configuration is reached
-    control_sequence.append(ha.JointConfigurationSwitch('Handover', 'wait_for_handover_pre',
+    control_sequence.append(ha.JointConfigurationSwitch('Handover', 'ftSettle_wait_for_handover',
                                                         controller='GoToHandoverJointConfig',
                                                         epsilon=str(math.radians(7.)),
                                                         norm_weights=np.ones(6)))
 
-    # 10. Block joints to hold object in air util human takes over
-    control_sequence.append(ha.BlockJointControlMode(name='wait_for_handover_pre'))
+    #  wait a while to initialize the relative ft values correctly
+    control_sequence.append(ha.BlockJointControlMode(name='ftSettle_wait_for_handover'))
 
-    # for 0.3 seconds, only allow to transition to softhand_open_1_handover for really high ft-sensor thresholds
-    control_sequence.append(ha.TimeSwitch('wait_for_handover_pre', 'wait_for_handover', duration=0.3))
+    control_sequence.append(
+        ha.TimeSwitch('ftSettle_wait_for_handover', 'wait_for_handover', duration=ft_settle_before_handover))
 
-    ## wait for motion to fully stop
-    # control_sequence.append(ha.JointVelocitySwitch('wait_for_handover_meas', 'wait_for_handover',
-    #                                                  goal=np.zeros(6),
-    #                                                  norm_weights=np.array([1, 1, 1, 1, 1, 1]),
-    #                                                  jump_criterion='2', epsilon='0.001', negate='0'))
 
     control_sequence.append(ha.BlockJointControlMode(name='wait_for_handover'))
-
-    control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover_pre', 'softhand_open_1_handover',
-                                                 name='human_interaction_handover', goal=np.zeros(6),
-                                                 norm_weights=np.array([1, 1, 1, 0, 0, 0]), jump_criterion='1',# <- L2 Norm #'0', <- L1 Norm
-                                                 goal_is_relative='1', epsilon=hand_over_force*3, negate='1'))
 
     # 10b.1 Wait until force is exerted by human on EE while taking the object to release object
     control_sequence.append(ha.ForceTorqueSwitch('wait_for_handover', 'softhand_open_1_handover',
@@ -1223,6 +1227,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     down_dist_alt = params['down_dist_alt']
     pre_approach_transform = params['pre_approach_transform']
     drop_off_config = params['drop_off_config']
+    hand_over_config_pre = params['hand_over_config_pre']
     hand_over_config = params['hand_over_config']
     hand_over_force = params['hand_over_force']
 
@@ -1231,6 +1236,8 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     hand_closing_duration = params['hand_closing_duration']
     hand_synergy = params['hand_closing_synergy']
     palm_edge_offset = params['palm_edge_offset']
+
+    ft_settle_before_handover = params['ft_settle_before_handover']
 
     use_null_space_posture = handarm_params['use_null_space_posture']
     wait_handing_over_duration = handarm_params['wait_handing_over_duration']
@@ -1634,10 +1641,6 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     print("hand over conf:{}".format(hand_over_config))
 
-    # TODO: without this intermediate joint config the hand_over_config could potentially bump into the table
-    hand_over_config_pre = np.array(
-        [-0.5324056673681203, 0.9823670132606176, 0.6746219309632386, 1.0329310236050429, 1.6687888420765724,
-         -2.2275679229389915])
 
     control_sequence.append(
         ha.JointControlMode(hand_over_config_pre, controller_name='GoToHandoverJointConfigPre', name='HandoverPre'))
@@ -1651,14 +1654,14 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
         ha.JointControlMode(hand_over_config, controller_name='GoToHandoverJointConfig', name='Handover'))
 
     # 8h.b  Switch when configuration is reached
-    control_sequence.append(ha.JointConfigurationSwitch('Handover', 'ft_settle',
+    control_sequence.append(ha.JointConfigurationSwitch('Handover', 'ftSettle_wait_for_handover',
                                                         controller='GoToHandoverJointConfig',
                                                         epsilon=str(math.radians(7.))))
 
     # 9h. wait a while to initialize the relative ft values correctly
-    control_sequence.append(ha.BlockJointControlMode(name='ft_settle'))
+    control_sequence.append(ha.BlockJointControlMode(name='ftSettle_wait_for_handover'))
 
-    control_sequence.append(ha.TimeSwitch('ft_settle', 'wait_for_handover', duration=1.0))
+    control_sequence.append(ha.TimeSwitch('ftSettle_wait_for_handover', 'wait_for_handover', duration=ft_settle_before_handover))
 
     # 9h. b Block joints to hold object in air util human takes over
     control_sequence.append(ha.BlockJointControlMode(name='wait_for_handover'))

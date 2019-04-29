@@ -183,6 +183,12 @@ class RBOHand2Prob(RBOHand2):
         self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
         self['surface_grasp']['object']['safety_distance_above_object'] = -0.03
 
+        # time to let the force torque sensor settle after potentially quick decelerations of the end effector, this is
+        # necessary as the force torque values are zeroed at the initialization of the switch
+        self['surface_grasp']['object']['ft_settle_before_ref_meas'] = 0.2
+        self['surface_grasp']['object']['ft_settle_before_mass_est'] = 0.2
+        self['surface_grasp']['object']['ft_settle_before_handover'] = 1.0
+
         self['surface_grasp']['object']['initial_goal'] = np.array(
             [-0.13344680071507892, 0.3188774472606212, 0.8505352980103672, 0.1860369373347768, 1.866702739571019, -1.3398638725395275]
         )
@@ -349,6 +355,10 @@ class RBOHand2Prob(RBOHand2):
 
         # drop configuration - this is system specific!
         self['edge_grasp']['object']['drop_off_config'] = self['surface_grasp']['object']['drop_off_config'].copy()
+
+        self['edge_grasp']['object']['hand_over_config_pre'] = np.array(
+            [-0.5324056673681203, 0.9823670132606176, 0.6746219309632386, 1.0329310236050429, 1.6687888420765724, -2.2275679229389915]
+        )
 
         # object hand over configuration - this is system specific!
         self['edge_grasp']['object']['hand_over_config'] = self['surface_grasp']['object']['hand_over_config'].copy()
