@@ -143,6 +143,17 @@ class RBOHand2Prob(RBOHand2):
         # transformation (only rotation) between object frame and hand palm frame
         # the convention at our lab is: x along the fingers and z normal on the palm.
         # please follow the same convention
+        # self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(
+        #     tra.translation_matrix([0.0, 0.0, 0.0]),
+        #     tra.concatenate_matrices(
+        #         tra.rotation_matrix(
+        #             math.radians(90.0), [1, 0, 0]),
+        #         tra.rotation_matrix(
+        #             math.radians(0.0), [0, 1, 0]),
+        #         tra.rotation_matrix(
+        #             math.radians(90.0), [0, 0, 1]),
+        #     ))
+
         self['surface_grasp']['object']['hand_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, 0.15]),#0.3]),TODO: revert this back to 30cm above object
             tra.concatenate_matrices(
@@ -152,10 +163,18 @@ class RBOHand2Prob(RBOHand2):
                     math.radians(180.), [1, 0, 0])))
 
         # above the object, in hand palm frame
+        # self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
+        #     # tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(25.0), [0, 1, 0]))
+        #     # tra.translation_matrix([-0.04, 0, 0.0]), tra.rotation_matrix(math.radians(15.0), [0, 1, 0]))
+        #     tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(15.0), [0, 1, 0]))
         self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
-            # tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(25.0), [0, 1, 0]))
-            # tra.translation_matrix([-0.04, 0, 0.0]), tra.rotation_matrix(math.radians(15.0), [0, 1, 0]))
-            tra.translation_matrix([-0.08, 0, 0.0]), tra.rotation_matrix(math.radians(15.0), [0, 1, 0]))
+            tra.translation_matrix([0, 0, 0]),
+            tra.concatenate_matrices(
+                # tra.rotation_matrix(math.radians(-30), [0, 0, 1]),
+                tra.rotation_matrix(math.radians(0), [0, 0, 1]),
+                tra.rotation_matrix(math.radians(-20), [0, 1, 0])
+            )
+        )
 
         self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
 
@@ -199,10 +218,10 @@ class RBOHand2Prob(RBOHand2):
 
 
         # synergy type for soft hand closing
-        self['surface_grasp']['object']['hand_closing_synergy'] = 1
+        self['surface_grasp']['object']['hand_closing_synergy'] = 0
 
         # time of soft hand closing
-        self['surface_grasp']['object']['hand_closing_duration'] = 5
+        self['surface_grasp']['object']['hand_closing_duration'] = 2
 
         # time of soft hand closing
         self['surface_grasp']['object']['down_speed'] = 0.5
@@ -212,6 +231,7 @@ class RBOHand2Prob(RBOHand2):
         # this currently depends on the value set for self['surface_grasp']['object']['hand_transform'] and is tuned
         # for alternative_behaviour from the feasibility module
         self['surface_grasp']['object']['down_dist'] = 0.05
+        self['surface_grasp']['object']['down_dist_alt'] = 0.05
         self['surface_grasp']['object']['up_dist'] = 0.25
         self['surface_grasp']['object']['go_down_velocity'] = np.array(
             [0.125, 0.06])  # first value: rotational, second translational
@@ -226,11 +246,13 @@ class RBOHand2Prob(RBOHand2):
              'max_orientation_deltas': [0, 0, 0],  # 1.5]
              })
 
-        self['surface_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.04, -0.05],
-                                                                        'max_position_deltas': [0.06, 0.04, 0.01],
+        self['surface_grasp']['object']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.0, -0.0, -0.06],
+                                                                        'max_position_deltas': [0.0, 0.0, -0.06],
                                                                         'min_orientation_deltas': [0, 0, 0],
                                                                         'max_orientation_deltas': [0, 0, 0]
                                                                         })
+
+        self['surface_grasp']['object']['safety_distance_above_object'] = -0.03 #0
 
         self['surface_grasp']['object']['post_grasp_rot_manifold'] = Manifold(
             {'min_position_deltas': [-0.01, -0.04, -0.05],
@@ -256,8 +278,15 @@ class RBOHand2Prob(RBOHand2):
         self['surface_grasp']['bottle'] = self['surface_grasp']['object'].copy()
 
         self['surface_grasp']['apple']['pre_grasp_manifold'] = Manifold(
-            {'min_position_deltas': [-0.05, -0.05, -0.05],  # [-0.01, -0.01, -0.01],
-             'max_position_deltas': [0.05, 0.05, 0.05],  # [0.01, 0.01, 0.01],
+            {'min_position_deltas': [-0.05, -0.05, -0.00],  # [-0.01, -0.01, -0.01],
+             'max_position_deltas': [0.05, 0.05, 0.00],  # [0.01, 0.01, 0.01],
+             'min_orientation_deltas': [0, 0, -np.pi],  # -1.5],
+             'max_orientation_deltas': [0, 0, np.pi],  # 1.5]
+             })
+
+        self['surface_grasp']['apple']['go_down_manifold'] = Manifold(
+            {'min_position_deltas': [0.0, 0.0, -0.00],  # [-0.01, -0.01, -0.01],
+             'max_position_deltas': [0.0, 0.0, -0.00],  # [0.01, 0.01, 0.01],
              'min_orientation_deltas': [0, 0, -np.pi],  # -1.5],
              'max_orientation_deltas': [0, 0, np.pi],  # 1.5]
              })
@@ -318,8 +347,11 @@ class RBOHand2Prob(RBOHand2):
 
 
         self['edge_grasp']['object']['hand_closing_synergy'] = 0
-        self['edge_grasp']['object']['hand_closing_duration'] = 5
+        self['edge_grasp']['object']['hand_closing_duration'] = 2
         self['edge_grasp']['object']['initial_goal'] = np.array([-0.13015969902674374, 0.27879386232497977, 0.9060628670263369, 0.1747674943188126, 1.7980381144022723, -1.4291233288800722])
+
+        # self['edge_grasp']['object']['initial_goal'] = np.array([1.3198427865954807, 0.21985469987865527, 0.9847142456052655, -0.2950862646320009, 1.7794936535904256,
+        #  1.4001143852676734])
 
         self['edge_grasp']['object']['hand_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.0, 0.0, 0.0]),
@@ -332,14 +364,42 @@ class RBOHand2Prob(RBOHand2):
                     math.radians(90.0), [0, 0, 1]),
             ))
 
+        # self['edge_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
+        #     tra.translation_matrix([-0.12, 0, -0.23]),  # 23 cm above object
+        #     tra.concatenate_matrices(
+        #         tra.rotation_matrix(
+        #             math.radians(0.), [1, 0, 0]),
+        #         tra.rotation_matrix(
+        #             math.radians(5.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+        #         tra.rotation_matrix(  # this makes the fingers point downwards
+        #             math.radians(0.0), [0, 0, 1]),
+        #     ))
+
         self['edge_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.12, 0, -0.23]),  # 23 cm above object
+            # [0.07, 0.02, -0.10] 2019-04-07: these are gold standards if ticket has a good orientation
+            tra.translation_matrix([0.0, 0.0, -0.10]),
             tra.concatenate_matrices(
                 tra.rotation_matrix(
                     math.radians(0.), [1, 0, 0]),
                 tra.rotation_matrix(
-                    math.radians(5.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
-                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(-20.0), [0, 1, 0]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+
+        self['edge_grasp']['object']['pre_approach_transform_alt'] = tra.concatenate_matrices(
+            # [0.07, 0.02, -0.10] 2019-04-07: these are gold standards if ticket has a good orientation
+            # tra.translation_matrix([0.02, -0.015, -0.10]),
+            # tra.translation_matrix([-0.02, 0.015, -0.10]),
+            # tra.translation_matrix([-0.02, 0.0, -0.10]),
+            # tra.translation_matrix([-0.02, 0.005, -0.10]),
+            tra.translation_matrix([-0.01, 0.02, -0.10]),
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.0), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(-20.0), [0, 1, 0]),#math.radians(-20.0), [0, 1, 0]),
+                tra.rotation_matrix(
                     math.radians(0.0), [0, 0, 1]),
             ))
 
@@ -379,10 +439,52 @@ class RBOHand2Prob(RBOHand2):
             [-0.5291471491727358, 0.9059347531337889, 0.8686134517585082, 0.7843957601103667, 1.280980273384745, -2.5911365575965055])
 
         # self['edge_grasp']['ticket']['palm_edge_offset'] = 0.03 # works well for conventional edge-grasp
-        self['edge_grasp']['ticket']['palm_edge_offset'] = -0.03
+        # self['edge_grasp']['ticket']['palm_edge_offset'] = -0.03
+        self['edge_grasp']['ticket']['palm_edge_offset'] = 0.0
+
+        self['edge_grasp']['ticket']['palm_edge_offset_alt'] = -0.01#-0.06
 
 
         self['edge_grasp']['ticket']['hand_over_force'] = 2.0 #open automatically
+
+        # self['edge_grasp']['ticket']['post_slide_pose_trajectory'] = np.array([
+        #     tra.translation_matrix([0, 0, -0.045]),
+        #     tra.concatenate_matrices(tra.rotation_matrix(math.radians(35.0), [0, 1, 0]), tra.translation_matrix([0.04, 0.02, 0])),
+        #     tra.translation_matrix([0, 0, 0.045]),
+        #     np.eye(4), # tra.translation_matrix([-0.08, 0, 0])
+        # ])
+
+        self['edge_grasp']['ticket']['post_slide_pose_trajectory'] = np.array([
+            tra.translation_matrix([-0.03, 0, -0.03]),
+            # tra.translation_matrix([-0.02, 0, 0]),
+            tra.translation_matrix([0, 0, 0.03]),
+            tra.translation_matrix([0.03, 0, 0.0])
+        ])
+
+        self['edge_grasp']['ticket']['pre_grasp_manifold'] = Manifold(
+            {'min_position_deltas': [-0.05, -0.05, -0.02],
+             'max_position_deltas': [0.05, 0.05, 0.02],
+             'min_orientation_deltas': [-np.pi / 16, -np.pi / 16, -np.pi / 4],
+             'max_orientation_deltas': [np.pi / 16, np.pi / 16, np.pi / 4],
+             })
+
+        self['edge_grasp']['ticket']['go_down_manifold'] = Manifold(
+            {'min_position_deltas': [-0.00, -0.00, -0.0],  # -0.05],
+             'max_position_deltas': [0.00, 0.00, 0.0],  # 0.01],
+             'min_orientation_deltas': [0, 0, -np.pi / 8.0],
+             'max_orientation_deltas': [0, 0, np.pi / 8.0]
+             })
+
+        self['edge_grasp']['ticket']['slide_to_edge_manifold'] = Manifold(
+            {'min_position_deltas': [-0.00, -0.00, -0.00],
+             'max_position_deltas': [0.00, 0.00, 0.00],
+             'min_orientation_deltas': [0, 0, -np.pi / 16.0],
+             'max_orientation_deltas': [0, 0, np.pi / 16.0]
+             })
+
+        self['edge_grasp']['ticket']['slide_transform_alt'] = np.eye(4)
+
+        self['edge_grasp']['ticket']['sliding_direction'] = 1
 
 
 ##################  ADDED CODE NICOLAS ###################################
@@ -402,6 +504,17 @@ class PisaIITHandProb(RBOHand2Prob):
 
         self['surface_grasp']['object']['hand_closing_duration'] = 0.5
 
+        self['surface_grasp']['object']['down_dist_alt'] = 0.05
+
+        self['surface_grasp']['object']['safety_distance_above_object'] = -0.03#0.05
+
+        # for SH_V2
+        # self['surface_grasp']['object']['safety_distance_above_object'] = 0.00
+
+
+        self['surface_grasp']['apple'] = self['surface_grasp']['object'].copy()
+        self['surface_grasp']['bottle'] = self['surface_grasp']['object'].copy()
+
         # above the object, in hand palm frame
         self['surface_grasp']['apple']['pregrasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0, 0, 0]), tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
@@ -419,26 +532,51 @@ class PisaIITHandProb(RBOHand2Prob):
         self['surface_grasp']['bottle']['pre_grasp_manifold'] = Manifold(
             {'min_position_deltas': [-0.05, -0.05, -0.0],
              'max_position_deltas': [0.05, 0.05, 0.0],
-             'min_orientation_deltas': [-np.pi / 16, -np.pi / 16, -np.pi / 1],
-             'max_orientation_deltas': [np.pi / 16, np.pi / 16, np.pi / 1],
+             'min_orientation_deltas': [-np.pi / 16, -np.pi / 16, -np.pi / 2],
+             'max_orientation_deltas': [np.pi / 16, np.pi / 16, np.pi / 2],
              })
 
-        self['surface_grasp']['apple']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.02, -0.02, -0.03],
-                                                                       'max_position_deltas': [0.02, 0.02, -0.03],
+        self['surface_grasp']['apple']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.00, -0.00, -0.00],
+                                                                       'max_position_deltas': [0.00, 0.00, -0.00],
                                                                        'min_orientation_deltas': [0, 0, -np.pi],
                                                                        'max_orientation_deltas': [0, 0, np.pi]
                                                                        })
 
-        self['surface_grasp']['bottle']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.02, -0.02, -0.03],#-0.05],
-                                                                       'max_position_deltas': [0.02, 0.02, -0.03],#0.01],
+        self['surface_grasp']['bottle']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.00, -0.00, -0.00],#-0.05],
+                                                                       'max_position_deltas': [0.00, 0.00, -0.00],#0.01],
                                                                        'min_orientation_deltas': [0, 0, -np.pi/16.0],
                                                                        'max_orientation_deltas': [0, 0, np.pi/16.0]
                                                                        })
 
         self['surface_grasp']['banana'] = self['surface_grasp']['bottle'].copy()
 
+        # self['surface_grasp']['banana']['pregrasp_transform'] = tra.concatenate_matrices(
+        #     tra.translation_matrix([0.02, 0, 0]),
+        #
+        #     tra.rotation_matrix(math.radians(-10.0), [0, 1, 0]),
+        #     tra.rotation_matrix(math.radians(-20.0), [1, 0, 0]),
+        #     tra.rotation_matrix(math.radians(-20.0), [0, 0, 1])
+        # )
+
+        self['surface_grasp']['banana']['pregrasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.00, 0.03, 0]),
+
+            tra.rotation_matrix(math.radians(-10.0), [0, 1, 0]),
+            tra.rotation_matrix(math.radians(-10.0), [1, 0, 0]),
+            tra.rotation_matrix(math.radians(-20.0), [0, 0, 1])
+        )
+
+        self['surface_grasp']['banana']['go_down_manifold'] = Manifold(
+            {'min_position_deltas': [-0.03, -0.00, -0.00],  # -0.05],
+             'max_position_deltas': [0.03, 0.00, -0.00],  # 0.01],
+             'min_orientation_deltas': [0, 0, 0],
+             'max_orientation_deltas': [0, 0, np.pi / 6.]
+             })
+
 
         # ------ EDGE GRASP --------------------------------------------------------------------------------------------
+
+        self['edge_grasp']['ticket'] = self['edge_grasp']['object'].copy()
 
         self['edge_grasp']['ticket']['palm_edge_offset'] = 0.0
 
@@ -460,8 +598,8 @@ class PisaIITHandProb(RBOHand2Prob):
         self['edge_grasp']['ticket']['hand_closing_duration'] = 0.3
 
         self['edge_grasp']['ticket']['pre_grasp_manifold'] = Manifold(
-            {'min_position_deltas': [-0.05, -0.05, -0.02],
-             'max_position_deltas': [0.05, 0.05, 0.02],
+            {'min_position_deltas': [-0.0, -0.0, -0.02],
+             'max_position_deltas': [0.0, 0.0, 0.02],
              'min_orientation_deltas': [-np.pi / 16, -np.pi / 16, -np.pi / 4],
              'max_orientation_deltas': [np.pi / 16, np.pi / 16, np.pi / 4],
              })
@@ -476,14 +614,14 @@ class PisaIITHandProb(RBOHand2Prob):
         self['edge_grasp']['ticket']['slide_to_edge_manifold'] = Manifold(
             {'min_position_deltas': [-0.00, -0.00, -0.00],
              'max_position_deltas': [0.00, 0.00, 0.00],
-             'min_orientation_deltas': [0, 0, -np.pi / 8.0],
-             'max_orientation_deltas': [0, 0, np.pi / 8.0]
+             'min_orientation_deltas': [0, 0, -np.pi / 16.0],
+             'max_orientation_deltas': [0, 0, np.pi / 16.0]
              })
 
         #
         self['edge_grasp']['ticket']['pre_approach_transform_alt'] = tra.concatenate_matrices(
-            # [0.07, 0.02, -0.10] 2019-04-07: these are gold standards if ticket has a good orientation
-            tra.translation_matrix([0.055, 0.005, -0.10]),
+            # tra.translation_matrix([0.025, 0.005, -0.10]),
+            tra.translation_matrix([0.02, 0.0, -0.10]),
             tra.concatenate_matrices(
                 tra.rotation_matrix(
                     math.radians(0.), [1, 0, 0]),
@@ -493,8 +631,47 @@ class PisaIITHandProb(RBOHand2Prob):
                     math.radians(0.0), [0, 0, 1]),
             ))
 
+        # for SH_V2
+        # self['edge_grasp']['ticket']['slide_transform_alt'] = tra.concatenate_matrices(
+        #     tra.translation_matrix([0.0, 0.0, 0.0]),
+        #     tra.concatenate_matrices(
+        #         tra.rotation_matrix(
+        #             math.radians(0.), [1, 0, 0]),
+        #         tra.rotation_matrix(
+        #             math.radians(0.0), [0, 1, 0]),
+        #         tra.rotation_matrix(
+        #             math.radians(0.0), [0, 0, 1]),
+        #     ))
+
+        self['edge_grasp']['ticket']['slide_transform_alt'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.0, 0.0, 0.0]),
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    # math.radians(35.0), [0, 1, 0]),
+                    math.radians(0.0), [0, 1, 0]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+
+        # for SH_V2
+        # self['edge_grasp']['ticket']['pre_approach_transform_alt'] = tra.concatenate_matrices(
+        #     tra.translation_matrix([0.055, -0.01, -0.10]),
+        #     tra.concatenate_matrices(
+        #         tra.rotation_matrix(
+        #             math.radians(0.), [1, 0, 0]),
+        #         tra.rotation_matrix(
+        #             math.radians(-20.0), [0, 1, 0]),
+        #         tra.rotation_matrix(
+        #             math.radians(0.0), [0, 0, 1]),
+        #     ))
+
         # this directly correlates with pre_approach_transform TODO: it shouldn't
-        self['edge_grasp']['ticket']['palm_edge_offset_alt'] = -0.06
+        self['edge_grasp']['ticket']['palm_edge_offset_alt'] = -0.04
+
+        # for SH_V2
+        # self['edge_grasp']['ticket']['palm_edge_offset_alt'] = -0.06
 
         # TODO: preferably, we would be using this to set the ee-tf to an optimal pose for each respective object.
         # However, the sampling in the feasibility check module shifts the sampling manifold by the values set here,
@@ -510,6 +687,43 @@ class PisaIITHandProb(RBOHand2Prob):
                 tra.rotation_matrix(
                     math.radians(90.0), [0, 0, 1]),
             ))
+
+        # good values for Pisa/IIT Hand
+        # self['edge_grasp']['ticket']['post_slide_pose_trajectory'] = np.array([
+        #     tra.translation_matrix([0, 0, -0.045]),
+        #     tra.concatenate_matrices(tra.rotation_matrix(math.radians(35.0), [0, 1, 0]),
+        #                              tra.translation_matrix([0.04, 0.02, 0])),
+        #     tra.translation_matrix([0, 0, 0.045]),
+        #     tra.translation_matrix([-0.08, 0, 0])
+        # ])
+
+        self['edge_grasp']['ticket']['post_slide_pose_trajectory'] = np.array([
+            tra.rotation_matrix(math.radians(35.0), [0, 1, 0]),
+            tra.translation_matrix([0.00, 0, -0.035]),
+            tra.translation_matrix([0.05, 0.01, 0]),
+            # tra.rotation_matrix(math.radians(0.0), [0, 1, 0]),
+            # tra.concatenate_matrices(tra.rotation_matrix(math.radians(35.0), [0, 1, 0]),
+            #                          tra.translation_matrix([0.03, 0.00, -0.03])),
+            tra.translation_matrix([0, 0, 0.035]),
+            tra.translation_matrix([-0.07, 0, 0])
+        ])
+
+        # self['edge_grasp']['ticket']['post_slide_pose_trajectory'] = np.array([np.eye(4)])
+
+        # # for SH_V2
+        # self['edge_grasp']['ticket']['post_slide_pose_trajectory'] = np.array([
+        #     tra.translation_matrix([0, 0, -0.035]),
+        #     tra.concatenate_matrices(tra.rotation_matrix(math.radians(20.0), [0, 1, 0]),
+        #                              tra.translation_matrix([0.02, 0.02, 0])),
+        #     tra.translation_matrix([0, 0, 0.015]),
+        #     tra.translation_matrix([-0.03, 0, -0.005]),
+        #     tra.concatenate_matrices(tra.rotation_matrix(math.radians(10.0), [0, 1, 0]),
+        #                              tra.translation_matrix([0, 0, -0.005])),
+        # ])
+
+        # 1: push
+        # -1: pull
+        self['edge_grasp']['ticket']['sliding_direction'] = -1
 
 ######################################################################
 

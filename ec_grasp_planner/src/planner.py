@@ -411,6 +411,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     hand_closing_duration = params['hand_closing_duration']
     hand_synergy = params['hand_closing_synergy']
     down_dist = params['down_dist']
+    down_dist_alt = params['down_dist_alt']
     up_dist = params['up_dist']
     go_down_velocity = params['go_down_velocity']
     go_down_joint_velocity = params['go_down_joint_velocity']
@@ -514,10 +515,6 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         pre_grasp_velocity = params['pre_grasp_joint_velocity']
         goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
 
-        if 'pre_grasp' in alternative_behavior and 'go_down' in alternative_behavior:
-            # fuse both trajectories for a smoother execution
-            go_down_traj = alternative_behavior['go_down'].get_trajectory()
-            goal_traj = np.hstack((goal_traj, go_down_traj))
 
         print("GOAL TRAJ PreGrasp", goal_traj) 
         control_sequence.append(ha.InterpolatedJointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
@@ -582,36 +579,37 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
         print("GOAL_TRAJ GoDown", goal_traj)  # TODO Check if the dimensions are correct and the via points are as expected
 
-        if 'pre_grasp' in alternative_behavior and 'go_down' in alternative_behavior:
-            # TODO: We already fused the two trajecories to one in step 2, nothing to do here.
-            control_sequence.append(ha.BlockJointControlMode(name='GoDown'))
-            control_sequence.append(ha.TimeSwitch('GoDown', 'GoDownFurther', duration=0))
+        # TODO: this is a temporary hack until myP allows trajectory execution to be preempted:
+        #       only execute 40% of the go_down trajectory, and then go directly to the last waypoint of the
+        #       trajectory via JointControlMode, which can be stopped by the FT-Switch
+        split_traj_ratio = 0.4
+        cut_off = int(goal_traj.shape[1] * split_traj_ratio)
+        goal_traj_initial = goal_traj[:, :cut_off]
+        goal_traj_further = goal_traj[:, cut_off:]
+        last_joint_config = goal_traj_further[:, -1]
 
-        elif 'go_down' in alternative_behavior:
-            control_sequence.append(ha.InterpolatedJointControlMode(goal_traj, name='GoDown', controller_name='GoDown',
-                                                        goal_is_relative='0',
-                                                        v_max=go_down_joint_velocity,
-                                                        # for the close trajectory points linear interpolation works best.
-                                                        interpolation_type='linear',
-                                                        # completion_times=np.array([0.03]*goal_traj_short.shape[1]).reshape(1, goal_traj_short.shape[1])))
-                                                                    ))
+        control_sequence.append(ha.InterpolatedJointControlMode(goal_traj_initial, name='GoDown', controller_name='GoDown',
+                                                    goal_is_relative='0',
+                                                    v_max=go_down_joint_velocity,
+                                                    # for the close trajectory points linear interpolation works best.
+                                                    interpolation_type='linear',
+                                                    # completion_times=np.array([0.03]*goal_traj_short.shape[1]).reshape(1, goal_traj_short.shape[1])))
+                                                                ))
 
-            # Switch when goal is reached to trigger the relative go down further motion
-            control_sequence.append(ha.JointConfigurationSwitch('GoDown', 'GoDownFurther', controller='GoDown',
-                                                                epsilon=str(math.radians(7.)),#str(math.radians(7.)),
-                                                                norm_weights=np.ones(6)))
+        # Switch when goal is reached to trigger the relative go down further motion
+        control_sequence.append(ha.JointConfigurationSwitch('GoDown', 'GoDownFurther', controller='GoDown',
+                                                            epsilon=str(math.radians(7.)),
+                                                            norm_weights=np.ones(6)))
 
 
-        # TODO: put this into handarm_parameters.py
-        # Relative motion that ensures that the actual force/torque threshold is reached
-        control_sequence.append(
-            ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, -0.05]),
-                                                 controller_name='GoDownFurther',
-                                                 goal_is_relative='1',
-                                                 name="GoDownFurther",
-                                                 reference_frame="world",
-                                                 v_max=go_down_velocity))
 
+
+        control_sequence.append(ha.JointControlMode(
+                last_joint_config,
+                name='GoDownFurther',
+                controller_name='GoDownFurtherCtrl',
+                v_max=np.array([0.1745]*6) # we use joint speeds here
+            ))
 
         # Force/Torque switch for the additional relative go down further
         control_sequence.append(ha.ForceTorqueSwitch('GoDownFurther',
@@ -678,10 +676,9 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
     if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
         # override the GoUp_1 controller pose with the first trajectory waypoint of go_down_traj
-        go_down_traj = alternative_behavior['go_down'].get_trajectory()
 
-        # we simply invert the
-        go_up_traj = np.fliplr(go_down_traj)
+        # we simply invert the go_down trajectory
+        go_up_traj = np.fliplr(goal_traj_initial)
 
         control_sequence.append(ha.InterpolatedJointControlMode(go_up_traj, name='GoUp_1', controller_name='GoUp_1JointCfg',
                                                     goal_is_relative='0',
@@ -693,7 +690,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
 
         # Switch when goal is reached to trigger the relative go down further motion
         # control_sequence.append(ha.JointConfigurationSwitch('GoUp_1', 'GoUp_pre', controller='GoUp_1JointCfg',
-        control_sequence.append(ha.JointConfigurationSwitch('GoUp_1', 'EstimationMassMeasurement', controller='GoUp_1JointCfg',
+        control_sequence.append(ha.JointConfigurationSwitch('GoUp_1', 'EstimationMassMeasurement',
+                                                            controller='GoUp_1JointCfg',
                                                             epsilon=str(math.radians(7.)),#str(math.radians(7.)),
                                                             norm_weights=np.ones(6)))
 
@@ -1224,6 +1222,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     downward_force = params['table_force']
     up_dist = params['up_dist']
     down_dist = params['down_dist']
+    down_dist_alt = params['down_dist_alt']
     pre_approach_transform = params['pre_approach_transform']
     drop_off_config = params['drop_off_config']
     hand_over_config = params['hand_over_config']
@@ -1237,6 +1236,8 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     use_null_space_posture = handarm_params['use_null_space_posture']
     wait_handing_over_duration = handarm_params['wait_handing_over_duration']
+
+    post_slide_pose_trajectory = params['post_slide_pose_trajectory']
 
 
     # Get the pose above the object
@@ -1270,7 +1271,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     # TUB uses HA Control Mode name to actuate hand, thus the mode name includes the synergy type
     # the "3" encodes the grasp type 1 Surface, 2 wall, 3 edge
-    mode_name_hand_closing = 'softhand_close_3' #+ '_' + str(hand_synergy)
+    mode_name_hand_closing = 'softhand_close_3' + '_' + str(hand_synergy)
 
     # Rviz debug frames
     rviz_frames.append(edge_frame)
@@ -1314,7 +1315,9 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
             next_mode = 'SlideToEdge'
 
-            if 'slide_to_edge' in alternative_behavior:
+            # TODO: depending on how the joint trajectory is resampled, a clean touchdown onto the object is not
+            #       guaranteed, so we don't fuse slide_to_edge trajectory until this is fixed
+            if 'slide_to_edge' in alternative_behavior and False:
                 # merge up to 'slide_to_edge'
                 slide_to_edge_traj = alternative_behavior['slide_to_edge'].get_trajectory()
                 goal_traj = np.hstack((goal_traj, slide_to_edge_traj))
@@ -1490,72 +1493,35 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                                    goal_is_relative='1'))
 
 
-    # TODO: --- put this into handarm_parameters.py and execute as pose trajectory -------------------------------------
+    # TODO: implement task space trajectory controller and send as one trajectory
+    for idx, pose_trajectory in enumerate(post_slide_pose_trajectory):
 
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(tra.translation_matrix([0, 0, -0.045]),
-                                             controller_name='PreGraspRotate', goal_is_relative='1',
-                                             name="PreGraspRotate", reference_frame="EE",
-                                             v_max=slide_velocity))
+        if idx == 0:
+            mode_name = 'PreGraspRotate'
+        else:
+            mode_name = 'PreGraspRotate_{}'.format(idx)
 
-    # 4b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGraspRotate', 'PreGraspRotate_1',
-                                               controller='PreGraspRotate',
-                                               epsilon='0.01',
-                                               reference_frame="EE",
-                                               goal_is_relative='1'))
+        if idx == len(post_slide_pose_trajectory) - 1:
+            mode_name_next = mode_name_hand_closing
+        else:
+            mode_name_next = 'PreGraspRotate_{}'.format(idx + 1)
 
-    if alternative_behavior is not None:
-        dirPreGrasp_1 = np.dot(tra.rotation_matrix(math.radians(35.0), [0, 1, 0]), tra.translation_matrix([0.01, 0.02, 0]))
-    else:
-        dirPreGrasp_1 = np.dot(tra.rotation_matrix(math.radians(35.0), [0, 1, 0]), tra.translation_matrix([0.04, 0.02, 0]))
+        controller_name = mode_name
 
 
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirPreGrasp_1,
-                                             controller_name='PreGraspRotate_1', goal_is_relative='1',
-                                             name="PreGraspRotate_1", reference_frame="EE",
-                                             v_max=slide_velocity))
 
-    # 4b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGraspRotate_1', 'PreGraspRotate_2',
-                                               controller='PreGraspRotate_1',
-                                               epsilon='0.01',
-                                               reference_frame="EE",
-                                               goal_is_relative='1'))
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(pose_trajectory,
+                                                 controller_name=controller_name, goal_is_relative='1',
+                                                 name=mode_name, reference_frame="EE",
+                                                 v_max=slide_velocity))
 
-    # hand slightly rotates and moves downwards to get a better grasping pose
-    dirPreGrasp_2 = np.eye(4) # tra.rotation_matrix(math.radians(0), [1, 0, 0])
-
-    # x-direction
-    dirPreGrasp_2[0, 3] = 0.0 # 0.02
-
-    # z-direction
-    dirPreGrasp_2[2, 3] = 0.045
-
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirPreGrasp_2, controller_name='PreGraspRotate_2', goal_is_relative='1',
-                                             name="PreGraspRotate_2", reference_frame="EE",
-                                             v_max=slide_velocity))
-
-    # 4b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGraspRotate_2', 'PreGraspRotate_3',
-                                               controller='PreGraspRotate_2',
-                                               epsilon='0.01',
-                                               reference_frame="EE",
-                                               goal_is_relative='1'))
-
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(tra.translation_matrix([-(0.03+0.05), 0, 0]), controller_name='PreGraspRotate_3', goal_is_relative='1',
-                                             name="PreGraspRotate_3", reference_frame="EE",
-                                             v_max=slide_velocity))
-
-    # 4b. Switch when hand reaches the goal pose
-    control_sequence.append(ha.FramePoseSwitch('PreGraspRotate_3', mode_name_hand_closing,
-                                               controller='PreGraspRotate_3',
-                                               epsilon='0.01',
-                                               reference_frame="EE",
-                                               goal_is_relative='1'))
+        # 4b. Switch when hand reaches the goal pose
+        control_sequence.append(ha.FramePoseSwitch(mode_name, mode_name_next,
+                                                   controller=controller_name,
+                                                   epsilon='0.01',
+                                                   reference_frame="EE",
+                                                   goal_is_relative='1'))
 
     # ------------------------------------------------------------------------------------------------------------------
 
@@ -1599,8 +1565,11 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     GoUpPose = np.dot(GoUpPose, tra.rotation_matrix(math.radians(90), [1, 0, 0]))
     GoUpPose = np.dot(GoUpPose, tra.rotation_matrix(math.radians(90), [0, 0, 1]))
 
-    # move up and forward
     GoUpPose = np.dot(GoUpPose, tra.translation_matrix([0.15, 0, -0.25]))
+
+    if params["sliding_direction"] == 1:
+        # pushing -> move up and backward
+        GoUpPose = np.dot(GoUpPose, tra.rotation_matrix(math.radians(180), [0, 0, 1]))
 
     control_sequence.append(
         ha.InterpolatedHTransformControlMode(GoUpPose, controller_name='GoUpHTransform', name='GoUp', goal_is_relative='0',

@@ -238,10 +238,22 @@ class multi_object_params:
     def heuristics_and_check_kinematic_feasibility(self, current_ec_index, all_ecs, strategy, ifco_in_base_transform,
                                                    current_object_idx, objects, handarm_params):
 
-        value = self.black_list_edges(current_ec_index, all_ecs, strategy, ifco_in_base_transform)
+        if strategy == 'EdgeGrasp':
+            obj = objects[current_object_idx]
 
-        if value == 0:
-            return value
+            if obj['type'] in handarm_params['edge_grasp']:
+                params = handarm_params['edge_grasp'][obj['type']]
+            else:
+                params = handarm_params['edge_grasp']['object']
+
+            value = self.black_list_edges(current_ec_index, all_ecs, strategy, ifco_in_base_transform)
+
+            # these heuristics return values for pulling, not pushing. hence, invert value if pushing
+            if params['sliding_direction'] == 1:
+                value = 1 - value
+
+            if value == 0:
+                return value
 
         return self.check_kinematic_feasibility(current_object_idx, objects, current_ec_index, all_ecs,
                                                 ifco_in_base_transform, handarm_params)
@@ -351,6 +363,9 @@ class multi_object_params:
             # (more realistic behavior since we have to touch the object for a successful grasp)
             down_dist = pre_grasp_pose[2, 3] - object_params['frame'][2, 3]  # get z-translation difference
 
+            # add safety distance above object
+            down_dist -= params['safety_distance_above_object']
+
             # goal pose for go down movement
             go_down_pose = tra.translation_matrix([0, 0, -down_dist]).dot(pre_grasp_pose)
 
@@ -366,11 +381,14 @@ class multi_object_params:
             pre_grasp_pos_manifold = np.copy(object_params['frame'])
             pre_grasp_pos_manifold[:3, 3] = tra.translation_from_matrix(pre_grasp_pose)
 
+            go_down_pos_manifold = np.copy(object_params['frame'])
+            go_down_pos_manifold[:3, 3] = tra.translation_from_matrix(go_down_pose)
+
             goal_manifold_frames = {
                 'pre_grasp': pre_grasp_pos_manifold,
 
                 # Use object frame for resampling
-                'go_down': np.copy(object_params['frame'])  # TODO change that again to go_down_pose!?
+                'go_down': go_down_pos_manifold  # TODO change that again to go_down_pose!? <-- YES?!?!
             }
 
             goal_manifold_orientations = {
@@ -398,13 +416,13 @@ class multi_object_params:
                                              # accurate enough at the moment
                                              box_id=current_object_idx, terminating=False, required=False),
                             AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                             constraint_name='table', terminating=False)],
+                                             constraint_name='tabletop', terminating=False)],
 
                 # TODO also account for the additional object in a way?
                 'post_grasp_rot': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX,
                                                     box_id=current_object_idx, terminating=True),
                                    AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                                    constraint_name='table', terminating=False)]
+                                                    constraint_name='tabletop', terminating=False)]
             }
 
         elif strategy == "WallGrasp":
@@ -551,6 +569,7 @@ class multi_object_params:
 
             hand_transform = params['hand_transform']
             pre_approach_transform = params['pre_approach_transform_alt']
+            slide_transform = params['slide_transform_alt']
             palm_edge_offset = params['palm_edge_offset_alt']
 
             # This is the frame of the edge we are going for
@@ -592,6 +611,11 @@ class multi_object_params:
 
             # this is the EC frame. It is positioned like object and oriented to the edge?
             initial_slide_frame = np.copy(edge_frame)
+
+            # flip orientation if pushing instead of pulling
+            if params['sliding_direction'] == 1:
+                initial_slide_frame = np.dot(initial_slide_frame, tra.rotation_matrix(math.radians(180), [0, 1, 0]))
+
             initial_slide_frame[:3, 3] = tra.translation_from_matrix(object_pose)
             # apply hand transformation
             # hand on object fingers pointing toward the edge
@@ -632,8 +656,7 @@ class multi_object_params:
             dir_edge = np.identity(4)
             # relative distance from initial slide position to final hand on the edge position
 
-            # TODO: we want to pull instead of push for disney use case
-            distance_to_edge = (hand_on_edge_pose - initial_slide_frame) * -1
+            distance_to_edge = (hand_on_edge_pose - initial_slide_frame) * params['sliding_direction']
             # TODO might need tuning based on object and palm frame
             dir_edge[:3, 3] = tra.translation_from_matrix(distance_to_edge)
             # no lifting motion applied while sliding
@@ -646,6 +669,8 @@ class multi_object_params:
             R_pre_approach = np.identity(4)
             R_pre_approach[:3, :3] = pre_approach_transform[:3, :3]
             slide_to_edge_pose = slide_to_edge_pose.dot(R_pre_approach)
+
+            slide_to_edge_pose = slide_to_edge_pose.dot(slide_transform)
 
             # slide_to_edge_pose = slide_to_edge_pose.dot(tra.rotation_matrix(0.82, [0, 1, 0]))
 
