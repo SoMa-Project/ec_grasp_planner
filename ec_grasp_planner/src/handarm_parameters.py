@@ -195,13 +195,16 @@ class RBOHand2Prob(RBOHand2):
 
         # configuration some distance above table / box, to make sure we don't bump into it when going to drop_off_config
         self['surface_grasp']['object']['drop_off_config_pre'] = np.array(
-            [0.021647231988052212, 0.6897863795066091, 0.14012470783885214, -0.013760263305192895, 1.7722793875087848, -0.11635472095042249]
+            [0.20350494191584825, 0.5720795555715752, 0.5634780502409718, 0.47708321296105877, 1.7614200185648412, -0.3082238228648837]
         )
 
         # drop configuration - this is system specific!
         self['surface_grasp']['object']['drop_off_config'] = np.array(
-            [-0.6495122379513302, 1.0513008704056004, 1.1102978297770616, 1.8614173404205574, 1.2087920487824781, -2.2430899859608164]
+            # [-0.5679063656020475, 1.3775623866762996, 1.2616928592724366, 1.904748500696304, 1.1862835386078383, -2.6954168753155496]
+            [-0.7765563362474506, 1.6079453397885806, 0.6816199259625191, 1.1639724715048267, 1.778384934803142, -2.427213244293032]
         )
+
+        self['surface_grasp']['object']['hand_over_config_pre'] = self['surface_grasp']['object']['drop_off_config_pre'].copy()
 
         self['surface_grasp']['object']['hand_over_config'] = np.array(
             [-0.5692783732632621, 0.6382217582392946, 1.0518671070385777, 1.3382843279658632, 0.4500335121370537, -2.9542495543962315]
@@ -357,10 +360,6 @@ class RBOHand2Prob(RBOHand2):
         # drop configuration - this is system specific!
         self['edge_grasp']['object']['drop_off_config'] = self['surface_grasp']['object']['drop_off_config'].copy()
 
-        self['edge_grasp']['object']['hand_over_config_pre'] = np.array(
-            [-0.5324056673681203, 0.9823670132606176, 0.6746219309632386, 1.0329310236050429, 1.6687888420765724, -2.2275679229389915]
-        )
-
         # object hand over configuration - this is system specific!
         self['edge_grasp']['object']['hand_over_config'] = self['surface_grasp']['object']['hand_over_config'].copy()
 
@@ -419,11 +418,6 @@ class RBOHand2Prob(RBOHand2):
 
         self['edge_grasp']['ticket']['slide_transform_alt'] = np.eye(4)
 
-        self['edge_grasp']['ticket']['hand_over_config'] = np.array(
-            [-0.5291471491727358, 0.9059347531337889, 0.8686134517585082, 0.7843957601103667, 1.280980273384745,
-             -2.5911365575965055]
-        )
-
         self['edge_grasp']['ticket']['post_slide_pose_trajectory'] = np.array([
             tra.translation_matrix([-0.03, 0, -0.03]),
             tra.translation_matrix([0, 0, 0.03]),
@@ -452,14 +446,10 @@ class RBOHand2Prob(RBOHand2):
              })
 
 
-##################  ADDED CODE NICOLAS ###################################
-
 class RBOHandP24_pulpyPROB(RBOHand2Prob):
     def __init__(self, **kwargs):
         RBOHand2Prob.__init__(self, **kwargs)
 
-
-##################  PISA HAND  ###################################
 
 class PisaIITHandProb(RBOHand2Prob):
     def __init__(self, **kwargs):
@@ -562,7 +552,6 @@ class PisaIITHandProb(RBOHand2Prob):
             ))
 
         self['edge_grasp']['ticket']['pre_approach_transform_alt'] = tra.concatenate_matrices(
-            # tra.translation_matrix([0.025, 0.005, -0.10]),
             tra.translation_matrix([0.02, 0.0, -0.10]),
             tra.concatenate_matrices(
                 tra.rotation_matrix(

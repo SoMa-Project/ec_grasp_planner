@@ -418,6 +418,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     go_down_joint_velocity = params['go_down_joint_velocity']
     pre_grasp_velocity = params['pre_grasp_velocity']
 
+    hand_over_config_pre = params['hand_over_config_pre']
     hand_over_config = params['hand_over_config']
     hand_over_force = params['hand_over_force']
     hand_synergy = params['hand_closing_synergy']
@@ -732,7 +733,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     control_sequence.append(ha.BlockJointControlMode(name='EstimationMassMeasurement'))
 
     # 8b. Switches after estimation measurement was done
-    target_cm_okay = 'Handover' if handover else 'GoDropOff'
+    target_cm_okay = 'HandoverPre' if handover else 'GoDropOffPre'
 
     # 8b.1 No object was grasped => go to failure mode.
     target_cm_estimation_no_object = reaction.cm_name_for(FailureCases.MASS_ESTIMATION_NO_OBJECT, default=target_cm_okay)
@@ -782,6 +783,28 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
             # 9.2 Failure control mode representing grasping failure, which can't be corrected and requires to re-plan.
             control_sequence.append(ha.GravityCompensationMode(name=cm))
 
+    # handover_trajectory = np.array([
+    #     go_up_traj[:, -1].T,
+    #     hand_over_config_pre,
+    #     hand_over_config
+    # ]).T
+    #
+    # control_sequence.append(ha.InterpolatedJointControlMode(handover_trajectory, name='HandoverPre',
+    #                                                         controller_name='GoToHandoverJointConfigPre',
+    #                                                         goal_is_relative='0',
+    #                                                         v_max=np.array([0.1]*6),
+    #                                                         # for the close trajectory points linear interpolation works best.
+    #                                                         interpolation_type='linear',
+    #                                                         # completion_times=np.array([0.03]*goal_traj_short.shape[1]).reshape(1, goal_traj_short.shape[1])))
+    #                                                         ))
+
+    control_sequence.append(
+        ha.JointControlMode(hand_over_config_pre, controller_name='GoToHandoverJointConfigPre', name='HandoverPre'))
+
+    control_sequence.append(ha.JointConfigurationSwitch('HandoverPre', 'Handover',
+                                                        controller='GoToHandoverJointConfigPre',
+                                                        epsilon=str(math.radians(7.))))
+
     # 9.3 Success control mode. Go to handover cfg
     control_sequence.append(
         ha.JointControlMode(hand_over_config, controller_name='GoToHandoverJointConfig', name='Handover'))
@@ -818,6 +841,13 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     # 11b. Go to final CM after hand was opened
     control_sequence.append(ha.TimeSwitch('softhand_open_1_handover', 'finished', duration=hand_closing_duration))
 
+    control_sequence.append(
+        ha.JointControlMode(drop_off_config_pre, controller_name='GoToDropJointConfigPre', name='GoDropOffPre'))
+
+    control_sequence.append(ha.JointConfigurationSwitch('GoDropOffPre', 'GoDropOff',
+                                                        controller='GoToDropJointConfigPre',
+                                                        epsilon=str(math.radians(7.))))
+
     # 12. Go to dropOFF
     control_sequence.append(
         ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
@@ -828,22 +858,11 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                         epsilon = str(math.radians(7.)),
                                                         norm_weights=np.ones(6)))
     # 13. open hand (drop off)
-    ## TODO
     # control_sequence.append(ha.ControlMode(name='softhand_open_1_dropoff'))
     control_sequence.append(ha.SimpleRBOHandControlMode(goal=np.array([0.0]), name='softhand_open_1_dropoff'))
 
     # 13b. Switch to lift hand after drop off
-    control_sequence.append(ha.TimeSwitch('softhand_open_1_dropoff', 'GoUp_2', duration=hand_closing_duration))
-
-    # 14 Lift hand up (after placing object on the table)
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform_2', name='GoUp_2',
-                                             goal_is_relative='1', reference_frame="world"))
-
-    # 14b. Switch when lifting goal reached
-    control_sequence.append(
-        ha.FramePoseSwitch('GoUp_2', 'finished', controller='GoUpHTransform_2', epsilon='0.01', goal_is_relative='1',
-                           reference_frame="world"))
+    control_sequence.append(ha.TimeSwitch('softhand_open_1_dropoff', 'finished', duration=hand_closing_duration))
 
     # 15. Final joint blocking control mode (after object was taken/dropped)
     control_sequence.append(ha.BlockJointControlMode(name='finished'))
@@ -1226,6 +1245,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     down_dist = params['down_dist']
     down_dist_alt = params['down_dist_alt']
     pre_approach_transform = params['pre_approach_transform']
+    drop_off_config_pre = params['drop_off_config_pre']
     drop_off_config = params['drop_off_config']
     hand_over_config_pre = params['hand_over_config_pre']
     hand_over_config = params['hand_over_config']
@@ -1580,7 +1600,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                              reference_frame="world"))
 
     # 8b. Switches after estimation measurement was done
-    target_cm_okay = 'HandoverPre' if handover else 'GoDropOff'
+    target_cm_okay = 'HandoverPre' if handover else 'GoDropOffPre'
 
     # 7b. Switch when joint configuration (half way up) is reached
     control_sequence.append(ha.FramePoseSwitch('GoUp', target_cm_okay, controller='GoUpHTransform',
@@ -1686,6 +1706,13 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     control_sequence.append(ha.TimeSwitch('wait_for_handover', 'GoDropOff',
                                           duration=wait_handing_over_duration))
 
+    control_sequence.append(
+        ha.JointControlMode(drop_off_config_pre, controller_name='GoToDropJointConfigPre', name='GoDropOffPre'))
+
+    control_sequence.append(ha.JointConfigurationSwitch('GoDropOffPre', 'GoDropOff',
+                                                        controller='GoToDropJointConfigPre',
+                                                        epsilon=str(math.radians(7.))))
+
     # 10.1 Go to dropOFF
     control_sequence.append(
         ha.JointControlMode(drop_off_config, controller_name='GoToDropJointConfig', name='GoDropOff'))
@@ -1695,22 +1722,10 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
                                                         controller = 'GoToDropJointConfig',
                                                         epsilon = str(math.radians(7.))))
     # 11.1 open hand
-    control_sequence.append(ha.ControlMode(name='softhand_open_2'))
+    control_sequence.append(ha.BlockJointControlMode(name='softhand_open_2'))
 
     # 11.1 b
-    control_sequence.append(ha.TimeSwitch('softhand_open_2', 'GoUp_2', duration=hand_closing_duration))
-
-    dirUp = tra.translation_matrix([0, 0, up_dist])
-
-    # 12.1 Lift upwards
-    control_sequence.append(
-        ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform_2', name='GoUp_2', goal_is_relative='1',
-                                             reference_frame="world"))
-
-    # 12.1 b Switch when joint is reached
-    control_sequence.append(
-        ha.FramePoseSwitch('GoUp_2', 'finished', controller='GoUpHTransform_2', epsilon='0.01', goal_is_relative='1',
-                           reference_frame="world"))
+    control_sequence.append(ha.TimeSwitch('softhand_open_2', 'finished', duration=hand_closing_duration))
 
     return cookbook.sequence_of_modes_and_switches_with_safety_features(control_sequence), rviz_frames
 
