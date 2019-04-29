@@ -637,6 +637,9 @@ class multi_object_params:
             # (more realistic behavior since we have to touch the object for a successful grasp)
             down_dist = pre_approach_pose[2, 3] - object_pose[2, 3]  # get z-translation difference
 
+            # add safety distance above object
+            down_dist -= params['safety_distance_above_object']
+
             # goal pose for go down movement
             go_down_pose = tra.translation_matrix([0, 0, -down_dist]).dot(pre_approach_pose)
 

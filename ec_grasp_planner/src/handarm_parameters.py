@@ -348,6 +348,7 @@ class RBOHand2Prob(RBOHand2):
         self['edge_grasp']['object']['go_down_velocity'] = np.array([0.125, 0.03])  # first value: rotational, second translational
         self['edge_grasp']['object']['slide_velocity'] = np.array([0.125, 0.12])
         self['edge_grasp']['object']['palm_edge_offset'] = 0
+        self['edge_grasp']['object']['safety_distance_above_object'] = -0.015
 
         self['edge_grasp']['object']['initial_goal'] = np.array(
             [-0.13015969902674374, 0.27879386232497977, 0.9060628670263369, 0.1747674943188126, 1.7980381144022723, -1.4291233288800722]
@@ -529,6 +530,8 @@ class PisaIITHandProb(RBOHand2Prob):
 
         # this directly correlates with pre_approach_transform TODO: it shouldn't
         self['edge_grasp']['ticket']['palm_edge_offset_alt'] = -0.04
+
+        self['edge_grasp']['object']['safety_distance_above_object'] = 0
 
         # TODO: preferably, we would be using this to set the ee-tf to an optimal pose for each respective object.
         #       However, the sampling in the feasibility check module shifts the sampling manifold by the values set
