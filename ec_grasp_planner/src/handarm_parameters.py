@@ -529,7 +529,7 @@ class PISAHandKUKA(KUKA):
         self['SurfaceGrasp']['cucumber']['hand_closing_goal'] = 1
 
         self['SurfaceGrasp']['punnet'] = self['SurfaceGrasp']['object'].copy()
-        self['SurfaceGrasp']['punnet']['hand_closing_goal'] = 0.5
+        self['SurfaceGrasp']['punnet']['hand_closing_goal'] = 0.55
         self['SurfaceGrasp']['punnet']['hand_transform'] = tra.concatenate_matrices(tra.rotation_matrix(
                                                                                         math.radians(10.), [1, 0, 0]),
                                                                                     self['SurfaceGrasp']['object']['hand_transform']
@@ -540,15 +540,15 @@ class PISAHandKUKA(KUKA):
 
         self['SurfaceGrasp']['mango'] = self['SurfaceGrasp']['object'].copy()
         self['SurfaceGrasp']['mango']['hand_transform'] = tra.concatenate_matrices(tra.rotation_matrix(
-                                                                                        math.radians(20.), [1, 0, 0]),
+                                                                                        math.radians(0.), [1, 0, 0]),
                                                                                     self['SurfaceGrasp']['object']['hand_transform']
                                                                                     )
-        self['SurfaceGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.02, -0.02, 0.0]),
+        self['SurfaceGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.015, -0.01, 0.0]),
                                                                                     tra.rotation_matrix(math.radians(-10.0), [0, 0, 1]))
 
         self['SurfaceGrasp']['netbag'] = self['SurfaceGrasp']['object'].copy()
-        self['SurfaceGrasp']['netbag']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.04, -0.03, 0.0]),
-                                                                                    tra.rotation_matrix(math.radians(20.0), [0, 0, 1]))
+        self['SurfaceGrasp']['netbag']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, -0.02, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(-20.0), [0, 0, 1]))
 
         #####################################################################################
         # below are parameters for wall grasp 
@@ -623,7 +623,7 @@ class PISAHandKUKA(KUKA):
         self['WallGrasp']['mango'] = self['WallGrasp']['object'].copy()
         self['WallGrasp']['mango']['hand_preshape_goal'] = 0.3
         self['WallGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(
-                tra.translation_matrix([-0.15, -0.025, -0.12]), #15 cm above object, 12 cm behind
+                tra.translation_matrix([-0.15, -0.04, -0.12]), #15 cm above object, 12 cm behind
                 tra.concatenate_matrices(
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
@@ -639,7 +639,7 @@ class PISAHandKUKA(KUKA):
 
         # -----------------------------------------------------------------------------------------
         self['WallGrasp']['cucumber'] = self['WallGrasp']['object'].copy()
-        self['WallGrasp']['cucumber']['hand_preshape_goal'] = 0.4
+        self['WallGrasp']['cucumber']['hand_preshape_goal'] = 0.45
         self['WallGrasp']['cucumber']['corrective_lift_duration'] = 2.2
         self['WallGrasp']['cucumber']['high_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 500, 500, 500])
         self['WallGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
@@ -671,6 +671,8 @@ class PISAHandKUKA(KUKA):
                         math.radians(0.0), [0, 0, 1]),
             ))
         self['WallGrasp']['netbag']['wall_force'] = 10
+        self['WallGrasp']['netbag']['hand_preshape_goal'] = 0.5
+        self['WallGrasp']['netbag']['downward_force'] = 10
 
         # -----------------------------------------------------------------------------------------
         self['WallGrasp']['punnet'] = self['WallGrasp']['netbag'].copy()
