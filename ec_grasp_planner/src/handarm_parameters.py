@@ -225,7 +225,7 @@ class KUKA(BaseHandArm):
         # calculate_success_estimator_object_params.py. First value is mean, second is standard deviation.
         # This is mainly robot specific, but depending on the accuracy of the hand models each hand might introduce
         # additional noise. In that case the values should be updated in their specific classes
-        self['success_estimation_robot_noise'] = np.array([0.0316666666667, 0.0125830573921])
+        self['success_estimation_robot_noise'] = np.array([0.147, 0.0777])
 
         # Impedance control params
         self['joint_damping'] = np.array([0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7])
@@ -461,12 +461,11 @@ class PISAHandKUKA(KUKA):
         # Params that define the grasping controller
         ####################################################################################
 
-        self['SimplePositionControl'] = False
+        self['SimplePositionControl'] = True
 
-        self['ImpedanceControl'] = True
+        self['ImpedanceControl'] = False
         self['hand_max_aperture'] = 0.15
         self['SurfaceGrasp']['object']['kp'] = 0.03
-        self['SurfaceGrasp']['object']['xr'] = 0.5
 
         self['IMUGrasp'] = False
         self['compensation_duration'] = 2
@@ -530,7 +529,7 @@ class PISAHandKUKA(KUKA):
         self['SurfaceGrasp']['cucumber']['hand_closing_goal'] = 1
 
         self['SurfaceGrasp']['punnet'] = self['SurfaceGrasp']['object'].copy()
-        self['SurfaceGrasp']['punnet']['hand_closing_goal'] = 0.55
+        self['SurfaceGrasp']['punnet']['hand_closing_goal'] = 0.5
         self['SurfaceGrasp']['punnet']['hand_transform'] = tra.concatenate_matrices(tra.rotation_matrix(
                                                                                         math.radians(10.), [1, 0, 0]),
                                                                                     self['SurfaceGrasp']['object']['hand_transform']
@@ -539,24 +538,17 @@ class PISAHandKUKA(KUKA):
                                                                                     tra.rotation_matrix(math.radians(-10.0), [0, 0, 1]))
         self['SurfaceGrasp']['punnet']['downward_force'] = 5
 
-        self['SurfaceGrasp']['punnet']['kp'] = 0.108
-        self['SurfaceGrasp']['punnet']['xr'] = (5151.3/15000.0) * (18500.0/15000.0)
-
         self['SurfaceGrasp']['mango'] = self['SurfaceGrasp']['object'].copy()
-        
         self['SurfaceGrasp']['mango']['hand_transform'] = tra.concatenate_matrices(tra.rotation_matrix(
-                                                                                        math.radians(0.), [1, 0, 0]),
+                                                                                        math.radians(20.), [1, 0, 0]),
                                                                                     self['SurfaceGrasp']['object']['hand_transform']
                                                                                     )
-        self['SurfaceGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.015, -0.0, 0.0]),
+        self['SurfaceGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.02, -0.02, 0.0]),
                                                                                     tra.rotation_matrix(math.radians(-10.0), [0, 0, 1]))
-        self['SurfaceGrasp']['mango']['kp'] = 0.1
-        self['SurfaceGrasp']['mango']['xr'] = 7753.1/15000.0
-
 
         self['SurfaceGrasp']['netbag'] = self['SurfaceGrasp']['object'].copy()
-        self['SurfaceGrasp']['netbag']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, -0.02, 0.0]),
-                                                                                    tra.rotation_matrix(math.radians(-20.0), [0, 0, 1]))
+        self['SurfaceGrasp']['netbag']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.04, -0.03, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(20.0), [0, 0, 1]))
 
         #####################################################################################
         # below are parameters for wall grasp 
@@ -631,7 +623,7 @@ class PISAHandKUKA(KUKA):
         self['WallGrasp']['mango'] = self['WallGrasp']['object'].copy()
         self['WallGrasp']['mango']['hand_preshape_goal'] = 0.3
         self['WallGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(
-                tra.translation_matrix([-0.15, -0.04, -0.12]), #15 cm above object, 12 cm behind
+                tra.translation_matrix([-0.15, -0.025, -0.12]), #15 cm above object, 12 cm behind
                 tra.concatenate_matrices(
                     tra.rotation_matrix(
                         math.radians(0.), [1, 0, 0]),
@@ -647,7 +639,7 @@ class PISAHandKUKA(KUKA):
 
         # -----------------------------------------------------------------------------------------
         self['WallGrasp']['cucumber'] = self['WallGrasp']['object'].copy()
-        self['WallGrasp']['cucumber']['hand_preshape_goal'] = 0.45
+        self['WallGrasp']['cucumber']['hand_preshape_goal'] = 0.4
         self['WallGrasp']['cucumber']['corrective_lift_duration'] = 2.2
         self['WallGrasp']['cucumber']['high_joint_stiffness'] = np.array([1500, 1500, 1000, 1000, 500, 500, 500])
         self['WallGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(
@@ -678,9 +670,7 @@ class PISAHandKUKA(KUKA):
                     tra.rotation_matrix(
                         math.radians(0.0), [0, 0, 1]),
             ))
-        self['WallGrasp']['netbag']['hand_preshape_goal'] = 0.5
         self['WallGrasp']['netbag']['wall_force'] = 10
-        self['WallGrasp']['netbag']['downward_force'] = 10
 
         # -----------------------------------------------------------------------------------------
         self['WallGrasp']['punnet'] = self['WallGrasp']['netbag'].copy()

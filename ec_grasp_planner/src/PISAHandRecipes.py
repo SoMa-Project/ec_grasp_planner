@@ -118,7 +118,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     if handarm_params['SimplePositionControl']:
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_closing_goal]), name = 'softhand_close', synergy = '1'))
     elif handarm_params['ImpedanceControl']:
-        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([params['xr']]), kp=np.array([params['kp']]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = 'softhand_close', 
+        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([hand_closing_goal]), kp=np.array([params['kp']]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = 'softhand_close', 
             bounding_box=np.array([chosen_object['bounding_box'].x, chosen_object['bounding_box'].y, chosen_object['bounding_box'].z]), object_weight=np.array([0.4]), object_type=object_type, object_pose=chosen_object['frame']))
     elif handarm_params['IMUGrasp']:
         control_sequence.append(ha.IMUGraspControlMode(chosen_object['frame'], name = 'softhand_close'))
