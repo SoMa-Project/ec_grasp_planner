@@ -18,8 +18,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
 
     # Approach phase
     high_joint_stiffness = params['high_joint_stiffness']
-    low_joint_stiffness = params['low_joint_stiffness']
-
+    
     downward_force = params['downward_force']
     down_speed = params['down_speed']
     hand_preshaping_time = params['hand_preshaping_duration']
@@ -41,7 +40,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # assemble controller sequence
     control_sequence = []
 
-    # 0a. Change arm mode - soften
+    # 0a. Change arm mode - stiffen
     control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', 
                                                         joint_stiffness = high_joint_stiffness, joint_damping = joint_damping))
     # 0b. We switch after a short time 
@@ -187,7 +186,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     control_sequence = []
 
-    # 0a. Change arm mode - soften
+    # 0a. Change arm mode - stiffen
     control_sequence.append(ha.kukaChangeModeControlMode(name = 'GoStiff', mode_id = 'joint_impedance', 
                                                         joint_stiffness = high_joint_stiffness, joint_damping = joint_damping))
     # 0b. We switch after a short time 
