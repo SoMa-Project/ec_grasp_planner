@@ -406,6 +406,7 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
     pregrasp_transform = params['pregrasp_transform']
     post_grasp_transform = params['post_grasp_transform'] # TODO: USE THIS!!!
 
+    drop_off_config_pre = params['drop_off_config_pre']
     drop_off_config = params['drop_off_config']
     downward_force = params['downward_force']
     hand_closing_duration = params['hand_closing_duration']
@@ -608,8 +609,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                 last_joint_config,
                 name='GoDownFurther',
                 controller_name='GoDownFurtherCtrl',
-                v_max=np.array([0.1745]*6) # we use joint speeds here
-            ))
+                v_max=go_down_joint_velocity)
+            )
 
         # Force/Torque switch for the additional relative go down further
         control_sequence.append(ha.ForceTorqueSwitch('GoDownFurther',
@@ -705,11 +706,8 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
         control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'GoUp_pre', controller='GoUpHTransform',
                                                    epsilon='0.01', goal_is_relative='1', reference_frame="world"))
 
-        # TODO: this config ensures that the hand doesn't bump into the table when goint to handover / drop off config
-        # belongs into handarm_parameters.py
-        go_up_pre_config = np.array([0.021647231988052212, 0.6897863795066091, 0.14012470783885214, -0.013760263305192895, 1.7722793875087848, -0.11635472095042249])
         control_sequence.append(
-            ha.JointControlMode(go_up_pre_config, name='GoUp_pre', controller_name='GoUpJointCtrl'))
+            ha.JointControlMode(drop_off_config_pre, name='GoUp_pre', controller_name='GoUpJointCtrl'))
 
         control_sequence.append(ha.JointConfigurationSwitch('GoUp_pre', 'EstimationMassMeasurement',
                                                             controller='GoUpJointCtrl',
@@ -1513,8 +1511,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
         control_sequence.append(
             ha.InterpolatedHTransformControlMode(pose_trajectory,
                                                  controller_name=controller_name, goal_is_relative='1',
-                                                 name=mode_name, reference_frame="EE",
-                                                 v_max=slide_velocity))
+                                                 name=mode_name, reference_frame="EE"))
 
         # 4b. Switch when hand reaches the goal pose
         control_sequence.append(ha.FramePoseSwitch(mode_name, mode_name_next,
