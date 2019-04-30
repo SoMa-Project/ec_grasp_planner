@@ -316,6 +316,10 @@ class RBOHand2Prob(RBOHand2):
 
         self['wall_grasp']['sliding_speed'] += 0
 
+
+
+        # ------ Edge Grasp --------------------------------------------------------------------------------------------
+
         self['edge_grasp']['v_max'] = np.array([10] * 6)
         self['edge_grasp']['k_p'] = np.array([200, 150, 20, 10, 10, 5])
         self['edge_grasp']['k_v'] = np.array([10] * 6)
@@ -331,12 +335,7 @@ class RBOHand2Prob(RBOHand2):
         self['edge_grasp']['downward_force'] = 7.0
         self['edge_grasp']['sliding_speed'] = 0.04
         self['edge_grasp']['valve_pattern'] = (
-        np.array([[0, 0], [0, 0], [1, 0], [1, 0], [1, 0], [1, 0]]), np.array([[0, 3.0]] * 6))
-
-
-
-
-        # ------ Edge Grasp --------------------------------------------------------------------------------------------
+            np.array([[0, 0], [0, 0], [1, 0], [1, 0], [1, 0], [1, 0]]), np.array([[0, 3.0]] * 6))
 
 
         self['edge_grasp']['object'] = self['surface_grasp']['object'].copy()
@@ -403,7 +402,7 @@ class RBOHand2Prob(RBOHand2):
         #drop configuration - this is system specific!
         self['edge_grasp']['ticket'] = self['edge_grasp']['object'].copy()
 
-        self['edge_grasp']['ticket']['palm_edge_offset'] = -0.01
+        self['edge_grasp']['ticket']['palm_edge_offset'] = 0.0
 
         self['edge_grasp']['ticket']['palm_edge_offset_alt'] = -0.01
 

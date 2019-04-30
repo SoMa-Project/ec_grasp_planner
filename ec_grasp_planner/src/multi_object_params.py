@@ -174,10 +174,17 @@ class multi_object_params:
             print(":::A5")
             return 0
 
-    def black_list_edges(self, current_ec_index, all_ec_frames, strategy, table_frame):
+    def black_list_edges(self, current_ec_index, all_ec_frames, strategy, table_frame, objects, current_object_idx, handarm_params):
 
         if strategy not in ["EdgeGrasp"]:
             return 1
+
+        obj = objects[current_object_idx]
+
+        if obj['type'] in handarm_params['edge_grasp']:
+            params = handarm_params['edge_grasp'][obj['type']]
+        else:
+            params = handarm_params['edge_grasp']['object']
 
         e_x_table = table_frame[:3, 0]
         e_y_table = table_frame[:3, 1]
@@ -189,9 +196,18 @@ class multi_object_params:
 
         # we only allow the edge below the table x-axis and the edge left of the table y-axis to be considered
         if np.dot(e_y_ec, e_x_table) < -0.8 or np.dot(e_y_ec, e_y_table) < -0.8:
-            return 0
+            value = 0
 
-        return 1
+        else:
+            value = 1
+
+
+
+        # invert value if pushing
+        if params['sliding_direction'] == 1:
+            value = 1 - value
+
+        return value
 
     def black_list_unreachable_zones(self, object, object_params, ifco_in_base_transform, strategy):
 
@@ -239,18 +255,8 @@ class multi_object_params:
                                                    current_object_idx, objects, handarm_params):
 
         if strategy == 'EdgeGrasp':
-            obj = objects[current_object_idx]
 
-            if obj['type'] in handarm_params['edge_grasp']:
-                params = handarm_params['edge_grasp'][obj['type']]
-            else:
-                params = handarm_params['edge_grasp']['object']
-
-            value = self.black_list_edges(current_ec_index, all_ecs, strategy, ifco_in_base_transform)
-
-            # these heuristics return values for pulling, not pushing. hence, invert value if pushing
-            if params['sliding_direction'] == 1:
-                value = 1 - value
+            value = self.black_list_edges(current_ec_index, all_ecs, strategy, ifco_in_base_transform, objects, current_object_idx, handarm_params)
 
             if value == 0:
                 return value
@@ -955,7 +961,8 @@ class multi_object_params:
 
         else:
             # Since we are in disney use case, only black list wall, but not regions.
-            feasibility_fun = partial(self.black_list_edges, current_ec_index, all_ecs, strategy, ifco_in_base_transform)
+            feasibility_fun = partial(self.black_list_edges, current_ec_index, all_ecs, strategy, ifco_in_base_transform,
+                                      objects, current_object_idx, handarm_params)
 
         print("---------------------")
         print(self.pdf_object_strategy(object_params))

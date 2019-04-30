@@ -1279,6 +1279,11 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     # this is the EC frame. It is positioned like object and oriented to the edge?
     initial_slide_frame = np.copy(edge_frame)
+
+    if sliding_direction == 1:
+        # pushing -> rotate initial_slide_frame
+        initial_slide_frame = np.dot(initial_slide_frame, tra.rotation_matrix(math.radians(180), [0, 1, 0]))
+
     initial_slide_frame[:3, 3] = tra.translation_from_matrix(object_frame)
     # apply hand transformation
     # hand on object fingers pointing toward the edge
@@ -1599,7 +1604,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     GoUpPose = np.dot(GoUpPose, tra.translation_matrix([0.15, 0, -0.25]))
 
-    if sliding_direction == 1 and alternative_behavior is not None:
+    if sliding_direction == 1:
         # pushing -> move up and backward
         GoUpPose = np.dot(GoUpPose, tra.rotation_matrix(math.radians(180), [0, 0, 1]))
 
