@@ -621,6 +621,10 @@ class PisaIITSmallHandProb(PisaIITHandProb):
         # TODO: add success_estimation_robot_noise
         # self['success_estimation_robot_noise'] = ...
 
+        # ------ Surface Grasp -----------------------------------------------------------------------------------------
+        self['surface_grasp']['object']['pregrasp_transform'] = self['surface_grasp']['object']['pregrasp_transform_alt'].copy()
+        self['surface_grasp']['object']['pregrasp_transform'][0, 3] += 0.09
+
         # TODO: needs further tuning, especially with conventional, non-feasibility-module grasps
         # ------ Edge Grasp --------------------------------------------------------------------------------------------
         self['edge_grasp']['ticket']['palm_edge_offset_alt'] = -0.06
