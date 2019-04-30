@@ -485,7 +485,10 @@ class PisaIITHandProb(RBOHand2Prob):
         )
 
         self['surface_grasp']['apple']['pregrasp_transform'] = self['surface_grasp']['apple']['pregrasp_transform_alt'].copy()
-        # self['surface_grasp']['apple']['pregrasp_transform'][]
+        self['surface_grasp']['apple']['pregrasp_transform'][0, 3] += 0.10
+
+        self['surface_grasp']['banana']['pregrasp_transform'] = self['surface_grasp']['banana']['pregrasp_transform_alt'].copy()
+        self['surface_grasp']['banana']['pregrasp_transform'][0, 3] += 0.10
 
         self['surface_grasp']['apple']['pre_grasp_manifold'] = Manifold(
             {'min_position_deltas': [-0.05, -0.05, -0.0],
