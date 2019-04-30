@@ -356,7 +356,7 @@ class multi_object_params:
             print("DBG_FRAME 3",  multi_object_params.transform_to_pose_msg(goal_))
 
             # hand pose above object
-            pre_grasp_pose = goal_.dot(params['pregrasp_transform'])
+            pre_grasp_pose = goal_.dot(params['pregrasp_transform_alt'])
 
             # down_dist = params['down_dist']  #  dist lower than ifco bottom: behavior of the high level planner
             # dist = z difference to object centroid (both transformations are w.r.t. to world frame

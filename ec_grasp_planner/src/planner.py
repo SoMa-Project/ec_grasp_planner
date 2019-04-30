@@ -707,22 +707,29 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                             norm_weights=np.ones(6)))
 
     else:
-        # 7. Lift upwards a little bit (half way up)
-        control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform',
-                                                                     name='GoUp_1', goal_is_relative='1',
-                                                                     reference_frame="world"))
+        # # 7. Lift upwards a little bit (half way up)
+        # control_sequence.append(ha.InterpolatedHTransformControlMode(dirUp, controller_name='GoUpHTransform',
+        #                                                              name='GoUp_1', goal_is_relative='1',
+        #                                                              reference_frame="world"))
+
+        # lift up back to pre_grasp_pose (always kinematically feasible)
+        control_sequence.append(ha.InterpolatedHTransformControlMode(pre_grasp_pose,
+                                                                     name='GoUp_1',
+                                                                     controller_name='GoUpHTransform',
+                                                                     goal_is_relative='0'
+                                                                     ))
 
         # 7b. Switch when joint configuration (half way up) is reached
-        control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'GoUp_pre', controller='GoUpHTransform',
-                                                   epsilon='0.01', goal_is_relative='1', reference_frame="world"))
+        control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'ftSettle_EstimationMassMeasurement', controller='GoUpHTransform',
+                                                   epsilon='0.01', goal_is_relative='0', reference_frame="world"))
 
-        control_sequence.append(
-            ha.JointControlMode(drop_off_config_pre, name='GoUp_pre', controller_name='GoUpJointCtrl'))
-
-        control_sequence.append(ha.JointConfigurationSwitch('GoUp_pre', 'ftSettle_EstimationMassMeasurement',
-                                                            controller='GoUpJointCtrl',
-                                                            epsilon=str(math.radians(7.)),
-                                                            norm_weights=np.ones(6)))
+        # control_sequence.append(
+        #     ha.JointControlMode(drop_off_config_pre, name='GoUp_pre', controller_name='GoUpJointCtrl'))
+        #
+        # control_sequence.append(ha.JointConfigurationSwitch('GoUp_pre', 'ftSettle_EstimationMassMeasurement',
+        #                                                     controller='GoUpJointCtrl',
+        #                                                     epsilon=str(math.radians(7.)),
+        #                                                     norm_weights=np.ones(6)))
 
     #  wait a while to initialize the relative ft values correctly
     control_sequence.append(ha.BlockJointControlMode(name='ftSettle_EstimationMassMeasurement'))
@@ -1256,6 +1263,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
     hand_closing_duration = params['hand_closing_duration']
     hand_synergy = params['hand_closing_synergy']
     palm_edge_offset = params['palm_edge_offset']
+    sliding_direction = params["sliding_direction"]
 
     ft_settle_before_handover = params['ft_settle_before_handover']
 
@@ -1488,7 +1496,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
         # this is the distance to the edge, given by the z axis of the edge frame
         # add some extra forward distance to avoid grasping the edge of the table palm_edge_offset
         dist = delta[2,3] + np.sign(delta[2,3])*palm_edge_offset
-        dist *= -1
+        dist *= sliding_direction
         # dist *= 0.62 ## Not needed for disney use case
 
         # handPalm pose on the edge right before grasping
@@ -1591,7 +1599,7 @@ def create_edge_grasp(object_frame, support_surface_frame, edge_frame, handarm_p
 
     GoUpPose = np.dot(GoUpPose, tra.translation_matrix([0.15, 0, -0.25]))
 
-    if params["sliding_direction"] == 1:
+    if sliding_direction == 1 and alternative_behavior is not None:
         # pushing -> move up and backward
         GoUpPose = np.dot(GoUpPose, tra.rotation_matrix(math.radians(180), [0, 0, 1]))
 

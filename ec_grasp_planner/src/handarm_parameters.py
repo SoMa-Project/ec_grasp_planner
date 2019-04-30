@@ -176,9 +176,9 @@ class RBOHand2Prob(RBOHand2):
         # TODO: this has been set to a small value since myP would otherwise complain about kinematic infeasibility
         # this currently depends on the value set for self['surface_grasp']['object']['hand_transform'] and is tuned
         # for alternative_behaviour from the feasibility module
-        self['surface_grasp']['object']['down_dist'] = 0.05
+        self['surface_grasp']['object']['down_dist'] = 0.20
         self['surface_grasp']['object']['down_dist_alt'] = 0.05  # <- not used at the moment, use safety_distance_above_object
-        self['surface_grasp']['object']['up_dist'] = 0.25
+        self['surface_grasp']['object']['up_dist'] = 0.25 # <- not used at the moment
         self['surface_grasp']['object']['go_down_velocity'] = np.array([0.125, 0.06])  # first value: rotational, second translational
         self['surface_grasp']['object']['pre_grasp_velocity'] = np.array([0.125, 0.08])
         self['surface_grasp']['object']['safety_distance_above_object'] = -0.03
@@ -221,14 +221,16 @@ class RBOHand2Prob(RBOHand2):
                 tra.rotation_matrix(
                     math.radians(180.), [1, 0, 0])))
 
-        # above the object, in hand palm frame
-        self['surface_grasp']['object']['pregrasp_transform'] = tra.concatenate_matrices(
+        self['surface_grasp']['object']['pregrasp_transform_alt'] = tra.concatenate_matrices(
             tra.translation_matrix([0, 0, -0.15]),
             tra.concatenate_matrices(
                 tra.rotation_matrix(math.radians(0), [0, 0, 1]),
                 tra.rotation_matrix(math.radians(-20), [0, 1, 0])
             )
         )
+
+        self['surface_grasp']['object']['pregrasp_transform'] = self['surface_grasp']['object']['pregrasp_transform_alt'].copy()
+        self['surface_grasp']['object']['pregrasp_transform'][0, 3] += -0.05
 
         # first motion after grasp, in hand palm frame only rotation
         self['surface_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
@@ -376,26 +378,17 @@ class RBOHand2Prob(RBOHand2):
             ))
 
         self['edge_grasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([0.0, 0.0, -0.10]),
+            tra.translation_matrix([-0.01, 0.02, -0.10]),
             tra.concatenate_matrices(
                 tra.rotation_matrix(
-                    math.radians(0.), [1, 0, 0]),
+                    math.radians(0.0), [1, 0, 0]),
                 tra.rotation_matrix(
                     math.radians(-20.0), [0, 1, 0]),
                 tra.rotation_matrix(
                     math.radians(0.0), [0, 0, 1]),
             ))
 
-        self['edge_grasp']['object']['pre_approach_transform_alt'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.01, 0.02, -0.10]),
-            tra.concatenate_matrices(
-                tra.rotation_matrix(
-                    math.radians(0.0), [1, 0, 0]),
-                tra.rotation_matrix(
-                    math.radians(-20.0), [0, 1, 0]),#math.radians(-20.0), [0, 1, 0]),
-                tra.rotation_matrix(
-                    math.radians(0.0), [0, 0, 1]),
-            ))
+        self['edge_grasp']['object']['pre_approach_transform_alt'] = self['edge_grasp']['object']['pre_approach_transform'].copy()
 
         # first motion after grasp, in hand palm frame
         self['edge_grasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
@@ -410,7 +403,7 @@ class RBOHand2Prob(RBOHand2):
         #drop configuration - this is system specific!
         self['edge_grasp']['ticket'] = self['edge_grasp']['object'].copy()
 
-        self['edge_grasp']['ticket']['palm_edge_offset'] = 0.0
+        self['edge_grasp']['ticket']['palm_edge_offset'] = -0.01
 
         self['edge_grasp']['ticket']['palm_edge_offset_alt'] = -0.01
 
@@ -466,10 +459,11 @@ class PisaIITHandProb(RBOHand2Prob):
         self['surface_grasp']['apple'] = self['surface_grasp']['object'].copy()
         self['surface_grasp']['banana'] = self['surface_grasp']['object'].copy()
 
-        # above the object, in hand palm frame
+        # TODO: this needs to be tuned
         self['surface_grasp']['apple']['pregrasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0, 0, -0.15]), tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
 
+        # TODO: this needs to be tuned
         self['surface_grasp']['banana']['pregrasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([0.00, 0.03, -0.15]),
 
@@ -477,6 +471,21 @@ class PisaIITHandProb(RBOHand2Prob):
             tra.rotation_matrix(math.radians(-10.0), [1, 0, 0]),
             tra.rotation_matrix(math.radians(-20.0), [0, 0, 1])
         )
+
+        # above the object, in hand palm frame
+        self['surface_grasp']['apple']['pregrasp_transform_alt'] = tra.concatenate_matrices(
+            tra.translation_matrix([0, 0, -0.15]), tra.rotation_matrix(math.radians(0.0), [0, 1, 0]))
+
+        self['surface_grasp']['banana']['pregrasp_transform_alt'] = tra.concatenate_matrices(
+            tra.translation_matrix([0.00, 0.03, -0.15]),
+
+            tra.rotation_matrix(math.radians(-10.0), [0, 1, 0]),
+            tra.rotation_matrix(math.radians(-10.0), [1, 0, 0]),
+            tra.rotation_matrix(math.radians(-20.0), [0, 0, 1])
+        )
+
+        self['surface_grasp']['apple']['pregrasp_transform'] = self['surface_grasp']['apple']['pregrasp_transform_alt'].copy()
+        # self['surface_grasp']['apple']['pregrasp_transform'][]
 
         self['surface_grasp']['apple']['pre_grasp_manifold'] = Manifold(
             {'min_position_deltas': [-0.05, -0.05, -0.0],
@@ -609,6 +618,7 @@ class PisaIITSmallHandProb(PisaIITHandProb):
         # TODO: add success_estimation_robot_noise
         # self['success_estimation_robot_noise'] = ...
 
+        # TODO: needs further tuning, especially with conventional, non-feasibility-module grasps
         # ------ Edge Grasp --------------------------------------------------------------------------------------------
         self['edge_grasp']['ticket']['palm_edge_offset_alt'] = -0.06
 
