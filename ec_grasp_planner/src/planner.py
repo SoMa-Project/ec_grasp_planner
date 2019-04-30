@@ -632,6 +632,10 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                      frame_id='world',
                                                      port='2'))
 
+        control_sequence.append(ha.JointConfigurationSwitch('GoDownFurther', mode_name_hand_closing, controller='GoDownFurtherCtrl',
+                                                            epsilon=str(math.radians(7.)),
+                                                            norm_weights=np.ones(6)))
+
     else:
         # Go down onto the object (relative in world frame)
         control_sequence.append(
@@ -651,6 +655,10 @@ def create_surface_grasp(object_frame, support_surface_frame, handarm_params, ob
                                                      goal_is_relative='1',
                                                      frame_id='world',
                                                      port='2'))
+
+        control_sequence.append(
+            ha.FramePoseSwitch('GoDown', mode_name_hand_closing, controller='GoDown',
+                               epsilon='0.01', goal_is_relative='1', reference_frame="world"))
 
     # 4. Maintain the position
     desired_displacement = np.array([[1.0, 0.0, 0.0, 0.0],
