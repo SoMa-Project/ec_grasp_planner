@@ -40,7 +40,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
         control_sequence.append(ha.CartesianVelocityControlMode(up_world_twist, controller_name = 'GoUpHTransform', name = 'GoUp_1', reference_frame="world"))    
     
     # Do not stiffen the arm for the Pisa hand case
-    if "pisa_hand" in handarm_type:
+    if "pisa_hand" in handarm_type or "clash_hand" in handarm_type:
         next_control_mode = 'PrepareForEstimation'
 
     # 1b. Switch after the lift time
