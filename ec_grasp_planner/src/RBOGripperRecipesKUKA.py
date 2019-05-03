@@ -28,6 +28,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # Grasping phase
     up_speed = params['up_speed']
     hand_closing_time = params['hand_closing_duration']
+    hand_preshape_time = params['hand_preshaping_duration']
 
     # Set the twists to use TRIK controller with
 
@@ -61,7 +62,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     control_sequence.append(ha.BlockJointControlMode(name = 'softhand_preshape_1_1'))
 
     # 2b. Time to trigger pre-shape
-    control_sequence.append(ha.TimeSwitch('softhand_preshape_1_1', 'PrepareForMassMeasurement', duration = hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('softhand_preshape_1_1', 'PrepareForMassMeasurement', duration = hand_preshape_time))
 
     # 3. Go to gravity compensation 
     control_sequence.append(ha.BlockJointControlMode(name = 'PrepareForMassMeasurement'))

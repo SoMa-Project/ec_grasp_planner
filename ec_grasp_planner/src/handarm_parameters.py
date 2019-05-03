@@ -539,6 +539,8 @@ class RBOGripperKUKA(KUKA):
         # time of soft hand closing
         self['SurfaceGrasp']['object']['hand_closing_duration'] = 5
 
+        self['SurfaceGrasp']['object']['hand_preshaping_duration'] = 1
+
         # duration of lifting the object
         self['SurfaceGrasp']['object']['lift_duration'] = 11
                  
