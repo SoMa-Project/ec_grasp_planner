@@ -248,7 +248,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     control_sequence.append(ha.TimeSwitch('GoStiff', 'softhand_stiffen', duration=1.0))
 
     # 0. Trigger pre-shaping the hand and/or pretension
-    control_sequence.append(ha.ros_CLASHhandControlMode(name='softhand_stiffen', behaviour='SetPretension', thumb=thumb_stiffness, diff=diff_stiffness))
+    control_sequence.append(ha.ros_CLASHhandControlMode(name='softhand_stiffen', behaviour='SetPretension', thumb=np.array([0.2]), diff=np.array([0])))
     
     # 0b. Time to trigger pre-shape
     control_sequence.append(ha.TimeSwitch('softhand_stiffen', 'softhand_preshape', duration = hand_closing_time))
@@ -317,7 +317,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # 4b. Switch when force threshold is exceeded
     force = np.array([0, 0, downward_force, 0, 0, 0])
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
-                                                 'LiftHand',
+                                                 'restiffen',
                                                  goal=force,
                                                  norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                  jump_criterion="THRESH_UPPER_BOUND",
@@ -326,6 +326,12 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     # 4c. Switch to recovery if the cartesian velocity fails due to joint limits
     control_sequence.append(ha.RosTopicSwitch('GoDown', 'softhand_open_recovery_WallGrasp', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
+
+    # 0. Trigger pre-shaping the hand and/or pretension
+    control_sequence.append(ha.ros_CLASHhandControlMode(name='restiffen', behaviour='SetPretension', thumb=np.array([0.2]), diff=np.array([0.2])))
+    
+    # 0b. Time to trigger pre-shape
+    control_sequence.append(ha.TimeSwitch('restiffen', 'LiftHand', duration = hand_closing_time))
 
     # 5. Lift upwards so the hand doesn't slide on table surface
     control_sequence.append(

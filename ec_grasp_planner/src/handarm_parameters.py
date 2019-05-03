@@ -1094,8 +1094,8 @@ class ClashHandKUKA(KUKA):
                     tra.rotation_matrix(
                         math.radians(0.0), [0, 0, 1]),
             ))
-        self['WallGrasp']['cucumber']['wall_force'] = 16.0
-        self['WallGrasp']['cucumber']['downward_force'] = 1.5
+        self['WallGrasp']['cucumber']['wall_force'] = 18.0
+        self['WallGrasp']['cucumber']['downward_force'] = 2.5
         self['WallGrasp']['cucumber']['goal_preshape'] = np.array([0, 20, 0, 15, 15, 20])
         self['WallGrasp']['cucumber']['corrective_lift_duration'] = 2.2
         self['WallGrasp']['cucumber']['post_grasp_rotation_duration'] = 4
