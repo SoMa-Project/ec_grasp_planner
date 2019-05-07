@@ -68,13 +68,13 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_preshape, name='softhand_preshape', behaviour='GotoPos'))
     
     # 2b. Time to trigger pre-shape
-    control_sequence.append(ha.TimeSwitch('softhand_preshape', 'softhand_stiffen', duration = hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('softhand_preshape', 'softhand_prestiffen', duration = hand_closing_time))
 
     # 1. Trigger pre-shaping the hand and/or pretension
-    control_sequence.append(ha.ros_CLASHhandControlMode(name='softhand_stiffen', behaviour='SetPretension', thumb=thumb_stiffness, diff=diff_stiffness))
+    control_sequence.append(ha.ros_CLASHhandControlMode(name='softhand_prestiffen', behaviour='SetPretension', thumb=np.array([0.0]), diff=np.array([0.0])))
     
     # 1b. Time to trigger pre-shape
-    control_sequence.append(ha.TimeSwitch('softhand_stiffen', 'PreGrasp', duration = hand_closing_time))
+    control_sequence.append(ha.TimeSwitch('softhand_prestiffen', 'PreGrasp', duration = hand_closing_time))
 
     # 3. Go above the object - Pregrasp
     control_sequence.append(ha.InterpolatedHTransformControlMode(pregrasp_transform, controller_name = 'GoAboveObject', goal_is_relative='0', name = 'PreGrasp', reference_frame = 'world'))

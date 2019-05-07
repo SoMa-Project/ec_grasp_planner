@@ -937,9 +937,18 @@ class ClashHandKUKA(KUKA):
 
         self['SurfaceGrasp']['mango'] = self['SurfaceGrasp']['object'].copy()
         # self['SurfaceGrasp']['mango']['goal_preshape'] = np.array([ 0, 10, 0, 5, 5, 5])
-        self['SurfaceGrasp']['mango']['goal_preshape'] = np.array([ 0, 20, 10, 15, 15, 15])
-        self['SurfaceGrasp']['mango']['goal_close'] = np.array([0, 30, 65, 30, 60, 65])
-        self['SurfaceGrasp']['mango']['corrective_lift_duration'] = 1.2
+        # self['SurfaceGrasp']['mango']['goal_preshape'] = np.array([ 0, 20, 10, 15, 15, 15])
+        # self['SurfaceGrasp']['mango']['goal_close'] = np.array([0, 30, 65, 30, 60, 65])
+        # self['SurfaceGrasp']['mango']['corrective_lift_duration'] = 1.2
+        
+        # DEMO VALUES HERE ------------------
+        self['SurfaceGrasp']['mango']['goal_preshape'] = np.array([ -30, 60, -80, 70, 70, -40])
+        self['SurfaceGrasp']['mango']['goal_close'] = np.array([0, 30, 70, 80, 50, 90])
+        self['SurfaceGrasp']['mango']['thumb_stiffness'] = np.array([0.2])
+        self['SurfaceGrasp']['mango']['diff_stiffness'] = np.array([0.2])
+        self['SurfaceGrasp']['mango']['downward_force'] = 11
+        self['SurfaceGrasp']['mango']['corrective_lift_duration'] = 0.0
+        # DEMO VALUES HERE ------------------ 
 
         # self['SurfaceGrasp']['cucumber'] = self['SurfaceGrasp']['object'].copy() #params used for the experiment
         # self['SurfaceGrasp']['cucumber']['goal_preshape'] = np.array([ 0, 10, 5, 10, 10, 0])
@@ -969,7 +978,8 @@ class ClashHandKUKA(KUKA):
         self['SurfaceGrasp']['lettuce']['lift_duration'] = 12
         self['SurfaceGrasp']['lettuce']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.0]),
                                                                                     tra.rotation_matrix(math.radians(90.0), [0, 0, 1]))
-
+        # self['SurfaceGrasp']['lettuce']['thumb_stiffness'] = np.array([0.0])
+        # self['SurfaceGrasp']['lettuce']['diff_stiffness'] = np.array([0.0])
 
         # self['SurfaceGrasp']['netbag'] = self['SurfaceGrasp']['object'].copy()
         # self['SurfaceGrasp']['netbag']['goal_preshape'] = np.array([ 0, 10, 10, 10, 10, 10])
