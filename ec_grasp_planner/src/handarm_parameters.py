@@ -461,11 +461,14 @@ class PISAHandKUKA(KUKA):
         # Params that define the grasping controller
         ####################################################################################
 
-        self['SimplePositionControl'] = True
+        self['SimplePositionControl'] = False
 
-        self['ImpedanceControl'] = False
+        self['ImpedanceControl'] = True
         self['hand_max_aperture'] = 0.15
         self['SurfaceGrasp']['object']['kp'] = 0.03
+        self['SurfaceGrasp']['object']['xr'] = 0
+        self['SurfaceGrasp']['object']['base_bbox'] = 100
+        self['SurfaceGrasp']['object']['bbox_weight'] = 0
 
         self['IMUGrasp'] = False
         self['compensation_duration'] = 2
@@ -517,7 +520,7 @@ class PISAHandKUKA(KUKA):
         self['SurfaceGrasp']['object']['hand_closing_duration'] = 1
 
         # duration of lifting the object
-        self['SurfaceGrasp']['object']['lift_duration'] = 11
+        self['SurfaceGrasp']['object']['lift_duration'] = 14
 
         self['SurfaceGrasp']['cucumber'] = self['SurfaceGrasp']['object'].copy()
         self['SurfaceGrasp']['cucumber']['hand_transform'] = tra.concatenate_matrices(tra.rotation_matrix(
@@ -527,6 +530,11 @@ class PISAHandKUKA(KUKA):
         self['SurfaceGrasp']['cucumber']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.04, -0.03, 0.0]),
                                                                                     tra.rotation_matrix(math.radians(-20.0), [0, 0, 1]))
         self['SurfaceGrasp']['cucumber']['hand_closing_goal'] = 1
+
+        self['SurfaceGrasp']['cucumber']['kp'] = 0.149856
+        self['SurfaceGrasp']['cucumber']['xr'] = 16290
+        self['SurfaceGrasp']['cucumber']['base_bbox'] = 68.877
+        self['SurfaceGrasp']['cucumber']['bbox_weight'] = -86.879
 
         self['SurfaceGrasp']['punnet'] = self['SurfaceGrasp']['object'].copy()
         self['SurfaceGrasp']['punnet']['hand_closing_goal'] = 0.55
@@ -538,6 +546,13 @@ class PISAHandKUKA(KUKA):
                                                                                     tra.rotation_matrix(math.radians(-10.0), [0, 0, 1]))
         self['SurfaceGrasp']['punnet']['downward_force'] = 5
 
+        self['SurfaceGrasp']['punnet']['kp'] = 0.0368175
+        # self['SurfaceGrasp']['punnet']['kp'] = 0.25
+        self['SurfaceGrasp']['punnet']['xr'] = 19000
+        self['SurfaceGrasp']['punnet']['base_bbox'] = 120.37
+        self['SurfaceGrasp']['punnet']['bbox_weight'] = 0
+
+
         self['SurfaceGrasp']['mango'] = self['SurfaceGrasp']['object'].copy()
         self['SurfaceGrasp']['mango']['hand_transform'] = tra.concatenate_matrices(tra.rotation_matrix(
                                                                                         math.radians(0.), [1, 0, 0]),
@@ -545,11 +560,20 @@ class PISAHandKUKA(KUKA):
                                                                                     )
         self['SurfaceGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.015, -0.01, 0.0]),
                                                                                     tra.rotation_matrix(math.radians(-10.0), [0, 0, 1]))
+        self['SurfaceGrasp']['mango']['kp'] = 0.0418938
+        self['SurfaceGrasp']['mango']['xr'] = 17674
+        self['SurfaceGrasp']['mango']['base_bbox'] = 85.627
+        self['SurfaceGrasp']['mango']['bbox_weight'] = -198.85
 
         self['SurfaceGrasp']['netbag'] = self['SurfaceGrasp']['object'].copy()
         self['SurfaceGrasp']['netbag']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([-0.03, -0.02, 0.0]),
                                                                                     tra.rotation_matrix(math.radians(-20.0), [0, 0, 1]))
 
+        self['SurfaceGrasp']['lettuce'] = self['SurfaceGrasp']['object'].copy()
+        self['SurfaceGrasp']['lettuce']['kp'] = 0.0918214
+        self['SurfaceGrasp']['lettuce']['xr'] = 19000
+        self['SurfaceGrasp']['lettuce']['base_bbox'] = 210.1
+        self['SurfaceGrasp']['lettuce']['bbox_weight'] = 0
         #####################################################################################
         # below are parameters for wall grasp 
         #####################################################################################

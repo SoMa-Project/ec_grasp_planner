@@ -58,9 +58,12 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     # 1c. Switch to finished if no plan is found
     control_sequence.append(ha.RosTopicSwitch('PreGrasp', 'finished', ros_topic_name='controller_state', ros_topic_type='UInt8', goal=np.array([1.])))
 
-    # 2a. trigger pre-shaping the hand
-    control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_preshape_goal]), name  = 'softhand_preshape', synergy = '1'))
-    
+    if handarm_params['SimplePositionControl']:
+        # 2a. trigger pre-shaping the hand
+        control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_preshape_goal]), name  = 'softhand_preshape', synergy = '1'))
+    else:
+        control_sequence.append(ha.BlockJointControlMode(name = 'softhand_preshape'))
+        
     # 2b. Time to trigger pre-shape
     control_sequence.append(ha.TimeSwitch('softhand_preshape', 'PrepareForMassMeasurement', duration = hand_preshaping_time))
 
@@ -118,8 +121,8 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform):
     if handarm_params['SimplePositionControl']:
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([hand_closing_goal]), name = 'softhand_close', synergy = '1'))
     elif handarm_params['ImpedanceControl']:
-        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([hand_closing_goal]), kp=np.array([params['kp']]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = 'softhand_close', 
-            bounding_box=np.array([chosen_object['bounding_box'].x, chosen_object['bounding_box'].y, chosen_object['bounding_box'].z]), object_weight=np.array([0.4]), object_type=object_type, object_pose=chosen_object['frame']))
+        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([params['xr']]), kp=np.array([params['kp']]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = 'softhand_close', 
+            bounding_box=np.array([chosen_object['bounding_box'].y * 1000 - params['base_bbox']]), object_weight=params['bbox_weight'], object_type=object_type, object_pose=chosen_object['frame']))
     elif handarm_params['IMUGrasp']:
         control_sequence.append(ha.IMUGraspControlMode(chosen_object['frame'], name = 'softhand_close'))
         hand_closing_duration = handarm_params['compensation_duration']

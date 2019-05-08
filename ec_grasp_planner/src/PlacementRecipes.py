@@ -37,8 +37,12 @@ def get_placement_recipe(handarm_params, handarm_type):
     
         # 2.2. Time to trigger pre-shape
         control_sequence.append(ha.TimeSwitch('unstiffen_hand_again', 'get_out_of_tote', duration = 1))
-
-
+    
+    elif "PISAHand" in handarm_type and not handarm_params['SimplePositionControl']:
+        control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([0]), kp=np.array([0.05]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = 'softhand_open', 
+            bounding_box=np.array([0]), object_weight=0, object_type="object_type", object_pose=np.array([0])))
+        
+        control_sequence.append(ha.TimeSwitch('softhand_open', 'get_out_of_tote', duration = 0.5))
     else:
         control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = 'softhand_open', synergy = 1))
 
