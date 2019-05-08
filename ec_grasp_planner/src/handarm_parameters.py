@@ -338,7 +338,7 @@ class RBOHandO2KUKA(KUKA):
 
         self['WallGrasp']['object']['down_speed'] = 0.03
 
-        self['WallGrasp']['object']['corrective_lift_duration'] = 2
+        self['WallGrasp']['object']['corrective_lift_duration'] = 1.5
 
         self['WallGrasp']['object']['up_speed'] = 0.03
 
@@ -346,9 +346,9 @@ class RBOHandO2KUKA(KUKA):
 
         self['WallGrasp']['object']['slide_speed'] = 0.03 #sliding speed
 
-        self['WallGrasp']['object']['pre_grasp_twist'] = np.array([0.0, 0.0, -0.03, 0.0, 0.0, 0.0])              
+        self['WallGrasp']['object']['pre_grasp_twist'] = np.array([0.015, 0.0, -0.015, 0.0, math.radians(-10.0), 0.0])              
 
-        self['WallGrasp']['object']['pre_grasp_rotation_duration'] = 0
+        self['WallGrasp']['object']['pre_grasp_rotation_duration'] = 2
 
         self['WallGrasp']['object']['hand_closing_duration'] = 5.0
         
@@ -359,9 +359,13 @@ class RBOHandO2KUKA(KUKA):
         self['WallGrasp']['object']['hand_preshaping_duration'] = 2.0
         
         # first motion after grasp, in hand palm frame
-        self['WallGrasp']['object']['post_grasp_twist'] = np.array([-0.05, 0.0, 0.0, 0.0, math.radians(-18.0), 0.0])
+        # self['WallGrasp']['object']['post_grasp_twist'] = np.array([-0.05, 0.0, 0.0, 0.0, math.radians(-18.0), 0.0])
 
-        self['WallGrasp']['object']['post_grasp_rotation_duration'] = 2    
+        # self['WallGrasp']['object']['post_grasp_rotation_duration'] = 2    
+
+        # first motion after grasp, in hand palm frame
+        self['WallGrasp']['object']['post_grasp_twist'] = np.array([-0.02, 0.0, -0.02, 0.0, math.radians(0.0), 0.0])
+        self['WallGrasp']['object']['post_grasp_rotation_duration'] = 3
 
         # duration of lifting the object
         self['WallGrasp']['object']['lift_duration'] = 8
@@ -381,8 +385,18 @@ class RBOHandO2KUKA(KUKA):
         ))
 
         self['WallGrasp']['mango'] = self['WallGrasp']['object'].copy()
-        self['WallGrasp']['mango']['pre_grasp_twist'] = np.array([0.0, 0.0, -0.03, 0.0, 0.0, 0.0])
-        self['WallGrasp']['mango']['wall_force'] = 18
+        self['WallGrasp']['mango']['wall_force'] = 14.0
+        self['WallGrasp']['mango']['corrective_lift_duration'] = 2.0
+        self['WallGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(
+                tra.translation_matrix([-0.15, -0.04, -0.12]), #15 cm above object, 12 cm behind
+                tra.concatenate_matrices(
+                    tra.rotation_matrix(
+                        math.radians(0.), [1, 0, 0]),
+                    tra.rotation_matrix(
+                        math.radians(0.), [0, 1, 0]),
+                    tra.rotation_matrix(
+                        math.radians(0.0), [0, 0, 1]),
+            ))
 
         #####################################################################################
         # below are parameters for corner grasp with O2 fingers (Ocado RBO hand)
