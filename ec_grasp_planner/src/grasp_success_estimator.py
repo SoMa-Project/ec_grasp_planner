@@ -124,7 +124,7 @@ class MassEstimator(object):
         self.tf_listener = tf.TransformListener()
 
         # Stores the last measurements from the ft sensor (sliding window)
-        self.window_size = 25 # TODO come up with somthing reasonable (depending on frequency of ft-sensor... our sends @ 50Hz)
+        self.window_size = 100 # TODO come up with somthing reasonable (depending on frequency of ft-sensor... our sends @ 50Hz)
         self.avg_window_ft_measurements = deque(
             [Wrench(force=Vector3(0, 0, 0), torque=Vector3(0, 0, 0)) for i in range(0, self.window_size)])
         self.current_wrench_sum = Wrench(force=Vector3(0, 0, 0), torque=Vector3(0, 0, 0))
@@ -180,7 +180,7 @@ class MassEstimator(object):
     def add_latest_ft_measurement(self, last_ft_measurement):
 
         latest_ft_in_base = self.to_base_frame(last_ft_measurement)
-
+        
         if latest_ft_in_base is None:
             rospy.logwarn("MassEstimator: Skipped adding ft information. Could not transform to base")
             return
