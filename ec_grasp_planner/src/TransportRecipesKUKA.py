@@ -116,6 +116,8 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
             # Open hand goal
             goal_open = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
             control_sequence.append(ha.ros_CLASHhandControlMode(goal=goal_open, behaviour='GotoPos',  name=cm))
+        elif "PISAHand" in handarm_type and not handarm_params['SimplePositionControl']:
+            control_sequence.append(ha.ros_PisaIIThandControlMode(goal = np.array([0]), kp=np.array([0.05]), hand_max_aperture = handarm_params['hand_max_aperture'], name  = cm, bounding_box=np.array([0]), object_weight=0, object_type="object_type", object_pose=np.array([0])))
         else:
             control_sequence.append(ha.GeneralHandControlMode(goal = np.array([0]), name  = cm, synergy = 1))
 
