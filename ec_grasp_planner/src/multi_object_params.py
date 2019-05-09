@@ -483,7 +483,7 @@ class multi_object_params:
 
     def create_q_matrix(self, object_type, ecs, graph_in_base, ifco_in_base_transform,
                         SG_pre_grasp_in_object_frame=tra.identity_matrix(),
-                        WG_pre_grasp_in_object_frame=tra.identity_matrix(),
+                        WG_pre_grasp_in_object_frame=tra.identity_matrix(),                        
                         grasp_type="Any", object_list_msg=ObjectList(), handarm_parameters=None):
 
         if self.heuristic_type == 'ocado':
@@ -500,7 +500,7 @@ class multi_object_params:
 
             SG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(SG_pre_grasp_in_object_frame)
             WG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(WG_pre_grasp_in_object_frame)
-            CG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(CG_pre_grasp_in_object_frame)
+            CG_pre_grasp_in_object_frame_msg = convert_homogenous_tf_to_pose_msg(WG_pre_grasp_in_object_frame) #dirty fix
             ifco_in_base_msg = convert_homogenous_tf_to_pose_msg(ifco_in_base_transform)
 
             res = srv(grasp_type, object_list_msg, camera_in_ifco_msg, SG_pre_grasp_in_object_frame_msg, WG_pre_grasp_in_object_frame_msg, CG_pre_grasp_in_object_frame_msg, ifco_in_base_msg, graspable_with_any_hand_orientation, SG_success_rate, WG_success_rate, CG_success_rate)
