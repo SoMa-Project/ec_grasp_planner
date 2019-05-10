@@ -284,6 +284,7 @@ class KUKA(BaseHandArm):
         self['nullspace_damping'] = 0.7
 
         self['WallGrasp']['object']['initial_goal'] = np.array([-0.3900003118881745, 0.4000010613028202, -0.569998721768636, -1.7200005331460453, -2.390001011141959, -0.4700010134738877, -0.9299999347471939])        
+        #self['SurfaceGrasp']['object']['initial_goal'] = np.array([-0.3900003118881745, 0.4000010613028202, -0.569998721768636, -1.7200005331460453, -2.390001011141959, -0.4700010134738877, -0.9299999347471939])        
         self['SurfaceGrasp']['object']['initial_goal'] = np.array([-1.01,	0.59,	0.00,	-1.34, 0,	0.84,	0.00])
         
         #self['SurfaceGrasp']['object']['initial_goal'] = np.array([-0.38999996913282775, 0.4000010803526841, -0.5699984584349957, -1.7200005178759445, -2.390000997526764, -0.47000110194299616, -0.9299999496949329])
@@ -300,7 +301,7 @@ class KUKA(BaseHandArm):
                                                                        'min_orientation_deltas': [0, 0, -np.pi],
                                                                        'max_orientation_deltas': [0, 0, np.pi]
                                                                        })
-
+        
         self['SurfaceGrasp']['object']['go_down_allow_touching_other_objects'] = False
 
 
@@ -372,6 +373,26 @@ class RBOHandO2KUKA(KUKA):
 
         self['SurfaceGrasp']['netbag'] = self['SurfaceGrasp']['object'].copy()
         self['SurfaceGrasp']['netbag']['downward_force'] = 6
+
+
+        self['SurfaceGrasp']['mango'] = self['SurfaceGrasp']['object'].copy()
+        self['SurfaceGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(tra.translation_matrix([0.0, 0.0, 0.0]),
+                                                                                    tra.rotation_matrix(math.radians(0.0), [0, 0, 1]))
+        
+        
+        self['SurfaceGrasp']['mango']['go_down_manifold'] = Manifold({'min_position_deltas': [-0.01, -0.09, 0.05],
+                                                                       'max_position_deltas': [0.01, -0.08, 0.1],
+                                                                       'min_orientation_deltas': [0, 0, 0],
+                                                                       'max_orientation_deltas': [0, 0, 0]
+                                                                       })
+
+        self['SurfaceGrasp']['mango']['pre_approach_manifold'] = Manifold({'min_position_deltas': [-0.1, 0.0, -0.05],
+                                                                          'max_position_deltas': [-0.09, 0.05, 0.05],
+                                                                          'min_orientation_deltas': [0, 0, 0],
+                                                                          'max_orientation_deltas': [0, 0, 0],
+                                                                         })
+
+
         
 
         #####################################################################################

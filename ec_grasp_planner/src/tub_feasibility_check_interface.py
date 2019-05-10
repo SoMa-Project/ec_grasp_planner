@@ -360,7 +360,9 @@ def prepare_surface_grasp_parameter(objects, current_object_idx, object_params, 
         'go_down': [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=current_object_idx,
                                      terminating=True, required=True),
                     AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
-                                     constraint_name='bottom', terminating=False)] +
+                                     constraint_name='bottom', terminating=False),
+                    AllowedCollision(type=AllowedCollision.ENV_CONSTRAINT,
+                                     constraint_name='east', terminating=False)] +
 
                    [AllowedCollision(type=AllowedCollision.BOUNDING_BOX, box_id=obj_idx, terminating=False)
                     for obj_idx, o in enumerate(objects) if obj_idx != current_object_idx and
