@@ -277,7 +277,7 @@
         mass_estimation_no_object: REPLAN
         mass_estimation_too_many: REPLAN
     EdgeGrasp: {'success': {'RBOHandP24_pulpy': 0.25}}
-    mass: {'mean': 0.11, 'stddev': 0.0170939915015} # values for fake lettuce
+    mass: {'mean': 0.08, 'stddev': 0.0170939915015} # values for fake lettuce
     graspable_with_any_hand_orientation: True
 
   banana:
