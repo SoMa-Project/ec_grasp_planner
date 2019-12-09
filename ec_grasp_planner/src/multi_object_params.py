@@ -518,7 +518,8 @@ class multi_object_params:
                             WG_pre_grasp_in_object_frame=tra.identity_matrix(),
                             CG_pre_grasp_in_object_frame=tra.identity_matrix(),
                             h_process_type="Deterministic", grasp_type="Any", object_list_msg=ObjectList(),
-                            handarm_parameters=None):
+                            handarm_parameters=None,
+                            angleOfAttack=float("nan")):
 
         # print("object: {}, \n ecs: {} \n graphTF: {}, h_process: {}".format(objects, ecs, graph_in_base, h_process_type))
         # print("ec type: {}".format(type(ecs[0])))
@@ -575,12 +576,116 @@ class multi_object_params:
                     SG_pre_grasp_in_object_frame, object_pose)
 
             elif chosen_node.label == 'WallGrasp':
-                pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_wall_pregrasp_pose_in_base_frame(
-                    chosen_node, WG_pre_grasp_in_object_frame, object_pose, graph_in_base)
+                if angleOfAttack is float("nan"):
+                    pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_wall_pregrasp_pose_in_base_frame(
+                        chosen_node, WG_pre_grasp_in_object_frame, object_pose, graph_in_base)
+                else:
+                    # TODO test if it is working:
+
+                    rotMX = tra.concatenate_matrices(
+                        tra.translation_matrix([0.0, 0.0, 0.0]),
+                        tra.concatenate_matrices(
+                            tra.rotation_matrix(
+                                # math.radians(angleOfAttack), [0,1,0]),
+                                math.radians(angleOfAttack), [0, 1, 0]),
+                        ))
+
+                    EC_frame = graph_in_base.dot(
+                        convert_transform_msg_to_homogeneous_tf(chosen_node.transform))
+
+                    EC_frame_ = EC_frame.dot(rotMX)
+                    # print("=== === EC_f' {}".format(EC_frame_))
+
+                    object_pose = chosen_object['frame']
+                    distance_from_EC = np.linalg.norm(EC_frame[:3, 3] - tra.translation_from_matrix(object_pose)) + 0.14
+
+                    # print("=== === distance: {}".format(distance_from_EC))
+
+                    pregrasp_HT_inEC_frame = np.eye(4, 4)
+                    pregrasp_HT_inEC_frame[2, 3] = distance_from_EC
+
+                    pregrasp_HT_world_frame = (EC_frame_).dot(pregrasp_HT_inEC_frame)
+
+                    rotMX2 = tra.concatenate_matrices(
+                        tra.translation_matrix([0., 0, 0.]),
+                        tra.concatenate_matrices(
+                            tra.rotation_matrix(
+                                math.radians(180.), [1, 0, 0]),
+                            tra.rotation_matrix(
+                                math.radians(0.0), [0, 1, 0]),
+                            tra.rotation_matrix(
+                                math.radians(90.0), [0, 0, 1]),
+                        ))
+                    rotMX3 = tra.concatenate_matrices(
+                        tra.translation_matrix([-0.23, 0, 0.]),
+                        tra.concatenate_matrices(
+                            tra.rotation_matrix(
+                                math.radians(0.), [1, 0, 0]),
+                            tra.rotation_matrix(
+                                math.radians(15.0), [0, 1, 0]),
+                            tra.rotation_matrix(
+                                math.radians(0.0), [0, 0, 1]),
+                        ))
+
+                    pregrasp_HT_world_frame = pregrasp_HT_world_frame.dot(rotMX2).dot(rotMX3)
+
+                    pre_grasp_pose_in_base_frame = pregrasp_HT_world_frame
 
             elif chosen_node.label == 'CornerGrasp':
-                pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_corner_pregrasp_pose_in_base_frame(
-                    chosen_node, CG_pre_grasp_in_object_frame, object_pose, graph_in_base)
+                if angleOfAttack is float("nan"):
+                    pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_corner_pregrasp_pose_in_base_frame(
+                        chosen_node, CG_pre_grasp_in_object_frame, object_pose, graph_in_base)
+                else:
+                    # TODO test if it is working:
+
+                    rotMX = tra.concatenate_matrices(
+                        tra.translation_matrix([0.0, 0.0, 0.0]),
+                        tra.concatenate_matrices(
+                            tra.rotation_matrix(
+                                # math.radians(angleOfAttack), [0,1,0]),
+                                math.radians(angleOfAttack), [0, 1, 0]),
+                        ))
+
+                    EC_frame = graph_in_base.dot(
+                        convert_transform_msg_to_homogeneous_tf(chosen_node.transform))
+
+                    EC_frame_ = EC_frame.dot(rotMX)
+                    # print("=== === EC_f' {}".format(EC_frame_))
+
+                    object_pose = chosen_object['frame']
+                    distance_from_EC = np.linalg.norm(EC_frame[:3, 3] - tra.translation_from_matrix(object_pose)) + 0.14
+
+                    # print("=== === distance: {}".format(distance_from_EC))
+
+                    pregrasp_HT_inEC_frame = np.eye(4, 4)
+                    pregrasp_HT_inEC_frame[2, 3] = distance_from_EC
+
+                    pregrasp_HT_world_frame = (EC_frame_).dot(pregrasp_HT_inEC_frame)
+
+                    rotMX2 = tra.concatenate_matrices(
+                        tra.translation_matrix([0., 0, 0.]),
+                        tra.concatenate_matrices(
+                            tra.rotation_matrix(
+                                math.radians(180.), [1, 0, 0]),
+                            tra.rotation_matrix(
+                                math.radians(0.0), [0, 1, 0]),
+                            tra.rotation_matrix(
+                                math.radians(90.0), [0, 0, 1]),
+                        ))
+                    rotMX3 = tra.concatenate_matrices(
+                        tra.translation_matrix([-0.23, 0, 0.]),
+                        tra.concatenate_matrices(
+                            tra.rotation_matrix(
+                                math.radians(0.), [1, 0, 0]),
+                            tra.rotation_matrix(
+                                math.radians(15.0), [0, 1, 0]),
+                            tra.rotation_matrix(
+                                math.radians(0.0), [0, 0, 1]),
+                        ))
+
+                    pregrasp_HT_world_frame = pregrasp_HT_world_frame.dot(rotMX2).dot(rotMX3)
+
+                    pre_grasp_pose_in_base_frame = pregrasp_HT_world_frame
 
             else:
                 raise ValueError("Unknown grasp type: {}".format(chosen_node.label))       

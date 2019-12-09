@@ -129,6 +129,7 @@ class GraspPlanner:
         print('Handling grasp planner service call')
         self.object_type = req.object_type
         self.grasp_type = req.grasp_type
+        angleOfAttack_req = req.angle_of_attack
 
         # Check for bad service parameters (we don't have to check for object since we always have a default 'object')
         grasp_choices = ["Any", "WallGrasp", "SurfaceGrasp", "EdgeGrasp", "CornerGrasp"]
@@ -219,8 +220,8 @@ class GraspPlanner:
                                                                                     req.object_heuristic_function,
                                                                                     self.grasp_type,                                                                                    
                                                                                     object_list_msg,
-                                                                                    self.handarm_params
-                                                                                    )
+                                                                                    self.handarm_params,
+                                                                                    angleOfAttack_req )
 
         if pre_grasp_pose_in_base is None:
             # No grasp found
