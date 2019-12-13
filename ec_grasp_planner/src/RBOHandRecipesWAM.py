@@ -53,6 +53,7 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alte
     go_down_joint_velocity = params['go_down_joint_velocity']
 
     # -- Grasping phase --
+    soften_impact = False
 
     # the 1 in softhand_close_1 represents a surface grasp. This way the strategy is encoded in the HA.
     hand_synergy = params['hand_closing_synergy']
@@ -291,7 +292,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     slide_velocity = params['slide_velocity']
     slide_joint_velocity = params['slide_joint_velocity']
 
-    soften_impact = params['soften_impact']
+    soften_impact = False #params['soften_impact']
 
     # -- Grasping phase --
 
@@ -534,13 +535,13 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # 7b. Switch when the f/t sensor is triggered with normal force from wall
     #     (in both cases joint trajectory or op-space control)
     #control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, name='ForceSwitch',
-    control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='ForceSwitch',
-                                                 goal=wall_force_threshold,
-                                                 norm_weights=np.array([0, 0, 1, 0, 0, 0]),
-                                                 jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
-                                                 frame_id='world', frame=wall_frame, port='2'))
+    # control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='ForceSwitch',
+    #                                              goal=wall_force_threshold,
+    #                                              norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+    #                                              jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
+    #                                              frame_id='world', frame=wall_frame, port='2'))
 
-    if soften_impact:
+    if True:
 
         control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='ForceSwitch',
                                                      goal=wall_force_threshold,
@@ -646,7 +647,9 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     slide_velocity = params['slide_velocity']
     slide_joint_velocity = params['slide_joint_velocity']
 
-    soften_impact = params['soften_impact']
+    soften_impact = False
+    # params['soften_impact']
+
 
     # -- Grasping phase --
 

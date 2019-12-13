@@ -33,6 +33,7 @@ import hatools.cookbook as cookbook
 import tf_conversions.posemath as pm
 
 import handarm_parameters
+import math
 
 import PISAHandRecipes
 import RBOHandRecipesKUKA
@@ -44,6 +45,8 @@ import TransportRecipesKUKA
 import PlacementRecipes
 import multi_object_params as mop
 from GraspFrameRecipes import get_derived_corner_grasp_frames
+
+from planner_utils import *
 
 markers_rviz = MarkerArray()
 frames_rviz = []
@@ -130,6 +133,7 @@ class GraspPlanner:
         self.object_type = req.object_type
         self.grasp_type = req.grasp_type
         angleOfAttack_req = req.angle_of_attack
+        wristAngle_req = req.wrist_angle
 
         # Check for bad service parameters (we don't have to check for object since we always have a default 'object')
         grasp_choices = ["Any", "WallGrasp", "SurfaceGrasp", "EdgeGrasp", "CornerGrasp"]
@@ -221,7 +225,8 @@ class GraspPlanner:
                                                                                     self.grasp_type,                                                                                    
                                                                                     object_list_msg,
                                                                                     self.handarm_params,
-                                                                                    angleOfAttack_req )
+                                                                                    angleOfAttack_req,
+                                                                                    wristAngle_req )
 
         if pre_grasp_pose_in_base is None:
             # No grasp found
@@ -352,6 +357,7 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
 
     print("Creating hybrid automaton for object {} and grasp type {}.".format(chosen_object['type'], chosen_node.label))
 
+
     # Set the frames to visualize with RViz
     rviz_frames = [chosen_object['frame'], pre_grasp_pose]
     grasp_type = chosen_node.label
@@ -389,8 +395,10 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
         raise ValueError("Unknown grasp type: {}".format(grasp_type))
 
     if robot_name == 'WAM':
-        transport_recipe = TransportRecipesWAM.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
-        return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + transport_recipe), rviz_frames
+        # TODO removed transportation for grasp funnel evaluation 
+        # transport_recipe = TransportRecipesWAM.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
+        # return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + transport_recipe), rviz_frames
+        return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe), rviz_frames
     elif robot_name == 'KUKA':
         transport_recipe = TransportRecipesKUKA.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
         placement_recipe = PlacementRecipes.get_placement_recipe(chosen_object, handarm_params, grasp_type)

@@ -519,7 +519,8 @@ class multi_object_params:
                             CG_pre_grasp_in_object_frame=tra.identity_matrix(),
                             h_process_type="Deterministic", grasp_type="Any", object_list_msg=ObjectList(),
                             handarm_parameters=None,
-                            angleOfAttack=float("nan")):
+                            angleOfAttack=float("nan"),
+                            wristAngle=float("nan")):
 
         # print("object: {}, \n ecs: {} \n graphTF: {}, h_process: {}".format(objects, ecs, graph_in_base, h_process_type))
         # print("ec type: {}".format(type(ecs[0])))
@@ -616,11 +617,14 @@ class multi_object_params:
                             tra.rotation_matrix(
                                 math.radians(90.0), [0, 0, 1]),
                         ))
+
+                    if np.isnan(wristAngle):
+                        wristAngle = 0.0
                     rotMX3 = tra.concatenate_matrices(
                         tra.translation_matrix([-0.23, 0, 0.]),
                         tra.concatenate_matrices(
                             tra.rotation_matrix(
-                                math.radians(0.), [1, 0, 0]),
+                                math.radians(wristAngle), [1, 0, 0]),
                             tra.rotation_matrix(
                                 math.radians(15.0), [0, 1, 0]),
                             tra.rotation_matrix(

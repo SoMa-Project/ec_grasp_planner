@@ -3,6 +3,7 @@ string grasp_type
 string handarm_type
 string object_heuristic_function
 float32 angle_of_attack
+float32 wrist_angle
 ---
 # Describes the planner succes: true if HA was generated, false otherwise.
 bool success
