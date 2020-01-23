@@ -220,7 +220,8 @@ class RBOHandP24WAM(RBOHand2):
         #####################################################################################
 
         self['WallGrasp']['object']['initial_goal'] = np.array(
-            [0.258841, 0.823679, -0.00565591, 1.67988, -0.87263, 0.806526, -1.03372])
+            [0.258841, 0.823679, -0.00565591, 1.67988, -0.87263, 0.806526, -1.03372]) # use this when the rigth most (in base frame) wall should be used, ifco usecase,
+            # [-0.633278, 0.349177, -0.360838, 2.53448, -2.10345, -0.703734, 2.55167]) # use it when left wall should be used
 
         # Maximal joint velocities in case a JointController is used (e.g. alternative behavior was generated)
         # This is the general maximal velocity for any joint controller during a wall grasp.
@@ -297,13 +298,17 @@ class RBOHandP24WAM(RBOHand2):
                                                                             })
 
         # The maximum allowed force for pushing against the wall (guarding the sliding movement)
-        self['WallGrasp']['object']['wall_force'] = 12.0
+        self['WallGrasp']['object']['wall_force'] = 17.0
 
         # Sliding distance. Should be at least half the ifco size
         self['WallGrasp']['object']['sliding_dist'] = 0.4
 
         # Maximum velocity of the EE during the sliding movement. First value: rotational, second translational
-        self['WallGrasp']['object']['slide_velocity'] = np.array([0.125, 0.30])  # np.array([0.125, 0.12])
+        # self['WallGrasp']['object']['slide_velocity'] = np.array([0.125, 0.30])  # Original
+        # self['WallGrasp']['object']['slide_velocity'] = np.array([0.125, 0.1])  # q-s graping results showed improvment
+        self['WallGrasp']['object']['slide_velocity'] = np.array([0.125, 0.55])  # close to simulation (0.7)
+        self['WallGrasp']['object']['slide_velocity'] = np.array([0.125, 0.1])  # close to simulation (0.7)
+
 
         # Maximal joint velocities during sliding motion in case a JointController is used.
         # (e.g. alternative behavior was generated)
@@ -423,7 +428,7 @@ class RBOHandP24WAM(RBOHand2):
         self['CornerGrasp']['object']['sliding_dist'] = 0.4
 
         # Maximum velocity of the EE during the sliding movement. First value: rotational, second translational
-        self['CornerGrasp']['object']['slide_velocity'] = np.array([0.125, 0.3]) #.063 for empty tennis balls; aggresive 0.5 # np.array([0.125, 0.12])
+        self['CornerGrasp']['object']['slide_velocity'] = np.array([0.125, 0.7]) #.063 for empty tennis balls; aggresive 0.5 # np.array([0.125, 0.12])
 
         # Maximal joint velocities during sliding motion in case a JointController is used.
         # (e.g. alternative behavior was generated)
@@ -608,7 +613,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         # object specific parameters for mango (wall grasp)
         self['WallGrasp']['mango'] = self['WallGrasp']['object'].copy()
         self['WallGrasp']['mango']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.23, 0.01, -0.15]),  # 23 cm above object, 15 cm behind, 1cm to the left
+            tra.translation_matrix([-0.25, 0.0, -0.15]),  # 23 cm above object, 15 cm behind, 1cm to the left
             tra.concatenate_matrices(
                 tra.rotation_matrix(
                     math.radians(0.), [1, 0, 0]),
@@ -618,7 +623,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                     math.radians(0.0), [0, 0, 1]),
             ))
 
-        self['WallGrasp']['mango']['wall_force'] = 13.0  # since they are quite heavy be more aggressive
+        self['WallGrasp']['mango']['wall_force'] = 17.0  # since they are quite heavy be more aggressive
 
         self['WallGrasp']['mango']['hand_closing_duration'] = 3.0  # TODO change for generic object as well?
 
@@ -670,7 +675,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
 
         # object specific parameters for mango (corner grasp)
         self['CornerGrasp']['mango'] = self['CornerGrasp']['object'].copy()
-        self['CornerGrasp']['mango']['wall_force'] = 12.0  # since they are quite heavy be more aggressive
+        self['CornerGrasp']['mango']['wall_force'] = 17.0
 
 
 # ----------------------------------------------------------------- #

@@ -285,9 +285,15 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     # TODO sliding_distance should be computed from wall and hand frame.
     sliding_dist = params['sliding_dist']
-    # slide direction is given by the normal of the wall
-    wall_dir = tra.translation_matrix([0, 0, -sliding_dist])
-    wall_dir[:3, 3] = wall_frame[:3, :3].dot(wall_dir[:3, 3])
+    # ORIGINAL slide direction is given by the normal of the wall
+    # wall_dir = tra.translation_matrix([0, 0, -sliding_dist])
+    # wall_dir[:3, 3] = wall_frame[:3, :3].dot(wall_dir[:3, 3])
+    #
+    wall_dir = wall_frame.copy()
+    wall_dir[:3, :3] = np.eye(3) # the hand orientation should be kept as it is
+    wall_dir[2,3] = 0.0 # the hand height should be kept as it is
+    wall_dir[0,3] -= pre_approach_transform[0,3]  #(world x: relative to pre grasp pose)
+    wall_dir[1,3] -= pre_approach_transform[1,3]  #(world y: relative to pre grasp pose)
 
     slide_velocity = params['slide_velocity']
     slide_joint_velocity = params['slide_joint_velocity']
@@ -368,35 +374,35 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  goal_is_relative='0', name="PreGrasp"))
 
         # 2b. Switch when hand reaches the goal pose
-        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForReferenceMassMeasurement',
+        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'GoDown',
                                                    controller='GoAboveObject', epsilon='0.01'))
 
-    # 3. Hold current joint config 
-    control_sequence.append(ha.BlockJointControlMode(name='PrepareForReferenceMassMeasurement'))
-
-    # 3b. Wait for a bit to allow vibrations to attenuate
-    control_sequence.append(ha.TimeSwitch('PrepareForReferenceMassMeasurement', 'ReferenceMassMeasurement',
-                                          duration=0.5))
-
-    # 4. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
-    control_sequence.append(ha.BlockJointControlMode(name='ReferenceMassMeasurement'))
-
-    # 4b. Switches when reference measurement was done
-    # 4b.1 Successful reference measurement
-    control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
-                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
-                                              goal=np.array([RESPONSES.REFERENCE_MEASUREMENT_SUCCESS.value]),
-                                              ))
-
-    # 4b.2 The grasp success estimator module is inactive
-    control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
-                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
-                                              goal=np.array([RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE.value]),
-                                              ))
-
-    # 4b.3 Timeout (grasp success estimator module not started, an error occurred or it takes too long)
-    control_sequence.append(ha.TimeSwitch('ReferenceMassMeasurement', 'GoDown',
-                                          duration=success_estimator_timeout))
+    # # 3. Hold current joint config
+    # control_sequence.append(ha.BlockJointControlMode(name='PrepareForReferenceMassMeasurement'))
+    #
+    # # 3b. Wait for a bit to allow vibrations to attenuate
+    # control_sequence.append(ha.TimeSwitch('PrepareForReferenceMassMeasurement', 'ReferenceMassMeasurement',
+    #                                       duration=0.5))
+    #
+    # # 4. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
+    # control_sequence.append(ha.BlockJointControlMode(name='ReferenceMassMeasurement'))
+    #
+    # # 4b. Switches when reference measurement was done
+    # # 4b.1 Successful reference measurement
+    # control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
+    #                                           ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+    #                                           goal=np.array([RESPONSES.REFERENCE_MEASUREMENT_SUCCESS.value]),
+    #                                           ))
+    #
+    # # 4b.2 The grasp success estimator module is inactive
+    # control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
+    #                                           ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+    #                                           goal=np.array([RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE.value]),
+    #                                           ))
+    #
+    # # 4b.3 Timeout (grasp success estimator module not started, an error occurred or it takes too long)
+    # control_sequence.append(ha.TimeSwitch('ReferenceMassMeasurement', 'GoDown',
+    #                                       duration=success_estimator_timeout))
 
     # 4b.4 There is no special switch for unknown error response (estimator signals REFERENCE_MEASUREMENT_FAILURE)
     #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
@@ -526,10 +532,20 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                      port='2'))
 
     else:
-        # Sliding motion (entirely world space controlled)
+        # ORIGINAL: Sliding motion (entirely world space controlled)
+        # control_sequence.append(
+        #     ha.InterpolatedHTransformControlMode(wall_dir, controller_name='SlideToWall', goal_is_relative='1',
+        #                                          name="SlideToWall", reference_frame="world",
+        #                                          v_max=slide_velocity))
+
+        # Sliding motion toward the EC (entirely world space controlled)
+        print("-------- --- -- - slide dir: {}".format(wall_dir))
         control_sequence.append(
-            ha.InterpolatedHTransformControlMode(wall_dir, controller_name='SlideToWall', goal_is_relative='1',
-                                                 name="SlideToWall", reference_frame="world",
+            ha.InterpolatedHTransformControlMode(wall_dir,
+                                                 controller_name='SlideToWall',
+                                                 goal_is_relative='1',
+                                                 reference_frame="world",
+                                                 name="SlideToWall",
                                                  v_max=slide_velocity))
 
     # 7b. Switch when the f/t sensor is triggered with normal force from wall
@@ -542,7 +558,6 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     #                                              frame_id='world', frame=wall_frame, port='2'))
 
     if True:
-
         control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='ForceSwitch',
                                                      goal=wall_force_threshold,
                                                      norm_weights=np.array([0, 0, 1, 0, 0, 0]),
@@ -587,6 +602,24 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     # 9b. Switch when hand reaches post grasp pose
     control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp_1', controller='PostGraspRotate',
                                                epsilon='0.01', goal_is_relative='1', reference_frame='EE'))
+
+    # todo this code was moved from transportation, it should be removed when transport is active
+    up_dist = params['up_dist']
+
+    # split the lifted distance into two consecutive lifts (with success estimation in between)
+    scale_up = 0.7
+    dir_up1 = tra.translation_matrix([0, 0.05, scale_up * up_dist])
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dir_up1, controller_name='GoUpHTransform',
+                                                                 name='GoUp_1', goal_is_relative='1',
+                                                                 reference_frame="world"))
+
+    # 1b. Switch when joint configuration (half way up) is reached
+    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'finished',
+                                               controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
+                                               reference_frame="world"))
+
+    # 6. Block joints to finish motion and hold object in air
+    control_sequence.append(ha.BlockJointControlMode(name='finished'))
 
     return control_sequence  # TODO what about rviz_frames?
 
@@ -928,6 +961,24 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     # 9b. Switch when hand reaches post grasp pose
     control_sequence.append(ha.FramePoseSwitch('PostGraspRotate', 'GoUp_1', controller='PostGraspRotate',
                                                epsilon='0.01', goal_is_relative='1', reference_frame='EE'))
+
+    # todo this code was moved from transportation, it should be removed when transport is active
+    up_dist = params['up_dist']
+
+    # split the lifted distance into two consecutive lifts (with success estimation in between)
+    scale_up = 0.7
+    dir_up1 = tra.translation_matrix([0, 0.05, scale_up * up_dist])
+    control_sequence.append(ha.InterpolatedHTransformControlMode(dir_up1, controller_name='GoUpHTransform',
+                                                                 name='GoUp_1', goal_is_relative='1',
+                                                                 reference_frame="world"))
+
+    # 1b. Switch when joint configuration (half way up) is reached
+    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'finished',
+                                               controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
+                                               reference_frame="world"))
+
+    # 6. Block joints to finish motion and hold object in air
+    control_sequence.append(ha.BlockJointControlMode(name='finished'))
 
     return control_sequence  # TODO what about rviz_frames?
 

@@ -366,7 +366,7 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
     if grasp_type == 'EdgeGrasp':
         raise ValueError("Edge grasp is not supported yet")
     elif grasp_type == 'WallGrasp':  
-        wall_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))      
+        wall_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))
         grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_wall_grasp(chosen_object, wall_frame,
                                                                                        handarm_params, pre_grasp_pose,
                                                                                        alternative_behavior)
@@ -395,8 +395,8 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
         raise ValueError("Unknown grasp type: {}".format(grasp_type))
 
     if robot_name == 'WAM':
-        # TODO removed transportation for grasp funnel evaluation 
-        # transport_recipe = TransportRecipesWAM.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
+        # TODO removed transportation for grasp funnel evaluation
+        transport_recipe = TransportRecipesWAM.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
         # return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + transport_recipe), rviz_frames
         return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe), rviz_frames
     elif robot_name == 'KUKA':

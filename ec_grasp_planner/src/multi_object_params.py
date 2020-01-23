@@ -116,13 +116,27 @@ class multi_object_params:
         return q_val
 
     def black_list_walls(self, current_ec_index, all_ec_frames, strategy):
+        #blacklist all walls except the one toe hte right side of the robot. Note this is relative to the robot orientation!
 
-        if strategy not in ["WallGrasp", "EdgeGrasp"]:
+
+
+        if strategy not in ["WallGrasp"]:
             return 1
+
+        #this will blacklist all walls but the norther onw is kept
+        # the x coor is the max
+
+        x_coord_max = np.max([TH[0,3] for i, TH in enumerate(all_ec_frames)])
+
+        if x_coord_max == all_ec_frames[current_ec_index][0,3]:
+            return 1.0
+        else:
+            return 0.0
+
+
         # this function will blacklist all walls except
         # the one on the right side of the robot
         # y coord is the smallest
-
         if all_ec_frames[current_ec_index][1, 3] > 0:
                 return 0
 
@@ -143,7 +157,7 @@ class multi_object_params:
 
         if strategy not in ["CornerGrasp"]:
             # print("strategy {} not CG".format(strategy))
-            return 1
+            return 1.
         # this function will blacklist all corners except
         # the one on th right side and further from the robot
         # y coord is negative and x is greater
@@ -152,7 +166,7 @@ class multi_object_params:
 
         if all_ec_frames[current_ec_index][1,3] > 0:
             # print("==== F1 ========")
-            return 0
+            return 0.
 
         max_x = -10000.0
         max_x_index = 0
@@ -192,8 +206,8 @@ class multi_object_params:
     def surfaceGrasp_hihgest_object(self, object, objects, strategy):
         # for surface grasp always prefer the hiehest object on the pile
         if strategy not in ["SurfaceGrasp"]:
-            print("Not SG!")
-            return 1
+            # print("Not SG!")
+            return 1.
 
         object_HT = object['frame']
         max_h = -10000
@@ -213,7 +227,7 @@ class multi_object_params:
 
     def wallGrasp_distant_object(self, object, objects, strategy, ec_HT):
         # for surface grasp always prefer the hiehest object on the pile
-        if strategy not in ["WallGrasp", "CornerGrasp"]:
+        if strategy not in ["WallGrasp"]: #], "CornerGrasp"]:
             return 1
 
         object_HT = object['frame']
@@ -317,6 +331,8 @@ class multi_object_params:
         object = objects[current_object_idx]
         ec_frame = all_ec_frames[current_ec_index]
 
+        # print("bl w:{} bl c:{} c_dist:{}, w_dist:{}, ")
+
         return self.black_list_walls(current_ec_index, all_ec_frames, strategy) * \
             self.black_list_corners(current_ec_index, all_ec_frames, strategy) * \
             self.cornerGrasp_distant_object(object, objects, strategy, ec_frame) * \
@@ -362,9 +378,9 @@ class multi_object_params:
 
         q_val = 1
         q_val = q_val * \
-            self.pdf_object_strategy(object_params) * \
-            self.pdf_object_ec(object_params, ec_frame, strategy) * \
             feasibility_fun()
+            # self.pdf_object_ec(object_params, ec_frame, strategy) * \
+            # self.pdf_object_strategy(object_params) * \
 
         # print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
         return q_val
@@ -580,7 +596,7 @@ class multi_object_params:
                 if angleOfAttack is float("nan"):
                     pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_wall_pregrasp_pose_in_base_frame(
                         chosen_node, WG_pre_grasp_in_object_frame, object_pose, graph_in_base)
-                else:
+                elif not angleOfAttack is float("nan"):
                     # TODO test if it is working:
 
                     rotMX = tra.concatenate_matrices(
@@ -598,7 +614,11 @@ class multi_object_params:
                     # print("=== === EC_f' {}".format(EC_frame_))
 
                     object_pose = chosen_object['frame']
-                    distance_from_EC = np.linalg.norm(EC_frame[:3, 3] - tra.translation_from_matrix(object_pose)) + 0.14
+                    # compute distance using object
+                    # distance_from_EC = np.linalg.norm(EC_frame[:3, 3] - tra.translation_from_matrix(object_pose)) + 0.14
+
+                    # fixed distance from Wall Frame (wich is aligned with pile centroid)
+                    distance_from_EC = 0.25 + 0.1
 
                     # print("=== === distance: {}".format(distance_from_EC))
 
