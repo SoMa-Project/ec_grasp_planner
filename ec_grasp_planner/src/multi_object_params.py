@@ -123,15 +123,17 @@ class multi_object_params:
         if strategy not in ["WallGrasp"]:
             return 1
 
-        #this will blacklist all walls but the norther onw is kept
-        # the x coor is the max
-
-        x_coord_max = np.max([TH[0,3] for i, TH in enumerate(all_ec_frames)])
-
-        if x_coord_max == all_ec_frames[current_ec_index][0,3]:
-            return 1.0
-        else:
-            return 0.0
+        # #this will blacklist all walls but the norther one is kept
+        # # the x coor is the max
+        #
+        # x_coord_max = np.max([TH[0,3] for i, TH in enumerate(all_ec_frames)])
+        #
+        # print("frame {} coord {}".format(current_ec_index,all_ec_frames[current_ec_index][:,3]))
+        #
+        # if all_ec_frames[current_ec_index][0,3]>.5 and all_ec_frames[current_ec_index][0,3] <0.6:
+        #     return 1.0
+        # else:
+        #     return 0.0
 
 
         # this function will blacklist all walls except
@@ -163,6 +165,14 @@ class multi_object_params:
         # y coord is negative and x is greater
 
         # print("Corner EC: \n {} \n at x: {} \n at y: {}".format(all_ec_frames[current_ec_index],all_ec_frames[current_ec_index][0,3], all_ec_frames[current_ec_index][1,3]))
+
+        x_coord_max = np.max([TH[0, 3] for i, TH in enumerate(all_ec_frames)])
+
+        if all_ec_frames[current_ec_index][0,3] == x_coord_max:
+            return 1.
+        else:
+            return 0.
+
 
         if all_ec_frames[current_ec_index][1,3] > 0:
             # print("==== F1 ========")
@@ -597,7 +607,6 @@ class multi_object_params:
                     pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_wall_pregrasp_pose_in_base_frame(
                         chosen_node, WG_pre_grasp_in_object_frame, object_pose, graph_in_base)
                 elif not angleOfAttack is float("nan"):
-                    # TODO test if it is working:
 
                     rotMX = tra.concatenate_matrices(
                         tra.translation_matrix([0.0, 0.0, 0.0]),
@@ -618,7 +627,7 @@ class multi_object_params:
                     # distance_from_EC = np.linalg.norm(EC_frame[:3, 3] - tra.translation_from_matrix(object_pose)) + 0.14
 
                     # fixed distance from Wall Frame (wich is aligned with pile centroid)
-                    distance_from_EC = 0.25 + 0.1
+                    distance_from_EC = 0.25 + 0.25
 
                     # print("=== === distance: {}".format(distance_from_EC))
 
@@ -646,7 +655,8 @@ class multi_object_params:
                             tra.rotation_matrix(
                                 math.radians(wristAngle), [1, 0, 0]),
                             tra.rotation_matrix(
-                                math.radians(15.0), [0, 1, 0]),
+                                math.radians(0.0), [0, 1, 0]), #TODO load param from handarm_param to avoide hardcoding
+                            #TODO if RBOHand_p24pulpy is used, set above angle to 15
                             tra.rotation_matrix(
                                 math.radians(0.0), [0, 0, 1]),
                         ))
@@ -678,6 +688,7 @@ class multi_object_params:
 
                     object_pose = chosen_object['frame']
                     distance_from_EC = np.linalg.norm(EC_frame[:3, 3] - tra.translation_from_matrix(object_pose)) + 0.14
+                    distance_from_EC = 0.55
 
                     # print("=== === distance: {}".format(distance_from_EC))
 
@@ -696,13 +707,16 @@ class multi_object_params:
                             tra.rotation_matrix(
                                 math.radians(90.0), [0, 0, 1]),
                         ))
+                    if np.isnan(wristAngle):
+                        wristAngle = 0.0
                     rotMX3 = tra.concatenate_matrices(
                         tra.translation_matrix([-0.23, 0, 0.]),
                         tra.concatenate_matrices(
                             tra.rotation_matrix(
-                                math.radians(0.), [1, 0, 0]),
+                                math.radians(wristAngle), [1, 0, 0]),
                             tra.rotation_matrix(
-                                math.radians(15.0), [0, 1, 0]),
+                                math.radians(0.0), [0, 1, 0]), #TODO load param from handarm_param to avoide hardcoding
+                            #TODO if RBOHand_p24pulpy is used, set above angle to 15
                             tra.rotation_matrix(
                                 math.radians(0.0), [0, 0, 1]),
                         ))

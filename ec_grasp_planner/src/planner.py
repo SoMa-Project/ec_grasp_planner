@@ -247,7 +247,7 @@ class GraspPlanner:
                                                                      req.handarm_type,
                                                                      self.multi_object_handler.get_object_params(),
                                                                      self.multi_object_handler.get_alternative_behavior(
-                                                                         chosen_object['index'], chosen_node_idx)
+                                                                         chosen_object['index'], chosen_node_idx),
                                                                      )
 
         # --------------------------------------------------------
@@ -284,7 +284,7 @@ def get_hand_recipes(handarm_type, robot_name):
         return PISAHandRecipes
     elif "PISAGripper" in handarm_type:
         return PISAGripperRecipes
-    elif "RBOHand" in handarm_type:
+    elif "RBO" in handarm_type:
         if robot_name == "WAM":
             return RBOHandRecipesWAM
         elif robot_name == "KUKA":
@@ -353,13 +353,15 @@ def homogeneous_tf_to_pose_msg(htf):
 
 # ================================================================================================
 def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_pose, graph_in_base, handarm_params,
-                                          handarm_type, object_params, alternative_behavior=None):
+                                          handarm_type, object_params, alternative_behavior=None,
+                                          ):
 
     print("Creating hybrid automaton for object {} and grasp type {}.".format(chosen_object['type'], chosen_node.label))
 
 
     # Set the frames to visualize with RViz
-    rviz_frames = [chosen_object['frame'], pre_grasp_pose]
+    # rviz_frames = [chosen_object['frame'], pre_grasp_pose]
+    rviz_frames = [pre_grasp_pose]
     grasp_type = chosen_node.label
     robot_name = rospy.get_param('/planner_gui/robot')
 
@@ -379,7 +381,7 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
         corner_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))
         corner_frame_alpha_zero = get_derived_corner_grasp_frames(corner_frame, chosen_object['frame'])[1]
         grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_corner_grasp(chosen_object,
-                                                                                         corner_frame_alpha_zero,
+                                                                                         corner_frame,
                                                                                          handarm_params,
                                                                                          pre_grasp_pose,
                                                                                          alternative_behavior)

@@ -280,7 +280,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     lift_hand_joint_velocity = params['max_joint_velocity']
 
     # ---- SlideToWall
-    wall_force = params['wall_force']
+    wall_force = 17 # params['wall_force']
     wall_force_threshold = np.array([0, 0, wall_force, 0, 0, 0])
 
     # TODO sliding_distance should be computed from wall and hand frame.
@@ -539,7 +539,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
         #                                          v_max=slide_velocity))
 
         # Sliding motion toward the EC (entirely world space controlled)
-        print("-------- --- -- - slide dir: {}".format(wall_dir))
+        # print("-------- --- -- - slide dir: {}".format(wall_dir))
         control_sequence.append(
             ha.InterpolatedHTransformControlMode(wall_dir,
                                                  controller_name='SlideToWall',
@@ -625,7 +625,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
 
 # ================================================================================================
-def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, pregrasp_transform,
+def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_transform,
                         alternative_behavior=None):
 
     # the pre-approach pose should be:
@@ -675,7 +675,13 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     sliding_dist = params['sliding_dist']
     wall_dir = tra.translation_matrix([0, 0, -sliding_dist])
     # slide direction is given by the corner_frame_alpha_zero
-    wall_dir[:3, 3] = corner_frame_alpha_zero[:3, :3].dot(wall_dir[:3, 3])
+
+    #wall_dir[:3, 3] = corner_frame_alpha_zero[:3, :3].dot(wall_dir[:3, 3])
+    wall_dir = corner_frame.copy()
+    wall_dir[:3, :3] = np.eye(3)  # the hand orientation should be kept as it is
+    wall_dir[2, 3] = 0.0  # the hand height should be kept as it is
+    wall_dir[0, 3] -= pre_approach_transform[0, 3]  # (world x: relative to pre grasp pose)
+    wall_dir[1, 3] -= pre_approach_transform[1, 3]  # (world y: relative to pre grasp pose)
 
     slide_velocity = params['slide_velocity']
     slide_joint_velocity = params['slide_joint_velocity']
@@ -723,7 +729,7 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
     control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_4_1'))
 
     # 1b. Time for pre-shape
-    control_sequence.append(ha.TimeSwitch('softhand_preshape_4_1', 'PreGrasp', duration=0.5))  # time for pre-shape
+    control_sequence.append(ha.TimeSwitch('softhand_preshape_4_1', 'PreGrasp', duration=0.1))  # time for pre-shape
 
     # 2. Go above the object - Pregrasp
     if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
@@ -747,35 +753,35 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
                                                  goal_is_relative='0', name="PreGrasp"))
 
         # 2b. Switch when hand reaches the goal pose
-        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'PrepareForReferenceMassMeasurement',
+        control_sequence.append(ha.FramePoseSwitch('PreGrasp', 'GoDown',
                                                    controller='GoAboveObject', epsilon='0.01'))
 
     # 3. Hold current joint config
-    control_sequence.append(ha.BlockJointControlMode(name='PrepareForReferenceMassMeasurement'))
-
-    # 3b. Wait for a bit to allow vibrations to attenuate
-    control_sequence.append(ha.TimeSwitch('PrepareForReferenceMassMeasurement', 'ReferenceMassMeasurement',
-                                          duration=0.5))
-
-    # 4. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
-    control_sequence.append(ha.BlockJointControlMode(name='ReferenceMassMeasurement'))  # TODO use gravity comp instead?
-
-    # 4b. Switches when reference measurement was done
-    # 4b.1 Successful reference measurement
-    control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
-                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
-                                              goal=np.array([RESPONSES.REFERENCE_MEASUREMENT_SUCCESS.value]),
-                                              ))
-
-    # 4b.2 The grasp success estimator module is inactive
-    control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
-                                              ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
-                                              goal=np.array([RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE.value]),
-                                              ))
-
-    # 4b.3 Timeout (grasp success estimator module not started, an error occurred or it takes too long)
-    control_sequence.append(ha.TimeSwitch('ReferenceMassMeasurement', 'GoDown',
-                                          duration=success_estimator_timeout))
+    # control_sequence.append(ha.BlockJointControlMode(name='PrepareForReferenceMassMeasurement'))
+    #
+    # # 3b. Wait for a bit to allow vibrations to attenuate
+    # control_sequence.append(ha.TimeSwitch('PrepareForReferenceMassMeasurement', 'ReferenceMassMeasurement',
+    #                                       duration=0.5))
+    #
+    # # 4. Reference mass measurement with empty hand (TODO can this be replaced by offline calibration?)
+    # control_sequence.append(ha.BlockJointControlMode(name='ReferenceMassMeasurement'))  # TODO use gravity comp instead?
+    #
+    # # 4b. Switches when reference measurement was done
+    # # 4b.1 Successful reference measurement
+    # control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
+    #                                           ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+    #                                           goal=np.array([RESPONSES.REFERENCE_MEASUREMENT_SUCCESS.value]),
+    #                                           ))
+    #
+    # # 4b.2 The grasp success estimator module is inactive
+    # control_sequence.append(ha.RosTopicSwitch('ReferenceMassMeasurement', 'GoDown',
+    #                                           ros_topic_name='/graspSuccessEstimator/status', ros_topic_type='Float64',
+    #                                           goal=np.array([RESPONSES.GRASP_SUCCESS_ESTIMATOR_INACTIVE.value]),
+    #                                           ))
+    #
+    # # 4b.3 Timeout (grasp success estimator module not started, an error occurred or it takes too long)
+    # control_sequence.append(ha.TimeSwitch('ReferenceMassMeasurement', 'GoDown',
+    #                                       duration=success_estimator_timeout))
 
     # 4b.4 There is no special switch for unknown error response (estimator signals REFERENCE_MEASUREMENT_FAILURE)
     #      Instead the timeout will trigger giving the user an opportunity to notice the erroneous result in the GUI.
@@ -901,26 +907,29 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
                                                      jump_criterion="THRESH_UPPER_BOUND",
                                                      goal_is_relative='1',
                                                      frame_id='world',
-                                                     frame=corner_frame_alpha_zero,
+                                                     frame=corner_frame,
                                                      port='2'))
     else:
         # Sliding motion (entirely world space controlled)
         control_sequence.append(
-            ha.InterpolatedHTransformControlMode(wall_dir, controller_name='SlideToWall', goal_is_relative='1',
-                                                 name="SlideToWall", reference_frame="world",
+            ha.InterpolatedHTransformControlMode(wall_dir,
+                                                 controller_name='SlideToWall',
+                                                 goal_is_relative='1',
+                                                 name="SlideToWall",
+                                                 reference_frame="world",
                                                  v_max=slide_velocity))
 
     # 7b. Switch when the f/t sensor is triggered with normal force from wall
     #     (in both cases joint trajectory or op-space control)
     # TODO arne: needs tuning
     # EDITED
-    if soften_impact:
+    if soften_impact and False:
 
         control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='ForceSwitch',
                                                      goal=wall_force_threshold,
                                                      norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                      jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
-                                                     frame_id='world', frame=corner_frame_alpha_zero, port='2'))
+                                                     frame_id='world', frame=corner_frame, port='2'))
 
         control_sequence.append(
             ha.BlockJointControlMode('SoftenImpact', kp=np.array([300, 200, 150, 20, 10, 10, 10]) * 0.8,
@@ -933,7 +942,7 @@ def create_corner_grasp(chosen_object, corner_frame_alpha_zero, handarm_params, 
                                                      goal=wall_force_threshold,
                                                      norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                      jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
-                                                     frame_id='world', frame=corner_frame_alpha_zero, port='2'))
+                                                     frame_id='world', frame=corner_frame, port='2'))
     # /EDITED
 
     # 8. Maintain contact while closing the hand

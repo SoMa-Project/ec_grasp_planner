@@ -220,6 +220,8 @@ class RBOHandP24WAM(RBOHand2):
         #####################################################################################
 
         self['WallGrasp']['object']['initial_goal'] = np.array(
+            # [-0.740948, 0.984652, 0.843323, 2.6883, 0.207957, -0.990446, 2.63191])
+            # IROS2020 wall is in front of robot and alpha <= -30
             [0.258841, 0.823679, -0.00565591, 1.67988, -0.87263, 0.806526, -1.03372]) # use this when the rigth most (in base frame) wall should be used, ifco usecase,
             # [-0.633278, 0.349177, -0.360838, 2.53448, -2.10345, -0.703734, 2.55167]) # use it when left wall should be used
 
@@ -298,7 +300,7 @@ class RBOHandP24WAM(RBOHand2):
                                                                             })
 
         # The maximum allowed force for pushing against the wall (guarding the sliding movement)
-        self['WallGrasp']['object']['wall_force'] = 17.0
+        self['WallGrasp']['object']['wall_force'] = 0.5
 
         # Sliding distance. Should be at least half the ifco size
         self['WallGrasp']['object']['sliding_dist'] = 0.4
@@ -422,13 +424,13 @@ class RBOHandP24WAM(RBOHand2):
                                                                             })
 
         # The maximum allowed force for pushing against the wall (guarding the sliding movement)
-        self['CornerGrasp']['object']['wall_force'] = 12.0  # aggressive 17
+        self['CornerGrasp']['object']['wall_force'] = 17.0  # aggressive 17
 
         # Sliding distance. Should be at least half the ifco size
         self['CornerGrasp']['object']['sliding_dist'] = 0.4
 
         # Maximum velocity of the EE during the sliding movement. First value: rotational, second translational
-        self['CornerGrasp']['object']['slide_velocity'] = np.array([0.125, 0.7]) #.063 for empty tennis balls; aggresive 0.5 # np.array([0.125, 0.12])
+        self['CornerGrasp']['object']['slide_velocity'] = np.array([0.125, 0.1]) #.063 for empty tennis balls; aggresive 0.5 # np.array([0.125, 0.12])
 
         # Maximal joint velocities during sliding motion in case a JointController is used.
         # (e.g. alternative behavior was generated)
@@ -677,6 +679,33 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
         self['CornerGrasp']['mango'] = self['CornerGrasp']['object'].copy()
         self['CornerGrasp']['mango']['wall_force'] = 17.0
 
+
+
+class RBOShovel_v1WAM(RBOHandP24_pulpyWAM):
+    def __init__(self, **kwargs):
+        RBOHandP24_pulpyWAM.__init__(self, **kwargs)
+
+        self['CornerGrasp']['object']['initial_goal'] = np.array(
+            [0.209388, 0.591899, 0.473591, 2.16914, 1.18322, -0.451813, 0.14374])
+
+            # [0.458148, 0.649566, -0.30957, 2.22163, -1.88134, 0.289638, -0.326112])
+
+        self['CornerGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.23, 0, -0.14]),  # 23 cm above object, 15 cm behind
+            tra.concatenate_matrices(
+                tra.rotation_matrix(
+                    math.radians(0.), [1, 0, 0]),
+                tra.rotation_matrix(
+                    math.radians(0.0), [0, 1, 0]),  # hand rotated 30 degrees on y = thumb axis
+                tra.rotation_matrix(  # this makes the fingers point downwards
+                    math.radians(0.0), [0, 0, 1]),
+            ))
+
+        # object specific parameters for mango (corner grasp)
+        self['CornerGrasp']['mango'] = self['CornerGrasp']['object'].copy()
+
+
+        self['CornerGrasp']['mango']['wall_force'] = 17.0
 
 # ----------------------------------------------------------------- #
 # --------------- Parameter Definitions for KUKA arm -------------- #
