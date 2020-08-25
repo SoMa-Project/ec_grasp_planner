@@ -686,12 +686,14 @@ class RBOShovel_v1WAM(RBOHandP24_pulpyWAM):
         RBOHandP24_pulpyWAM.__init__(self, **kwargs)
 
         self['CornerGrasp']['object']['initial_goal'] = np.array(
-            [0.209388, 0.591899, 0.473591, 2.16914, 1.18322, -0.451813, 0.14374])
+            [0.674001, 0.811299, -0.254242, 2.31529, -0.46225, -0.0487079, 1.79094])
+
+            # [0.209388, 0.591899, 0.473591, 2.16914, 1.18322, -0.451813, 0.14374])
 
             # [0.458148, 0.649566, -0.30957, 2.22163, -1.88134, 0.289638, -0.326112])
 
         self['CornerGrasp']['object']['pre_approach_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.23, 0, -0.14]),  # 23 cm above object, 15 cm behind
+            tra.translation_matrix([-0.23, 0, -0.5]),  # 23 cm above object, 5 cm behind
             tra.concatenate_matrices(
                 tra.rotation_matrix(
                     math.radians(0.), [1, 0, 0]),
@@ -700,6 +702,10 @@ class RBOShovel_v1WAM(RBOHandP24_pulpyWAM):
                 tra.rotation_matrix(  # this makes the fingers point downwards
                     math.radians(0.0), [0, 0, 1]),
             ))
+
+        self['CornerGrasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.05, 0.0, 0.0]),  # lift hand
+            tra.rotation_matrix(math.radians(-9.0), [0, 1, 0]))  # -9.0 without EC_design (curvature), -18 if with it
 
         # object specific parameters for mango (corner grasp)
         self['CornerGrasp']['mango'] = self['CornerGrasp']['object'].copy()
