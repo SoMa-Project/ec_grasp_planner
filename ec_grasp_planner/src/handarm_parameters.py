@@ -703,9 +703,15 @@ class RBOShovel_v1WAM(RBOHandP24_pulpyWAM):
                     math.radians(0.0), [0, 0, 1]),
             ))
 
+        self['CornerGrasp']['object']['post_grasp_lift'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.05, 0.0, -0.05]),  # lift hand
+            )  # -9.0 without EC_design (curvature), -18 if with it
+
         self['CornerGrasp']['object']['post_grasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.05, 0.0, 0.0]),  # lift hand
-            tra.rotation_matrix(math.radians(-9.0), [0, 1, 0]))  # -9.0 without EC_design (curvature), -18 if with it
+            tra.translation_matrix([-0.02, 0.0, -0.04]),  # lift hand
+            tra.rotation_matrix(math.radians(-18.0), [0, 1, 0]))  # -9.0 without EC_design (curvature), -18 if with it
+
+        self['CornerGrasp']['object']['wall_force'] = 17.0
 
         # object specific parameters for mango (corner grasp)
         self['CornerGrasp']['mango'] = self['CornerGrasp']['object'].copy()

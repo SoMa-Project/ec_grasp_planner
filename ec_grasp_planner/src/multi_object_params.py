@@ -689,7 +689,7 @@ class multi_object_params:
                     object_pose = chosen_object['frame']
                     # distance_from_EC = np.linalg.norm(EC_frame[:3, 3] - tra.translation_from_matrix(object_pose)) + 0.14
 
-                    distance_from_EC = 0.35
+                    distance_from_EC = 0.4
 
                     # print("=== === distance: {}".format(distance_from_EC))
 

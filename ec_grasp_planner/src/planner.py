@@ -365,6 +365,7 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
     grasp_type = chosen_node.label
     robot_name = rospy.get_param('/planner_gui/robot')
 
+
     if grasp_type == 'EdgeGrasp':
         raise ValueError("Edge grasp is not supported yet")
     elif grasp_type == 'WallGrasp':  
@@ -380,13 +381,14 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
     elif grasp_type == 'CornerGrasp':
         corner_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))
         corner_frame_alpha_zero = get_derived_corner_grasp_frames(corner_frame, chosen_object['frame'])[1]
-        grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_corner_grasp(chosen_object,
+        grasping_recipe, tmpFrames  = get_hand_recipes(handarm_type, robot_name).create_corner_grasp(chosen_object,
                                                                                          corner_frame,
                                                                                          handarm_params,
                                                                                          pre_grasp_pose,
                                                                                          alternative_behavior)
         rviz_frames.append(corner_frame)
         rviz_frames.append(corner_frame_alpha_zero)
+        rviz_frames.extend(tmpFrames)
 
         # rviz_frames.append(pre_approach_transform)
         # rviz_frames.append(ec_frame)
@@ -401,6 +403,7 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
         transport_recipe = TransportRecipesWAM.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
         # return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + transport_recipe), rviz_frames
         return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe), rviz_frames
+
     elif robot_name == 'KUKA':
         transport_recipe = TransportRecipesKUKA.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
         placement_recipe = PlacementRecipes.get_placement_recipe(chosen_object, handarm_params, grasp_type)

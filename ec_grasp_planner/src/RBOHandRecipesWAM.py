@@ -997,12 +997,17 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
         #                                              frame_id='world', frame=corner_frame, port='2'))
 
         # For Shovel
-        control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', "PostGraspRotate", 'ForceSwitch',
+        control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', "SoftenImpact", 'ForceSwitch',
                                                      goal=wall_force_threshold,
                                                      norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                      jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                      frame_id='world', frame=corner_frame, port='2'))
-    # /EDITED
+
+        control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='TorqueSwitch',
+                             goal=np.zeros(6), norm_weights=np.array([0, 0, 0, 1, 1, 1]),
+                             jump_criterion='0', epsilon='2.0', negate='1'))
+
+        # /EDITED
 
     # 8. Maintain contact while closing the hand
     # apply force on object while closing the hand
@@ -1019,6 +1024,24 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
 
     # 8b. Switch when hand closing duration ends
     control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration=hand_closing_duration))
+
+    # 9. Move hand after closing and before lifting it up
+    # relative to current hand pose
+    # post_grasp_lift = params['post_grasp_lift']
+    # control_sequence.append(
+    #     ha.GravityCompensationMode(name='PostGraspLift'))
+
+    # 9b. Switch when hand reaches post grasp pose
+    # control_sequence.append(ha.FramePoseSwitch('PostGraspLift','PostGraspRotate',  controller='PostGraspLift',
+    #                                            epsilon='0.01', goal_is_relative='1', reference_frame='EE'))
+
+    # control_sequence.append(ha.TimeSwitch('PostGraspLift', 'PostGraspRotate', duration=hand_closing_duration))
+
+    control_sequence.append(
+        ha.BlockJointControlMode('SoftenImpact', kp=np.array([300, 200, 150, 20, 10, 10, 10]) * 0.8,
+                                 kv=np.array([2, 4, 2, 0.8, 0.2, 0.2, 0.02])))
+
+    control_sequence.append(ha.TimeSwitch('SoftenImpact', 'PostGraspRotate', duration=0.1))
 
     # 9. Move hand after closing and before lifting it up
     # relative to current hand pose
