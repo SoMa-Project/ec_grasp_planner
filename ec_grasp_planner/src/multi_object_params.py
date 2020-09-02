@@ -627,7 +627,7 @@ class multi_object_params:
                     # distance_from_EC = np.linalg.norm(EC_frame[:3, 3] - tra.translation_from_matrix(object_pose)) + 0.14
 
                     # fixed distance from Wall Frame (wich is aligned with pile centroid)
-                    distance_from_EC = 0.25 + 0.25
+                    distance_from_EC = .25#0.25 + 0.25
 
                     # print("=== === distance: {}".format(distance_from_EC))
 
@@ -658,7 +658,7 @@ class multi_object_params:
                                 math.radians(0.0), [0, 1, 0]), #TODO load param from handarm_param to avoide hardcoding
                             #TODO if RBOHand_p24pulpy is used, set above angle to 15
                             tra.rotation_matrix(
-                                math.radians(0.0), [0, 0, 1]),
+                                math.radians(5.0), [0, 0, 1]),
                         ))
 
                     pregrasp_HT_world_frame = pregrasp_HT_world_frame.dot(rotMX2).dot(rotMX3)
@@ -689,7 +689,7 @@ class multi_object_params:
                     object_pose = chosen_object['frame']
                     # distance_from_EC = np.linalg.norm(EC_frame[:3, 3] - tra.translation_from_matrix(object_pose)) + 0.14
 
-                    distance_from_EC = 0.4
+                    distance_from_EC = 0.35
 
                     # print("=== === distance: {}".format(distance_from_EC))
 

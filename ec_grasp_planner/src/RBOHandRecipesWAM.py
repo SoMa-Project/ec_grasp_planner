@@ -409,7 +409,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     # 5. Go down onto the object/table, in world frame
 
-    if alternative_behavior is not None and 'go_down' in alternative_behavior:
+    if False:#alternative_behavior is not None and 'go_down' in alternative_behavior:
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
         # Go down onto the object (joint controller + relative world frame motion)
 
@@ -445,13 +445,14 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                      frame_id='world',
                                                      port='2'))
     else:
+        go_down_velocity = np.array([0.1, 0.08])
         control_sequence.append(
             ha.InterpolatedHTransformControlMode(down_dir,
                                                  controller_name='GoDown',
                                                  goal_is_relative='1',
                                                  name="GoDown",
                                                  reference_frame="world",
-                                                 v_max=go_down_velocity))
+                                                 v_max="[2,1]0.1, 0.08"))
 
     # 5b. Switch when force threshold is exceeded (in both cases joint trajectory or op-space control)
     control_sequence.append(ha.ForceTorqueSwitch('GoDown',
@@ -461,7 +462,8 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                  jump_criterion="THRESH_UPPER_BOUND",
                                                  goal_is_relative='1',
                                                  frame_id='world',
-                                                 port='2'))
+                                                 port='2',
+                                                 ))
 
     # 6. Lift upwards so the hand doesn't slide directly on table surface
     lift_duration = 0.2  # timeout for the TimeSwitch-hack
@@ -540,13 +542,51 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
         # Sliding motion toward the EC (entirely world space controlled)
         # print("-------- --- -- - slide dir: {}".format(wall_dir))
+        # control_sequence.append(
+        #     ha.InterpolatedHTransformControlMode(wall_dir,
+        #                                          controller_name='SlideToWall',
+        #                                          goal_is_relative='1',
+        #                                          reference_frame="world",
+        #                                          name="SlideToWall",
+        #                                          v_max=slide_velocity))
+
+        # print("\n\n paf \n {} \n cf {}".format(pre_approach_transform, corner_frame))
+        ee_frame = pre_approach_transform.copy()
+        ee_frame[2,3] = wall_frame[2,3]
+
+        wall_dir = np.linalg.inv(ee_frame ).dot(wall_frame)
+        wall_dir[:3, :3] = np.eye(3)
+        wall_dir[0, 3] = 0.0  # the hand height should be kept as it is
+
+        # print("\n __\n pre_approach_transform {}".format(pre_approach_transform))
+        # print("\n __\n corner_frame {}".format(pre_approach_transform))
+        # print("\n __\n relGoal 1: {}".format(wall_dir))
+
+
+
+        slide_velocity = np.array([0.125, 0.1])
         control_sequence.append(
-            ha.InterpolatedHTransformControlMode(wall_dir,
-                                                 controller_name='SlideToWall',
-                                                 goal_is_relative='1',
-                                                 reference_frame="world",
-                                                 name="SlideToWall",
-                                                 v_max=slide_velocity))
+            ha.InterpolatedHTransformImpedanceControlMode(
+                name="SlideToWall",
+                v_max=slide_velocity,
+                # a_max = "[0,0]",
+                # completion_times="[0,0]",
+                kp="[6,1]0;0;0;0;0;0",
+                kv="[6,1]0;0;0;0;0;0",
+                # reinterpolation="0",
+                priority = "0",
+                damping = "[6,1]120;120;120;2;2.0;2",
+                mass = "[6,1]20;20;5;0.3;0.3;0.3",
+                # operational_frame = "EE",
+                stiffness = "[6,1]10;10;20;0;0;0",
+                force_relative_to_initial = "1",
+                goal_is_relative = "1",
+                # interpolation_type = "cubic",
+                ft_min_threshold = "[6,1]2.5;2.5;2.5;0.5;0.5;0.5",
+                desired_force = "[6,1]5;0;5;0;0.005;0",
+                goal = wall_dir
+            )
+        )
 
     # 7b. Switch when the f/t sensor is triggered with normal force from wall
     #     (in both cases joint trajectory or op-space control)
@@ -557,6 +597,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     #                                              jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
     #                                              frame_id='world', frame=wall_frame, port='2'))
 
+    wall_force_threshold = np.array([0, 0, 17, 0, 0, 0])
     if True:
         control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='ForceSwitch',
                                                      goal=wall_force_threshold,
@@ -930,7 +971,7 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
 
 
 
-        slide_velocity = np.array([0.125, 0.1])
+        slide_velocity = np.array([0.125, 0.25])
         control_sequence.append(
             ha.InterpolatedHTransformImpedanceControlMode(
                 name="SlideToWall",
@@ -996,6 +1037,7 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
         #                                              jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
         #                                              frame_id='world', frame=corner_frame, port='2'))
 
+        wall_force_threshold = np.array([0, 0, 25, 0, 0, 0])
         # For Shovel
         control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', "SoftenImpact", 'ForceSwitch',
                                                      goal=wall_force_threshold,
@@ -1041,7 +1083,7 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
         ha.BlockJointControlMode('SoftenImpact', kp=np.array([300, 200, 150, 20, 10, 10, 10]) * 0.8,
                                  kv=np.array([2, 4, 2, 0.8, 0.2, 0.2, 0.02])))
 
-    control_sequence.append(ha.TimeSwitch('SoftenImpact', 'PostGraspRotate', duration=0.1))
+    control_sequence.append(ha.TimeSwitch('SoftenImpact', 'PostGraspRotate', duration=0.5))
 
     # 9. Move hand after closing and before lifting it up
     # relative to current hand pose

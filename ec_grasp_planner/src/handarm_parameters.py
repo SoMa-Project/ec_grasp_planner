@@ -685,6 +685,9 @@ class RBOShovel_v1WAM(RBOHandP24_pulpyWAM):
     def __init__(self, **kwargs):
         RBOHandP24_pulpyWAM.__init__(self, **kwargs)
 
+        self['WallGrasp']['object']['initial_goal'] = np.array(
+                [0.868123, 1.02016, -0.727924, 1.80285, 0.717255, 0.467864, 1.07882])
+
         self['CornerGrasp']['object']['initial_goal'] = np.array(
             [0.674001, 0.811299, -0.254242, 2.31529, -0.46225, -0.0487079, 1.79094])
 
