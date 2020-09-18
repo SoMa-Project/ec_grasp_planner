@@ -253,6 +253,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     else:
         params = handarm_params['WallGrasp']['object']
 
+    use_shovel = False
     # ############################ #
     # Get params per phase
     # ############################ #
@@ -297,6 +298,8 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     slide_velocity = params['slide_velocity']
     slide_joint_velocity = params['slide_joint_velocity']
+    slide_velocity = np.array([0.125, 0.1])
+    wall_force_threshold = np.array([0, 0, 25, 0, 0, 0])
 
     soften_impact = False #params['soften_impact']
 
@@ -338,11 +341,14 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
     # 0. Initial position above ifco
     control_sequence.append(
-        ha.JointControlMode(initial_jointConf, name='InitialJointConfig', controller_name='initialJointCtrl'))
+        ha.JointControlMode(initial_jointConf, name='InitialJointConfig',
+                            controller_name='initialJointCtrl',
+                            kp=np.array([300, 200, 150, 20, 10, 10, 20])))
 
     # 0b. Joint config switch
     control_sequence.append(ha.JointConfigurationSwitch('InitialJointConfig', 'softhand_preshape_2_1',
-                                                        controller='initialJointCtrl', epsilon=str(math.radians(7.))))
+                                                        controller='initialJointCtrl',
+                                                        epsilon=str(math.radians(7.))))
 
     # 1. trigger pre-shaping the hand (if there is a synergy). The 2 in the name represents a wall grasp.
     control_sequence.append(ha.BlockJointControlMode(name='softhand_preshape_2_1'))
@@ -542,51 +548,54 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
 
         # Sliding motion toward the EC (entirely world space controlled)
         # print("-------- --- -- - slide dir: {}".format(wall_dir))
-        # control_sequence.append(
-        #     ha.InterpolatedHTransformControlMode(wall_dir,
-        #                                          controller_name='SlideToWall',
-        #                                          goal_is_relative='1',
-        #                                          reference_frame="world",
-        #                                          name="SlideToWall",
-        #                                          v_max=slide_velocity))
 
-        # print("\n\n paf \n {} \n cf {}".format(pre_approach_transform, corner_frame))
-        ee_frame = pre_approach_transform.copy()
-        ee_frame[2,3] = wall_frame[2,3]
-
-        wall_dir = np.linalg.inv(ee_frame ).dot(wall_frame)
-        wall_dir[:3, :3] = np.eye(3)
-        wall_dir[0, 3] = 0.0  # the hand height should be kept as it is
-
-        # print("\n __\n pre_approach_transform {}".format(pre_approach_transform))
-        # print("\n __\n corner_frame {}".format(pre_approach_transform))
-        # print("\n __\n relGoal 1: {}".format(wall_dir))
-
-
-
-        slide_velocity = np.array([0.125, 0.1])
         control_sequence.append(
-            ha.InterpolatedHTransformImpedanceControlMode(
-                name="SlideToWall",
-                v_max=slide_velocity,
-                # a_max = "[0,0]",
-                # completion_times="[0,0]",
-                kp="[6,1]0;0;0;0;0;0",
-                kv="[6,1]0;0;0;0;0;0",
-                # reinterpolation="0",
-                priority = "0",
-                damping = "[6,1]120;120;120;2;2.0;2",
-                mass = "[6,1]20;20;5;0.3;0.3;0.3",
-                # operational_frame = "EE",
-                stiffness = "[6,1]10;10;20;0;0;0",
-                force_relative_to_initial = "1",
-                goal_is_relative = "1",
-                # interpolation_type = "cubic",
-                ft_min_threshold = "[6,1]2.5;2.5;2.5;0.5;0.5;0.5",
-                desired_force = "[6,1]5;0;5;0;0.005;0",
-                goal = wall_dir
+            ha.InterpolatedHTransformControlMode(wall_dir,
+                                                 controller_name='SlideToWall',
+                                                 goal_is_relative='1',
+                                                 reference_frame="world",
+                                                 name="SlideToWall",
+                                                 v_max=slide_velocity))
+        # pass
+
+        if use_shovel:
+            # print("\n\n paf \n {} \n cf {}".format(pre_approach_transform, corner_frame))
+            ee_frame = pre_approach_transform.copy()
+            ee_frame[2,3] = wall_frame[2,3]
+
+            wall_dir = np.linalg.inv(ee_frame ).dot(wall_frame)
+            wall_dir[:3, :3] = np.eye(3)
+            wall_dir[0, 3] = 0.0  # the hand height should be kept as it is
+
+            # print("\n __\n pre_approach_transform {}".format(pre_approach_transform))
+            # print("\n __\n corner_frame {}".format(pre_approach_transform))
+            # print("\n __\n relGoal 1: {}".format(wall_dir))
+
+
+
+            slide_velocity = np.array([0.125, 0.25])
+            control_sequence.append(
+                ha.InterpolatedHTransformImpedanceControlMode(
+                    name="SlideToWall",
+                    v_max=slide_velocity,
+                    # a_max = "[0,0]",
+                    # completion_times="[0,0]",
+                    kp="[6,1]0;0;0;0;0;0",
+                    kv="[6,1]0;0;0;0;0;0",
+                    # reinterpolation="0",
+                    priority = "0",
+                    damping = "[6,1]120;120;120;2;2.0;2",
+                    mass = "[6,1]20;20;5;0.3;0.3;0.3",
+                    # operational_frame = "EE",
+                    stiffness = "[6,1]10;10;20;0;0;0",
+                    force_relative_to_initial = "1",
+                    goal_is_relative = "1",
+                    # interpolation_type = "cubic",
+                    ft_min_threshold = "[6,1]2.5;2.5;2.5;0.5;0.5;0.5",
+                    desired_force = "[6,1]5;0;5;0;0.005;0",
+                    goal = wall_dir
+                )
             )
-        )
 
     # 7b. Switch when the f/t sensor is triggered with normal force from wall
     #     (in both cases joint trajectory or op-space control)
@@ -597,7 +606,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     #                                              jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
     #                                              frame_id='world', frame=wall_frame, port='2'))
 
-    wall_force_threshold = np.array([0, 0, 17, 0, 0, 0])
+
     if True:
         control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='ForceSwitch',
                                                      goal=wall_force_threshold,
@@ -624,7 +633,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     desired_displacement = np.array(
         [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
     force_gradient = np.array(
-        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.002], [0.0, 0.0, 0.0, 1.0]])
     desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
     control_sequence.append(ha.HandControlMode_ForceHT(name=mode_name_hand_closing, synergy=hand_synergy,
                                                        desired_displacement=desired_displacement,
@@ -654,13 +663,13 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
                                                                  name='GoUp_1', goal_is_relative='1',
                                                                  reference_frame="world"))
 
-    # 1b. Switch when joint configuration (half way up) is reached
-    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'finished',
-                                               controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
-                                               reference_frame="world"))
-
-    # 6. Block joints to finish motion and hold object in air
-    control_sequence.append(ha.BlockJointControlMode(name='finished'))
+    # # 1b. Switch when joint configuration (half way up) is reached
+    # control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'finished',
+    #                                            controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
+    #                                            reference_frame="world"))
+    #
+    # # 6. Block joints to finish motion and hold object in air
+    # control_sequence.append(ha.BlockJointControlMode(name='finished'))
 
     return control_sequence  # TODO what about rviz_frames?
 
@@ -714,12 +723,20 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
 
     # TODO sliding_distance should be computed from wall and hand frame.
     sliding_dist = params['sliding_dist']
-    wall_dir = tra.translation_matrix([0, 0, -sliding_dist])
+    # wall_dir = tra.translation_matrix([0, 0, -sliding_dist])
     # slide direction is given by the corner_frame_alpha_zero
+    wall_dir = corner_frame.copy()
+    wall_dir[:3, :3] = np.eye(3) # the hand orientation should be kept as it is
+    wall_dir[2,3] = 0.005 # the hand height should be kept as it is
+    wall_dir[0,3] -= pre_approach_transform[0,3]  #(world x: relative to pre grasp pose)
+    wall_dir[1,3] -= pre_approach_transform[1,3]  #(world y: relative to pre grasp pose)
 
 
-    slide_velocity = params['slide_velocity']
+    slide_velocity = np.array([.125,0.25])#params['slide_velocity']
     slide_joint_velocity = params['slide_joint_velocity']
+
+    slide_velocity = np.array([0.125, 0.1])
+    wall_force_threshold = np.array([0, 0, 25, 0, 0, 0])
 
     soften_impact = False
     # params['soften_impact']
@@ -754,7 +771,8 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
 
     # 0. initial position above ifco
     control_sequence.append(
-        ha.JointControlMode(initial_jointConf, name='InitialJointConfig', controller_name='initialJointCtrl'))
+        ha.JointControlMode(initial_jointConf, name='InitialJointConfig', controller_name='initialJointCtrl',
+                            kp=np.array([300, 200, 150, 20, 10, 10, 15])))
 
     # 0b. Joint config switch
     control_sequence.append(ha.JointConfigurationSwitch('InitialJointConfig', 'softhand_preshape_4_1',
@@ -908,7 +926,7 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
         control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=lift_duration))
 
     # 7. Go towards the wall to slide object to wall
-    if alternative_behavior is not None and 'slide_to_wall' in alternative_behavior:
+    if False: #alternative_behavior is not None and 'slide_to_wall' in alternative_behavior:
 
         goal_traj = alternative_behavior['slide_to_wall'].get_trajectory()
         print("Use alternative GOAL_TRAJ SlideToWall Dim:", goal_traj.shape)  # TODO remove (only for debugging)
@@ -946,54 +964,54 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
                                                      port='2'))
     else:
         # Sliding motion (entirely world space controlled)
-        # control_sequence.append(
-        #     ha.InterpolatedHTransformControlMode(wall_dir,
-        #                                          controller_name='SlideToWall',
-        #                                          goal_is_relative='1',
-        #                                          name="SlideToWall",
-        #                                          reference_frame="world",
-        #                                          v_max=slide_velocity))
+        control_sequence.append(
+            ha.InterpolatedHTransformControlMode(wall_dir,
+                                                 controller_name='SlideToWall',
+                                                 goal_is_relative='1',
+                                                 name="SlideToWall",
+                                                 reference_frame="world",
+                                                 v_max=slide_velocity))
         #
 
         # Sliding motion with force control
 
         # print("\n\n paf \n {} \n cf {}".format(pre_approach_transform, corner_frame))
-        ee_frame = pre_approach_transform.copy()
-        ee_frame[2,3] = corner_frame[2,3]
-
-        wall_dir = np.linalg.inv(ee_frame ).dot(corner_frame)
-        wall_dir[:3, :3] = np.eye(3)
-        wall_dir[0, 3] = 0.0  # the hand height should be kept as it is
-
-        # print("\n __\n pre_approach_transform {}".format(pre_approach_transform))
-        # print("\n __\n corner_frame {}".format(pre_approach_transform))
-        # print("\n __\n relGoal 1: {}".format(wall_dir))
-
-
-
-        slide_velocity = np.array([0.125, 0.25])
-        control_sequence.append(
-            ha.InterpolatedHTransformImpedanceControlMode(
-                name="SlideToWall",
-                v_max=slide_velocity,
-                # a_max = "[0,0]",
-                # completion_times="[0,0]",
-                kp="[6,1]0;0;0;0;0;0",
-                kv="[6,1]0;0;0;0;0;0",
-                # reinterpolation="0",
-                priority = "0",
-                damping = "[6,1]120;120;120;2;2.0;2",
-                mass = "[6,1]20;20;5;0.3;0.3;0.3",
-                # operational_frame = "EE",
-                stiffness = "[6,1]10;10;20;0;0;0",
-                force_relative_to_initial = "1",
-                goal_is_relative = "1",
-                # interpolation_type = "cubic",
-                ft_min_threshold = "[6,1]2.5;2.5;2.5;0.5;0.5;0.5",
-                desired_force = "[6,1]5;0;5;0;0.005;0",
-                goal = wall_dir
-            )
-        )
+        # ee_frame = pre_approach_transform.copy()
+        # ee_frame[2,3] = corner_frame[2,3]
+        #
+        # wall_dir = np.linalg.inv(ee_frame ).dot(corner_frame)
+        # wall_dir[:3, :3] = np.eye(3)
+        # wall_dir[0, 3] = 0.0  # the hand height should be kept as it is
+        #
+        # # print("\n __\n pre_approach_transform {}".format(pre_approach_transform))
+        # # print("\n __\n corner_frame {}".format(pre_approach_transform))
+        # # print("\n __\n relGoal 1: {}".format(wall_dir))
+        #
+        #
+        #
+        # slide_velocity = np.array([0.125, 0.25])
+        # control_sequence.append(
+        #     ha.InterpolatedHTransformImpedanceControlMode(
+        #         name="SlideToWall",
+        #         v_max=slide_velocity,
+        #         # a_max = "[0,0]",
+        #         # completion_times="[0,0]",
+        #         kp="[6,1]0;0;0;0;0;0",
+        #         kv="[6,1]0;0;0;0;0;0",
+        #         # reinterpolation="0",
+        #         priority = "0",
+        #         damping = "[6,1]120;120;120;2;2.0;2",
+        #         mass = "[6,1]20;20;5;0.3;0.3;0.3",
+        #         # operational_frame = "EE",
+        #         stiffness = "[6,1]10;10;20;0;0;0",
+        #         force_relative_to_initial = "1",
+        #         goal_is_relative = "1",
+        #         # interpolation_type = "cubic",
+        #         ft_min_threshold = "[6,1]2.5;2.5;2.5;0.5;0.5;0.5",
+        #         desired_force = "[6,1]5;0;5;0;0.005;0",
+        #         goal = wall_dir
+        #     )
+        # )
 
         # # FHT ctrller has some wierd parametrization, where direction of motion is actually the velocity
         # control_sequence.append(
@@ -1014,7 +1032,8 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
     #     (in both cases joint trajectory or op-space control)
     # TODO arne: needs tuning
     # EDITED
-    if soften_impact and False:
+    # wall_force_threshold = np.array([0, 0, 25, 0, 0, 0])
+    if False:
 
         control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='ForceSwitch',
                                                      goal=wall_force_threshold,
@@ -1031,23 +1050,24 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
     else:
 
         # for RBO hand
-        # control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, 'ForceSwitch',
-        #                                              goal=wall_force_threshold,
-        #                                              norm_weights=np.array([0, 0, 1, 0, 0, 0]),
-        #                                              jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
-        #                                              frame_id='world', frame=corner_frame, port='2'))
-
-        wall_force_threshold = np.array([0, 0, 25, 0, 0, 0])
-        # For Shovel
-        control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', "SoftenImpact", 'ForceSwitch',
+        # wall_force_threshold = np.array([0, 0, 17, 0, 0, 0])
+        control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', mode_name_hand_closing, 'ForceSwitch',
                                                      goal=wall_force_threshold,
                                                      norm_weights=np.array([0, 0, 1, 0, 0, 0]),
                                                      jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
                                                      frame_id='world', frame=corner_frame, port='2'))
 
-        control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='TorqueSwitch',
-                             goal=np.zeros(6), norm_weights=np.array([0, 0, 0, 1, 1, 1]),
-                             jump_criterion='0', epsilon='2.0', negate='1'))
+
+        # # For Shovel
+        # control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', "SoftenImpact", 'ForceSwitch',
+        #                                              goal=wall_force_threshold,
+        #                                              norm_weights=np.array([0, 0, 1, 0, 0, 0]),
+        #                                              jump_criterion="THRESH_UPPER_BOUND", goal_is_relative='1',
+        #                                              frame_id='world', frame=corner_frame, port='2'))
+        #
+        # control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='TorqueSwitch',
+        #                      goal=np.zeros(6), norm_weights=np.array([0, 0, 0, 1, 1, 1]),
+        #                      jump_criterion='0', epsilon='2.0', negate='1'))
 
         # /EDITED
 
@@ -1057,12 +1077,14 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
     desired_displacement = np.array(
         [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
     force_gradient = np.array(
-        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.005], [0.0, 0.0, 0.0, 1.0]])
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.002], [0.0, 0.0, 0.0, 1.0]])
     desired_force_dimension = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
-    control_sequence.append(ha.HandControlMode_ForceHT(name=mode_name_hand_closing, synergy=hand_synergy,
-                                                       desired_displacement=desired_displacement,
-                                                       force_gradient=force_gradient,
-                                                       desired_force_dimension=desired_force_dimension))
+    # control_sequence.append(ha.HandControlMode_ForceHT(name=mode_name_hand_closing, synergy=hand_synergy,
+    #                                                    desired_displacement=desired_displacement,
+    #                                                    force_gradient=force_gradient,
+    #                                                    desired_force_dimension=desired_force_dimension))
+
+    control_sequence.append(ha.BlockJointControlMode(name=mode_name_hand_closing))
 
     # 8b. Switch when hand closing duration ends
     control_sequence.append(ha.TimeSwitch(mode_name_hand_closing, 'PostGraspRotate', duration=hand_closing_duration))
@@ -1079,11 +1101,11 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
 
     # control_sequence.append(ha.TimeSwitch('PostGraspLift', 'PostGraspRotate', duration=hand_closing_duration))
 
-    control_sequence.append(
-        ha.BlockJointControlMode('SoftenImpact', kp=np.array([300, 200, 150, 20, 10, 10, 10]) * 0.8,
-                                 kv=np.array([2, 4, 2, 0.8, 0.2, 0.2, 0.02])))
+    # control_sequence.append(
+    #     ha.BlockJointControlMode('SoftenImpact', kp=np.array([300, 200, 150, 20, 10, 10, 10]) * 0.8,
+    #                              kv=np.array([2, 4, 2, 0.8, 0.2, 0.2, 0.02])))
 
-    control_sequence.append(ha.TimeSwitch('SoftenImpact', 'PostGraspRotate', duration=0.5))
+    # control_sequence.append(ha.TimeSwitch('SoftenImpact', 'PostGraspRotate', duration=0.5))
 
     # 9. Move hand after closing and before lifting it up
     # relative to current hand pose
@@ -1103,19 +1125,19 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
     # RBO Hand
     # dir_up1 = tra.translation_matrix([0, 0.05, scale_up * up_dist])
     # Shovel
-    dir_up1 = tra.translation_matrix([-0.05, -0.05, 0.25])
+    dir_up1 = tra.translation_matrix([-0.05, -0.05, 0.40])
 
     control_sequence.append(ha.InterpolatedHTransformControlMode(dir_up1, controller_name='GoUpHTransform',
                                                                  name='GoUp_1', goal_is_relative='1',
                                                                  reference_frame="world"))
 
-    # 1b. Switch when joint configuration (half way up) is reached
-    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'finished',
-                                               controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
-                                               reference_frame="world"))
-
-    # 6. Block joints to finish motion and hold object in air
-    control_sequence.append(ha.BlockJointControlMode(name='finished'))
+    # # 1b. Switch when joint configuration (half way up) is reached
+    # control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'finished',
+    #                                            controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
+    #                                            reference_frame="world"))
+    #
+    # # 6. Block joints to finish motion and hold object in air
+    # control_sequence.append(ha.BlockJointControlMode(name='finished'))
 
     return control_sequence, [wall_dir]# TODO what about rviz_frames?
 

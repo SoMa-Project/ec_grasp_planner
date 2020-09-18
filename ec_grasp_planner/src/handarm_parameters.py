@@ -333,7 +333,7 @@ class RBOHandP24WAM(RBOHand2):
         self['WallGrasp']['object']['hand_closing_synergy'] = 0
 
         # time of soft hand closing
-        self['WallGrasp']['object']['hand_closing_duration'] = 1.0
+        self['WallGrasp']['object']['hand_closing_duration'] = 5.0
 
         # ---- Drop off parameters ----
         # first motion after grasp, in hand palm frame
@@ -453,7 +453,7 @@ class RBOHandP24WAM(RBOHand2):
         self['CornerGrasp']['object']['hand_closing_synergy'] = 0
 
         # time of soft hand closing
-        self['CornerGrasp']['object']['hand_closing_duration'] = 2.0
+        self['CornerGrasp']['object']['hand_closing_duration'] = 5.0
 
         # ---- Drop off parameters ----
         # first motion after grasp, in hand palm frame
@@ -606,7 +606,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                     math.radians(0.0), [0, 0, 1]),
             ))
 
-        self['WallGrasp']['cucumber']['hand_closing_duration'] = 3.0
+        self['WallGrasp']['cucumber']['hand_closing_duration'] = 5.0
 
         self['WallGrasp']['cucumber']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.02, 0.0, 0.0]),  # nothing right now
@@ -627,10 +627,10 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
 
         self['WallGrasp']['mango']['wall_force'] = 17.0  # since they are quite heavy be more aggressive
 
-        self['WallGrasp']['mango']['hand_closing_duration'] = 3.0  # TODO change for generic object as well?
+        self['WallGrasp']['mango']['hand_closing_duration'] = 5.0  # TODO change for generic object as well?
 
         self['WallGrasp']['mango']['post_grasp_transform'] = tra.concatenate_matrices(
-            tra.translation_matrix([-0.0, 0.0, 0.0]),  # nothing right now
+            tra.translation_matrix([-0.05, 0.0, -0.05]),  # nothing right now Lift and withrow the hand from the pile
             tra.rotation_matrix(math.radians(-5.0), [0, 1, 0]))  # -5.0 without EC_design (curvature), -18 if with it
 
         # Distance that the hand should be lifted after grasping the object
@@ -649,7 +649,7 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                     math.radians(0.0), [0, 0, 1]),
             ))
 
-        self['WallGrasp']['netbag']['hand_closing_duration'] = 3.0  # TODO change for generic object as well?
+        self['WallGrasp']['netbag']['hand_closing_duration'] = 5.0  # TODO change for generic object as well?
 
         self['WallGrasp']['netbag']['post_grasp_transform'] = tra.concatenate_matrices(
             tra.translation_matrix([-0.02, 0.0, 0.0]),  # nothing right now
@@ -675,10 +675,17 @@ class RBOHandP24_pulpyWAM(RBOHandP24WAM):
                         math.radians(0.0), [0, 0, 1]),
             ))
 
+        self['WallGrasp']['netbag']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.05, 0.0, -0.05]),  # nothing right now
+            tra.rotation_matrix(math.radians(-9.0), [0, 1, 0]))  # -9.0 without EC_design (curvature), -18 if with it
+
         # object specific parameters for mango (corner grasp)
         self['CornerGrasp']['mango'] = self['CornerGrasp']['object'].copy()
         self['CornerGrasp']['mango']['wall_force'] = 17.0
 
+        self['CornerGrasp']['mango']['post_grasp_transform'] = tra.concatenate_matrices(
+            tra.translation_matrix([-0.05, 0.0, -0.05]),  # nothing right now Lift and withrow the hand from the pile
+            tra.rotation_matrix(math.radians(-5.0), [0, 1, 0]))  # -5.0 without EC_design (curvature), -18 if with it
 
 
 class RBOShovel_v1WAM(RBOHandP24_pulpyWAM):
@@ -846,7 +853,7 @@ class RBOHandO2KUKA(KUKA):
 
         self['WallGrasp']['object']['pre_grasp_rotation_duration'] = 0
 
-        self['WallGrasp']['object']['hand_closing_duration'] = 1.0
+        self['WallGrasp']['object']['hand_closing_duration'] = 5.0
 
         self['WallGrasp']['object']['hand_closing_synergy'] = 1
 
@@ -993,7 +1000,7 @@ class PISAHandKUKA(KUKA):
 
         self['WallGrasp']['object']['pre_grasp_rotation_duration'] = 0
 
-        self['WallGrasp']['object']['hand_closing_duration'] = 1.0
+        self['WallGrasp']['object']['hand_closing_duration'] = 5.0
 
         self['WallGrasp']['object']['hand_closing_goal'] = 0.8
 
@@ -1124,7 +1131,7 @@ class PISAGripperKUKA(KUKA):
 
         self['WallGrasp']['object']['pre_grasp_rotation_duration'] = 0
 
-        self['WallGrasp']['object']['hand_closing_duration'] = 1.0
+        self['WallGrasp']['object']['hand_closing_duration'] = 5.0
 
         self['WallGrasp']['object']['hand_closing_goal'] = 0.8
 

@@ -401,8 +401,8 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
     if robot_name == 'WAM':
         # TODO removed transportation for grasp funnel evaluation
         transport_recipe = TransportRecipesWAM.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
-        # return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + transport_recipe), rviz_frames
-        return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe), rviz_frames
+        return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + transport_recipe), rviz_frames
+        # return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe), rviz_frames
 
     elif robot_name == 'KUKA':
         transport_recipe = TransportRecipesKUKA.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
