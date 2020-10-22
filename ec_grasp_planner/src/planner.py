@@ -30,7 +30,7 @@ pkg_path = rospack.get_path('ec_grasp_planner')
 sys.path.append(pkg_path + '/../hybrid-automaton-tools-py/')
 import hatools.components as ha
 import hatools.cookbook as cookbook
-import tf_conversions.posemath as pm
+#import tf_conversions.posemath as pm
 
 import handarm_parameters
 import math
