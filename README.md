@@ -96,7 +96,7 @@ F: failed<br />
 
 ## Install <a name="install"></a>
 
-This code was tested with [ROS indigo](http://wiki.ros.org/indigo) under Ubuntu 14.04.5 (LTS). To follow our build instructions you need to build with catkin tools (apt-get install python-catkin-tools)
+This code was tested with [ROS indigo](http://wiki.ros.org/indigo) under Ubuntu 14.04.5 (LTS) and with [ROS melodic](http://wiki.ros.org/melodic) under Ubuntu 18.04. To follow our build instructions you need to build with catkin tools (apt-get install python-catkin-tools)
 
 ### Minimal Dependencies <a name="minimaldependencies"></a>
 
@@ -137,6 +137,8 @@ git clone https://github.com/SoMa-Project/hybrid_automaton_manager_kuka.git
 * Get Gazebo multi-robot simulator, version 2.2.6:
 ```
   sudo apt-get install ros-indigo-gazebo-*
+  or
+  sudo apt-get install ros-melodic-gazebo-*
 ```
 
 * Get [iiwa_stack](https://github.com/SalvoVirga/iiwa_stack.git):
@@ -205,7 +207,7 @@ Step 1: start the planner in the background in simulation:
 `rosrun ec_grasp_planner planner.py --rviz --file_output`
 
 Step 2, call the rosservice
-`rosservice call /run_grasp_planner "object_type: 'Apple' grasp_type: 'SurfaceGrasp' handarm_type: 'RBOHand2Kuka' object_heuristic_function: Random"`
+`rosservice call /run_grasp_planner "{object_type: 'mango', grasp_type: 'Any', handarm_type: 'RBOHandP24_pulpyWAM', object_heuristic_function: 'Deterministic', angle_of_attack: 0.0, wrist_angle: 0.0}"`
 
 object_type can be specified to do certain object-specific behaviours. Right now there is only a default behaviour which is the same for all objects.
 
@@ -246,7 +248,33 @@ Here the `WallGrasp` strategy success depend on the relative orientation of the 
 
 ## Examples  <a name="examples"></a>
 
+### Planning Based on Bag File Input 
+This example was tested with ros melodic under Ubuntu 18.04. 
+
+This example builds on the ifco detection example on the vision repository.
+The example bag file of this scene can be found here: /nas/Videos/Vision/ifco_example.bag, for access contact a tub-member. 
+
+```
+# You must have a roscore running in order for ROS nodes to communicate.
+roscore
+# Launches ros parameters (can be adapted if necessary).
+roslaunch planner_gui parameters.launch
+
+roslaunch planner_gui rosWinBridge.launch
+roslaunch openni2_launch openni2.launch depth_registration:=false
+roslaunch ec_grasp_planner play_bag.launch bagfile:=$bagfile
+roslaunch ec_grasp_planner rviz.launch rviz:=$rviz
+roslaunch ec_grasp_planner visionService_debug.launch yaml:=$yaml
+roslaunch ec_grasp_planner planner.launch robot_base_frame:=$robot_frame
+roslaunch ec_grasp_planner staticTFCamera.launch
+# to call the planner service from command line, run:
+rosservice call /run_grasp_planner "{object_type: 'mango', grasp_type: 'Any', handarm_type: 'RBOHandP24_pulpyWAM', object_heuristic_function: 'Deterministic', angle_of_attack: 0.0, wrist_angle: 0.0}"
+# to call the planner service and execute the grasp with the GUI, run: (F1 - F2 - F3 - F4 - 0) 
+roslaunch planner_gui gui.launch
+```
+
 ### Planning Based on PCD Input  <a name="example1"></a>
+This example was tested with ros indigo under Ubuntu 14.04.5
 
 This example shows a planned grasp in RViz based on a PCD file that contains a single colored point cloud of a table-top scene with a banana placed in the middle.
 
@@ -272,6 +300,7 @@ In RViz you should be able to see the geometry graph and the wall grasp publishe
 <img src="docs/example1_graph.png" alt="Graph" width="250" /> <img src="docs/example1_grasp.png" alt="Grasp" width="250" />
 
 ### Planning Based on Continuous RGB-D Input   <a name="example2"></a>
+This example was tested with ros indigo under Ubuntu 14.04.5
 
 This example shows how to use the planner with an RGB-Depth sensor like Kinect or Asus Xtion.
 It uses the camera drivers provided in ROS:
@@ -304,6 +333,7 @@ Depending on your input the result in RViz could look like this:
 
 
 ### Kuka Arm in Gazebo Simulation with TRIK Controller  <a name="example3"></a>
+This example was tested with ros indigo under Ubuntu 14.04.5
 
 This example shows the execution of a planned hybrid automaton motion in the Gazebo simulator.
 
@@ -331,9 +361,9 @@ roscd hybrid_automaton_manager_kuka/test_xmls/
 rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rviz --handarm RBOHand2Kuka [need to ctrl-c once done]
 ./ha_send_xml.sh hybrid_automaton.xml  
 ```
-
+```
 # Step 6: 
-
 In RViz you should be able to see the planned surface grasp and in Gazebo the robot moves its hand towards the cylinder until contact (https://youtu.be/Q91U9r83Vl0):
+```
 
 <img src="docs/example3_grasp.png" alt="Grasp" width="250" /> <img src="docs/example3_gazebo_final.png" alt="Gazebo" width="250" />
