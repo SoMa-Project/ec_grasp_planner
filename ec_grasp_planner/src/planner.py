@@ -175,12 +175,12 @@ class GraspPlanner:
             return plan_srv.RunGraspPlannerResponse(success=False,
                                                     hybrid_automaton_xml="Vision: No object was detected",
                                                     chosen_object_idx=-1)
-
+        
         robot_base_frame = self.args.robot_base_frame       
 
         time = rospy.Time(0)
         graph.header.stamp = time
-        
+
         self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
         ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
         print(ifco_in_base)
@@ -270,7 +270,7 @@ class GraspPlanner:
             #print "Press Ctrl-C to stop sending visualization_msgs/MarkerArray on topic '/planned_grasp_path' ..."
             publish_rviz_markers(self.rviz_frames, robot_base_frame, self.handarm_params)
             # rospy.spin()
-
+            
         ha_as_xml = ha.xml()
         return plan_srv.RunGraspPlannerResponse(success=ha_as_xml != "",
                                                 hybrid_automaton_xml=ha_as_xml,
@@ -378,6 +378,8 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
         grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_surface_grasp(chosen_object, handarm_params,
                                                                                           pre_grasp_pose,
                                                                                           alternative_behavior)
+        #rviz_frames.extend(tmpFrames)
+
     elif grasp_type == 'CornerGrasp':
         corner_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))
         corner_frame_alpha_zero = get_derived_corner_grasp_frames(corner_frame, chosen_object['frame'])[1]
@@ -502,13 +504,13 @@ if __name__ == '__main__':
     planner = GraspPlanner(args)
 
     r = rospy.Rate(5)
-
-    marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
+    
+        marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
     br = tf.TransformBroadcaster()
 
     while not rospy.is_shutdown():
         marker_pub.publish(markers_rviz)
-
+        print(frames_rviz)
         for i, f in enumerate(frames_rviz):
             br.sendTransform(tra.translation_from_matrix(f),
                              tra.quaternion_from_matrix(f),

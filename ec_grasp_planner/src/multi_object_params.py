@@ -495,7 +495,7 @@ class multi_object_params:
             objects = [self.object_from_object_list_msg(object_type, o, graph_in_base) for o in object_list_msg.objects]
 
             Q_matrix = np.zeros((len(objects), len(ecs)))
-
+            
             # iterate through all objects
             for i, o in enumerate(objects):
 
