@@ -261,25 +261,37 @@ The example bag file of this scene can be found here: /nas/Videos/Vision/ifco_ex
 ```
 # You must have a roscore running in order for ROS nodes to communicate.
 roscore
+
 # Launches ros parameters (can be adapted if necessary).
 roslaunch planner_gui parameters.launch
+
 # start the ros win bridge for RBO setup
 roslaunch planner_gui rosWinBridge.launch
+
 # start the openni2_camera drivers 
 roslaunch openni2_launch openni2.launch depth_registration:=false
+
 # play bag file (the example bag file is saved on the tub-NAS (as stated above))
 rosbag play -l ifco_example.bag
+
 # visualize in rviz
 rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example4.rviz 
+
 # execute vision with the compute_ec_graph service
 rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ecto_rbo_yaml`/data/demo_ifco.yaml --debug --service 
+
 # launch the planner 
 rosrun ec_grasp_planner planner.py --rviz --file_output --robot_base_frame:="camera_link"
+
 # publish a static coordinate transform for the camera
 rosrun tf static_transform_publisher 0 0 0 0 0 0 camera_link camera 0 
-
+```
+```
 # to call the planner service from command line, run:
 rosservice call /run_grasp_planner "{object_type: 'mango', grasp_type: 'Any', handarm_type: 'RBOHandP24_pulpyWAM', object_heuristic_function: 'Deterministic', angle_of_attack: 0.0, wrist_angle: 0.0}"
+```
+or
+```
 # to call the planner service and execute the grasp with the GUI, run: (in GUI: F1 - F2 - F3 - F4 - 0) 
 roslaunch planner_gui gui.launch
 ```
