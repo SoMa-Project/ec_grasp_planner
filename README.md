@@ -258,6 +258,8 @@ This example was tested with ros melodic under Ubuntu 18.04.
 This example builds on the ifco detection example on the vision repository.
 The example bag file of this scene can be found here: /nas/Videos/Vision/ifco_example.bag, for access contact a tub-member. 
 
+<img src="docs/planner_example.png" alt="Grasp" width="250" />
+
 ```
 # You must have a roscore running in order for ROS nodes to communicate.
 roscore
@@ -281,7 +283,7 @@ rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example4.r
 rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ecto_rbo_yaml`/data/demo_ifco.yaml --debug --service 
 
 # launch the planner 
-rosrun ec_grasp_planner planner.py --rviz --file_output --robot_base_frame:="camera_link"
+rosrun ec_grasp_planner planner.py --rviz --file_output --robot_base_frame "camera_link"
 
 # publish a static coordinate transform for the camera
 rosrun tf static_transform_publisher 0 0 0 0 0 0 camera_link camera 0 
@@ -292,8 +294,9 @@ rosservice call /run_grasp_planner "{object_type: 'mango', grasp_type: 'Any', ha
 ```
 or
 ```
-# to call the planner service and execute the grasp with the GUI, run: (in GUI: F1 - F2 - F3 - F4 - 0) 
+# to call the planner service and execute the grasp with the GUI, run:  
 roslaunch planner_gui gui.launch
+# in GUI select "Grasp Type": Any, type: F1 - F2 - F3 - F4 - 0
 ```
 
 ### Planning Based on PCD Input  <a name="example1"></a>
