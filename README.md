@@ -304,6 +304,6 @@ roslaunch planner_gui gui.launch
 TODO !
 
 
-More example that were tested with ros indigo under Ubuntu 14.04.5 can be found in branch MS5-ocado-demo. 
+More example that were tested with ros indigo under Ubuntu 14.04.5 can be found on other branches (e.g. see TAG ms5). 
 
 
