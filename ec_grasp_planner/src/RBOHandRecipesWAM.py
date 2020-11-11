@@ -90,12 +90,12 @@ def create_surface_grasp(chosen_object, handarm_params, pregrasp_transform, alte
     control_sequence.append(ha.TimeSwitch('softhand_preshape_1_1', 'PreGrasp', duration=0.2))
 
     # 2. Go above the object - PreGrasp
-    if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
+    if alternative_behavior is not None and 'pre_approach' in alternative_behavior:
 
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
-        goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
+        goal_traj = alternative_behavior['pre_approach'].get_trajectory()
 
-        print("Use alternative GOAL_TRAJ PreGrasp Dim", goal_traj.shape)
+        print("Use alternative GOAL_TRAJ PreApproach Dim", goal_traj.shape)
         control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
                                                     v_max=pre_grasp_joint_velocity,
@@ -357,12 +357,12 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     control_sequence.append(ha.TimeSwitch('softhand_preshape_2_1', 'PreGrasp', duration=0.5))
 
     # 2. Go above the object - Pregrasp
-    if alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
+    if alternative_behavior is not None and 'pre_approach' in alternative_behavior:
 
         # we can not use the initially generated plan, but have to include the result of the feasibility checks
-        goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
+        goal_traj = alternative_behavior['pre_approach'].get_trajectory()
 
-        print("Use alternative GOAL_TRAJ PreGrasp Dim", goal_traj.shape)
+        print("Use alternative GOAL_TRAJ PreApproach Dim", goal_traj.shape)
         control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
                                                     v_max=pre_grasp_joint_velocity,
@@ -785,11 +785,12 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
     control_sequence.append(ha.TimeSwitch('softhand_preshape_4_1', 'PreGrasp', duration=0.1))  # time for pre-shape
 
     # 2. Go above the object - Pregrasp
-    if False:#alternative_behavior is not None and 'pre_grasp' in alternative_behavior:
-        # we can not use the initially generated plan, but have to include the result of the feasibility checks
-        goal_traj = alternative_behavior['pre_grasp'].get_trajectory()
+    if alternative_behavior is not None and 'pre_approach' in alternative_behavior:
 
-        print("Use alternative GOAL_TRAJ PreGrasp Dim", goal_traj.shape)
+        # we can not use the initially generated plan, but have to include the result of the feasibility checks
+        goal_traj = alternative_behavior['pre_approach'].get_trajectory()
+
+        print("Use alternative GOAL_TRAJ PreApproach Dim", goal_traj.shape)
         control_sequence.append(ha.JointControlMode(goal_traj, name='PreGrasp', controller_name='GoAboveObject',
                                                     goal_is_relative='0',
                                                     v_max=pre_grasp_joint_velocity,
@@ -926,7 +927,7 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
         control_sequence.append(ha.TimeSwitch('LiftHand', 'SlideToWall', duration=lift_duration))
 
     # 7. Go towards the wall to slide object to wall
-    if False: #alternative_behavior is not None and 'slide_to_wall' in alternative_behavior:
+    if alternative_behavior is not None and 'slide_to_wall' in alternative_behavior:
 
         goal_traj = alternative_behavior['slide_to_wall'].get_trajectory()
         print("Use alternative GOAL_TRAJ SlideToWall Dim:", goal_traj.shape)  # TODO remove (only for debugging)
@@ -1031,9 +1032,8 @@ def create_corner_grasp(chosen_object, corner_frame, handarm_params, pregrasp_tr
     # 7b. Switch when the f/t sensor is triggered with normal force from wall
     #     (in both cases joint trajectory or op-space control)
     # TODO arne: needs tuning
-    # EDITED
-    # wall_force_threshold = np.array([0, 0, 25, 0, 0, 0])
-    if False:
+    # EDITED    
+    if soften_impact:
 
         control_sequence.append(ha.ForceTorqueSwitch('SlideToWall', 'SoftenImpact', name='ForceSwitch',
                                                      goal=wall_force_threshold,
