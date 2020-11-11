@@ -505,7 +505,7 @@ if __name__ == '__main__':
 
     r = rospy.Rate(5)
     
-        marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
+    marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
     br = tf.TransformBroadcaster()
 
     while not rospy.is_shutdown():

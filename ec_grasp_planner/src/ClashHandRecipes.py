@@ -1,4 +1,3 @@
-#import tf_conversions.posemath as pm
 from tf import transformations as tra
 import numpy as np
 import math

@@ -281,7 +281,7 @@ def create_wall_grasp(chosen_object, wall_frame, handarm_params, pregrasp_transf
     lift_hand_joint_velocity = params['max_joint_velocity']
 
     # ---- SlideToWall
-    wall_force = 17 # params['wall_force']
+    wall_force = params['wall_force']
     wall_force_threshold = np.array([0, 0, wall_force, 0, 0, 0])
 
     # TODO sliding_distance should be computed from wall and hand frame.
