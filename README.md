@@ -300,96 +300,10 @@ roslaunch planner_gui gui.launch
 ```
 
 ### Planning Based on PCD Input  <a name="example1"></a>
-This example was tested with ros indigo under Ubuntu 14.04.5
 
-This example shows a planned grasp in RViz based on a PCD file that contains a single colored point cloud of a table-top scene with a banana placed in the middle.
-
-```
-roscore
-
-# if you want to change which pcd to read, change the file name in the ecto graph yaml
-rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example1.yaml --debug
-
-# start visualization
-rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example1.rviz
-
-# select which type of grasp you want
-rosrun ec_grasp_planner planner.py --rviz --robot_base_frame camera_rgb_optical_frame
-
-# execute grasp
-rosservice call /run_grasp_planner "object_type: 'Apple' grasp_type: 'SurfaceGrasp' handarm_type: 'RBOHand2Kuka'"
-
-```
-
-In RViz you should be able to see the geometry graph and the wall grasp published as **visualization_msgs/MarkerArray** under the topic names **geometry_graph_marker** and **planned_grasp_path**:
-
-<img src="docs/example1_graph.png" alt="Graph" width="250" /> <img src="docs/example1_grasp.png" alt="Grasp" width="250" />
-
-### Planning Based on Continuous RGB-D Input   <a name="example2"></a>
-This example was tested with ros indigo under Ubuntu 14.04.5
-
-This example shows how to use the planner with an RGB-Depth sensor like Kinect or Asus Xtion.
-It uses the camera drivers provided in ROS:
-
-```
-# plug the camera into your computer
-roslaunch openni2_launch openni2.launch depth_registration:=true
-
-# set camera resolution to QVGA
-rosrun dynamic_reconfigure dynparam set /camera/driver ir_mode 7
-rosrun dynamic_reconfigure dynparam set /camera/driver color_mode 7
-rosrun dynamic_reconfigure dynparam set /camera/driver depth_mode 7
-
-rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example2.yaml --debug
-
-# start visualization
-rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example2.rviz
-
-# select an edge grasp and visualize the result in RViz
-rosrun ec_grasp_planner planner.py --robot_base_frame camera_rgb_optical_frame --rviz
-
-# execute grasp
-rosservice call /run_grasp_planner "object_type: 'Punnet' grasp_type: 'SurfaceGrasp' handarm_type: 'RBOHand2Kuka'"
-
-```
-
-Depending on your input the result in RViz could look like this:
-
-<img src="docs/example2_raw.png" alt="Raw" width="250" /> <img src="docs/example2_graph.png" alt="Graph" width="250" /> <img src="docs/example2_grasp.png" alt="Grasp" width="250" />
+TODO !
 
 
-### Kuka Arm in Gazebo Simulation with TRIK Controller  <a name="example3"></a>
-This example was tested with ros indigo under Ubuntu 14.04.5
+More example that were tested with ros indigo under Ubuntu 14.04.5 can be found in branch MS5-ocado-demo. 
 
-This example shows the execution of a planned hybrid automaton motion in the Gazebo simulator.
 
-```
-# Step 1: make sure the simulation time is used
-roslaunch hybrid_automaton_manager_kuka launchGazebo.launch
-
-# Step 2: start the simulation environment and kuka control manager 
-rosrun hybrid_automaton_manager_kuka hybrid_automaton_manager_kuka
-
-# Step 3: run vision code
-rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example3.yaml --debug
-
-# Step 4 (optional): to check potential grasps
-rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps.rviz
-```
-
-In RViz you should be able to see the point cloud simulated in Gazebo and the geometry graph published as **visualization_msgs/MarkerArray** under the topic name **geometry_graph_marker**:
-
-<img src="docs/example3_gazebo_init.png" alt="Gazebo" width="250" /> <img src="docs/example3_raw.png" alt="Raw" width="250" /> <img src="docs/example3_graph.png" alt="Graph" width="250" />
-
-```
-# Step 5: select a surface grasp, visualize and execute it
-roscd hybrid_automaton_manager_kuka/test_xmls/ 
-rosrun ec_grasp_planner planner.py --grasp SurfaceGrasp --ros_service_call --rviz --handarm RBOHand2Kuka [need to ctrl-c once done]
-./ha_send_xml.sh hybrid_automaton.xml  
-```
-```
-# Step 6: 
-In RViz you should be able to see the planned surface grasp and in Gazebo the robot moves its hand towards the cylinder until contact (https://youtu.be/Q91U9r83Vl0):
-```
-
-<img src="docs/example3_grasp.png" alt="Grasp" width="250" /> <img src="docs/example3_gazebo_final.png" alt="Gazebo" width="250" />
