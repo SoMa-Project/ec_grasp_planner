@@ -258,7 +258,7 @@ This example was tested with ros melodic under Ubuntu 18.04.
 This example builds on the ifco detection example on the vision repository.
 The example bag file of this scene can be found here: /nas/Videos/Vision/ifco_example.bag, for access contact a tub-member. 
 
-<img src="docs/planner_example.png" alt="Grasp" width="250" />
+<img src="docs/planner_example.png" alt="Grasp" height="250" /> <img src="docs/ec_graph_planner.png" alt="Grasp" height="250" />
 
 ```
 # You must have a roscore running in order for ROS nodes to communicate.
@@ -278,6 +278,11 @@ rosbag play -l ifco_example.bag
 
 # visualize in rviz
 rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example4.rviz 
+# The blue lines and red dots (picture on the left side) can be visualized by activating 
+# the MarkerArray /ec_graph_ros_service/ecto_markers (namespace ifco_detection/ifco_polygons 
+# for the detected ifco and calculate_centroids/centroids for the detected objects). 
+# The ec-graph (picture on the right side) can be visualized by activating the MarkerArray 
+# /geometry_graph_marker (namespaces text&axes) in RVIZ. 
 
 # execute vision with the compute_ec_graph service
 rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ecto_rbo_yaml`/data/demo_ifco.yaml --debug --service 
