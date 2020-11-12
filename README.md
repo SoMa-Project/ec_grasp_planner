@@ -333,6 +333,6 @@ rosservice call /run_grasp_planner "{object_type: 'mango', grasp_type: 'Any', ha
 
 
 
-**More example that were tested with ros indigo under Ubuntu 14.04.5 can be found on other branches (e.g. see TAG ms5).** 
+**More examples that were tested with ros indigo under Ubuntu 14.04.5 can be found on other branches (e.g. see TAG ms5).** 
 
 
