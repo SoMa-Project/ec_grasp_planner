@@ -1,0 +1,296 @@
+ros_pc_subscriber:
+  type: ecto_sensor_msgs::Subscriber_PointCloud2
+  queue_size: 2
+  topic_name: /camera/depth_registered/points
+msg_to_pcl:
+  type: ecto_rbo_pcl::Message2PointCloud
+  inputs:
+    input: ros_pc_subscriber/output
+create_tf:
+  type: ecto_rbo_pcl::CreateTF
+  position: [0, 0, 0]
+  rotation_xyzw: [0, 0, 0, 1]
+tf_send_camera:
+  type: ecto_rbo_pcl::BroadcastTF
+  inputs:
+    transform: create_tf/transform
+  source_frame: camera_rgb_optical_frame
+  target_frame: base_frame
+
+crop_box:
+  type: ecto::pcl::PclCell<ecto_rbo_pcl::PassThroughOrganized>
+  inputs:
+    input: msg_to_pcl/output
+  filter_field_name: z
+  filter_limit_max: 2.2
+  filter_limit_min: 0
+  filter_limit_negative: false
+
+normal_estimation:
+  type: ecto::pcl::PclCell<ecto_rbo_pcl::NormalEstimationIntegral>
+  inputs:
+    input: crop_box/output
+  estimation_method: 0
+  max_depth_change_factor: 0.00999999977648258
+  smoothing_size: 15
+flood_fill:
+  type: ecto::pcl::PclCellWithNormals<ecto_rbo_pcl::FloodFill>
+  inputs:
+    input: crop_box/output
+    normals: normal_estimation/output
+  angular_threshold: 0.1359879
+  curvature_distance_threshold: 0.07
+  curvature_threshold: 0.037
+  distance_threshold: 0.05
+  min_inliers: 50
+  normal_distance_threshold: 0.12
+  rviz_prefix: flood_fill_segmentation
+help_remove_nans:
+  type: ecto::pcl::PclCell<ecto_rbo_pcl::RemoveNaNFromPointCloud>
+  inputs:
+    input: crop_box/output
+region_growing_rgb:
+  type: ecto::pcl::PclCell<ecto_rbo_pcl::RegionGrowingRGB>
+  inputs:
+    input: crop_box/output
+    indices: help_remove_nans/indices
+  min_cluster_size: 80
+  distance_threshold: 1000
+  point_color_threshold: 7.0
+  region_color_threshold: 30.0
+
+table_fits:
+  type: ecto::pcl::PclCellWithNormals<ecto_rbo_pcl::PlaneFits>
+  inputs:
+    clusters: flood_fill/clusters
+    input: crop_box/output
+    normals: normal_estimation/output
+  distance_threshold: 10.05
+  max_size: 10.24
+  min_boxness: 0.0
+  min_inlier_ratio: 0.0
+  min_size: 0.00
+  weight_contour: 0.0
+  polygon_approximation_epsilon: 30.0
+tf_send_table:
+  type: ecto_rbo_pcl::BroadcastTF
+  inputs:
+    transform: table_fits/transform_biggest
+  source_frame: camera_rgb_optical_frame
+  target_frame: table
+
+
+filter_by_distance:
+  type: ecto::pcl::PclCell<ecto_rbo_pcl::FilterClustersBySize>
+  inputs:
+    input: crop_box/output
+    clusters: flood_fill/clusters
+    transform: table_fits/transform_biggest
+  max_volume: 0.004
+  min_volume: 0.
+  filter_criterion: 2
+  max_distance: 0.3
+  min_size: 200
+  max_size: 1000
+filter_wall_by_size:
+  type: ecto::pcl::PclCell<ecto_rbo_pcl::FilterClustersBySize>
+  inputs:
+    input: crop_box/output
+    #clusters: filter_by_distance/filtered_clusters
+    clusters: flood_fill/clusters
+  max_volume: 0.004
+  min_volume: 0.
+  filter_criterion: 1
+  max_distance: 0.2
+  min_size: 1000
+  max_size: 100000
+filter_wall_by_normal:
+  type: ecto::pcl::PclCellWithNormals<ecto_rbo_pcl::FilterClustersByNormals>
+  inputs:
+    input: crop_box/output
+    normals: normal_estimation/output
+    clusters: filter_wall_by_size/filtered_clusters
+    transform: table_fits/transform_biggest
+  max_distance: 20.0
+  negate: true
+wall_fit:
+  type: ecto::pcl::PclCellWithNormals<ecto_rbo_pcl::PlaneFits>
+  inputs:
+    input: crop_box/output
+    clusters: filter_wall_by_normal/filtered_clusters
+    normals: normal_estimation/output
+  distance_threshold: 10.05
+  max_size: 10.24
+  min_boxness: 0.0
+  min_inlier_ratio: 0.0
+  min_size: 0.00
+  weight_contour: 0.0
+  polygon_approximation_epsilon: 10.0
+tf_send_wall:
+  type: ecto_rbo_pcl::BroadcastTF
+  inputs:
+    transform: wall_fit/transform_biggest
+  source_frame: camera_rgb_optical_frame
+  target_frame: wall
+
+merge_clusters:
+  type: ecto_rbo_pcl::MergeClusters
+  inputs:
+    cluster_0: region_growing_rgb/output
+    cluster_1: filter_by_distance/filtered_clusters
+filter_object_by_size:
+  type: ecto::pcl::PclCell<ecto_rbo_pcl::FilterClustersBySize>
+  inputs:
+    input: crop_box/output
+    clusters: merge_clusters/merged_clusters
+  max_volume: 0.004
+  min_volume: 0.
+  filter_criterion: 1
+  max_distance: 0.2
+  min_size: 120
+  max_size: 5000
+filter_closest_object:
+  type: ecto::pcl::PclCell<ecto_rbo_pcl::ExtractClosestCluster>
+  inputs:
+    input: crop_box/output
+    clusters: filter_object_by_size/filtered_clusters
+    transform: table_fits/transform_biggest
+    #transform_2: wall_fit/transform_biggest
+  size_weight: 0
+calculate_centroids:
+  type: ecto::pcl::PclCell<ecto_rbo_pcl::Centroid>
+  inputs:
+    input: crop_box/output
+    clusters: filter_closest_object/closest_cluster
+tf_to_vector_table:
+  type: ecto_rbo_pcl::TF2Vector
+  inputs:
+    transform: table_fits/transform_biggest
+  column_index: 2
+  negate: false
+wrap_in_vector_table:
+  type: ecto_rbo_pcl::WrapVector3fInVector
+  inputs:
+    input: tf_to_vector_table/vector
+
+#cylinder_fits:
+#  type: ecto::pcl::PclCellWithNormals<ecto_rbo_pcl::CylinderFits>
+#  inputs:
+#    clusters: filter_closest_object/closest_cluster
+#    input: crop_box/output
+#    normals: normal_estimation/output
+#  distance_threshold: 0.05
+#  max_iterations: 76
+#  max_radius: 0.144
+#  min_height: 0.0
+#  $min_inlier_ratio: 0.00
+#  normal_distance_weight: 0.1
+#  normal_threshold: 4.4767695291
+#  probability: 0.99
+#pc_analysis:
+#  type: ecto::pcl::PclCell<ecto_rbo_pcl::PCAnalysis>
+#  inputs:
+#    input: crop_box/output
+#    clusters: filter_closest_object/closest_cluster
+bbox_fits:
+  type: ecto::pcl::PclCell<ecto_rbo_pcl::PlaneFits2D>
+  inputs:
+    input: crop_box/output
+    clusters: filter_closest_object/closest_cluster
+    normal: tf_to_vector_table/vector
+  #min_aspect_ratio: 1.9
+  #max_aspect_ratio: 1.0
+bbox_to_axis:
+  type: ecto_rbo_pcl::TFs2Vectors
+  inputs:
+    transforms: bbox_fits/transforms
+  column_index: 0
+  negate: false
+
+take_first_tf:
+  type: ecto_rbo_pcl::Vector2TF
+  inputs:
+    input: bbox_fits/transforms
+tf_send_object:
+  type: ecto_rbo_pcl::BroadcastTF
+  inputs:
+    transform: take_first_tf/output
+  source_frame: camera_rgb_optical_frame
+  target_frame: object
+
+planar_manifolds:
+  type: ecto::pcl::PclCellWithNormals<ecto_rbo_grasping::ManifoldsPlanar>
+  inputs:
+    input: crop_box/output
+    normals: normal_estimation/output
+    bounded_planes: table_fits/bounded_model_biggest
+  all_in_plane_orientations: true 
+  rotation: 0
+  #1.5
+cliff_grasps:
+  type: ecto::pcl::PclCellWithNormals<ecto_rbo_grasping::CliffGrasps>
+  inputs:
+    input: crop_box/output
+    normals: normal_estimation/output
+    polygons: table_fits/polygon_biggest
+    bounded_planes: table_fits/bounded_model_biggest
+  max_no_of_points: 100
+  invert_y_axis: true
+positioning_motions:
+  type: ecto::pcl::PclCellWithNormals<ecto_rbo_grasping::PositioningMotions>
+  inputs:
+    input: crop_box/output
+    normals: normal_estimation/output
+wall_grasps:
+  type: ecto::pcl::PclCellWithNormals<ecto_rbo_grasping::WallGrasps>
+  inputs:
+    input: crop_box/output
+    normals: normal_estimation/output
+    polygons: table_fits/polygons
+    bounded_planes: table_fits/bounded_models
+  min_points: 200
+edge_grasp_planner:
+  type: ecto_rbo_grasping::CreateGeometryGraph
+  inputs:
+    positioning_pregrasp_messages: positioning_motions/positioning_pregrasp_messages
+    positioning_motion_manifolds: positioning_motions/positioning_manifolds
+    pushing_pregrasp_messages: planar_manifolds/pushing_pregrasp_messages
+    pushing_motion_manifolds: planar_manifolds/manifolds
+    surface_pregrasp_messages: create_top_down_grasps/pregrasp_messages
+    surface_grasp_manifolds: planar_manifolds/manifolds
+    edge_pregrasp_messages: cliff_grasps/cliff_pregrasp_messages
+    edge_grasp_manifolds: cliff_grasps/cliff_manifolds
+    wall_pregrasp_messages: wall_grasps/wall_pregrasp_messages
+    wall_grasp_manifolds: wall_grasps/wall_manifolds
+publish_graph:
+  type: ecto_rbo_grasping::PublishGeometryGraph
+  inputs:
+    graph_message: edge_grasp_planner/graph_message
+
+
+create_top_down_grasps:
+  type: ecto_rbo_grasping::CreateGrasps
+  inputs:
+    header: msg_to_pcl/header
+    positions: calculate_centroids/centroids
+    approach_vectors: wrap_in_vector_table/vector
+    roll_vectors: bbox_to_axis/vectors
+  strategy: 10  # SQUEEZE
+  pregrasp_configuration: 2 # SPHERE
+  roll_offset: 0 #-1.5707963267948966   #3.141592653589793
+
+#merge_strategies:
+#  type: ecto_rbo_grasping::MergeGraspStrategies
+#  inputs:
+#    message_0: create_top_down_grasps/pregrasp_messages
+#    message_1: create_wall_grasps/pregrasp_messages
+#    message_2: edge_grasp_planner/pregrasp_messages
+#grasp_transform:
+#  type: ecto_rbo_grasping::GraspStrategies2Transform
+#  inputs:
+#    input: merge_strategies/merged_messages
+#publish_grasps:
+#  type: ecto_rbo_grasping::PublishGrasps
+#  inputs:
+#     pregrasp_messages_ptr: merge_strategies/merged_messages
+#  marker_mesh_resource: "package://soft_hand_description/meshes/softhand_right_colored.dae"
