@@ -258,6 +258,24 @@ This example was tested with ros melodic under Ubuntu 18.04.
 This example builds on the ifco detection example on the vision repository.
 The example bag file of this scene can be found here: /nas/Videos/Vision/ifco_example.bag, for access contact a tub-member. 
 
+---
+**optional:**
+If you want to create your own bag file, follow these steps:
+1. prepare the scene 
+2. start the openni2_camera drivers 
+```
+roscore
+roslaunch openni2_launch openni2.launch depth_registration:=true
+```
+3. adjust your camera (you can use RVIZ for visualization), then run
+```
+rosbag record -O recorded_file /camera/depth_registered/points
+```
+The `-O` argument tells rosbag record to log to a file named recorded_file.bag, and the topic argument causes rosbag record to only subscribe to the topic `/camera/depth_registered/points`. When all topics are recorded it fails sometimes leaving an empty bag file. 
+
+---
+
+
 <img src="docs/planner_example.png" alt="Grasp" height="250" /> <img src="docs/ec_graph_planner.png" alt="Grasp" height="250" />
 
 ```
