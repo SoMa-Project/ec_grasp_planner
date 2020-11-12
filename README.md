@@ -306,9 +306,33 @@ roslaunch planner_gui gui.launch
 
 ### Planning Based on PCD Input  <a name="example1"></a>
 
-TODO !
+This example shows a planned grasp in RViz based on a PCD file that contains a single colored point cloud of the scene from the example above.
+After executing the grasp with the GUI (see above), a xml and bag file are created. A pcd file (point cloud data) can be extracted from the created bag file using:
+```
+rosrun pcl_ros bag_to_pcd <name_of_created_bag_file>.bag /rgbd_snapshot . 
+```
+
+```
+roscore
+
+# if you want to change which pcd to read, change the file name in the ecto graph yaml
+rosrun ecto_rbo_yaml plasm_yaml_ros_node.py `rospack find ec_grasp_planner`/data/geometry_graph_example2.yaml --debug --service
+
+# start visualization
+rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example2.rviz
+
+# select which type of grasp you want
+rosrun ec_grasp_planner planner.py --rviz --robot_base_frame camera_rgb_optical_frame
+
+# publish a static coordinate transform for the camera
+rosrun tf static_transform_publisher 0 0 0 0 0 0 camera_rgb_optical_frame camera 0 
+
+# execute grasp
+rosservice call /run_grasp_planner "{object_type: 'mango', grasp_type: 'Any', handarm_type: 'RBOHandP24_pulpyWAM', object_heuristic_function: 'Deterministic', angle_of_attack: 0.0, wrist_angle: 0.0}"
+```
 
 
-More example that were tested with ros indigo under Ubuntu 14.04.5 can be found on other branches (e.g. see TAG ms5). 
+
+**More example that were tested with ros indigo under Ubuntu 14.04.5 can be found on other branches (e.g. see TAG ms5).** 
 
 
