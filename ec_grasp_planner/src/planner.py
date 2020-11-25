@@ -400,10 +400,10 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
     else:
         raise ValueError("Unknown grasp type: {}".format(grasp_type))
 
-    if robot_name == 'WAM':
-        # TODO removed transportation for grasp funnel evaluation
+    if robot_name == 'WAM':        
         transport_recipe = TransportRecipesWAM.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
         return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + transport_recipe), rviz_frames
+        # to remove transportation for grasp funnel evaluation comment above line and uncoment the bleow one
         # return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe), rviz_frames
 
     elif robot_name == 'KUKA':
@@ -510,7 +510,6 @@ if __name__ == '__main__':
 
     while not rospy.is_shutdown():
         marker_pub.publish(markers_rviz)
-        print(frames_rviz)
         for i, f in enumerate(frames_rviz):
             br.sendTransform(tra.translation_from_matrix(f),
                              tra.quaternion_from_matrix(f),
