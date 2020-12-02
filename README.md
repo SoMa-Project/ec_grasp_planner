@@ -295,7 +295,7 @@ roslaunch openni2_launch openni2.launch depth_registration:=false
 rosbag play -l ifco_example.bag
 
 # visualize in rviz
-rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example4.rviz 
+rosrun rviz rviz -d `rospack find ec_grasp_planner`/configs/ec_grasps_example1.rviz 
 # The blue lines and red dots (picture on the left side) can be visualized by activating 
 # the MarkerArray /ec_graph_ros_service/ecto_markers (namespace ifco_detection/ifco_polygons 
 # for the detected ifco and calculate_centroids/centroids for the detected objects). 
