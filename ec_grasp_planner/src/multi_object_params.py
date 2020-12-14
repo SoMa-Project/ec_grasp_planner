@@ -118,7 +118,7 @@ class multi_object_params:
     def black_list_walls(self, current_ec_index, all_ec_frames, strategy):
         #blacklist all walls except the one toe hte right side of the robot. Note this is relative to the robot orientation!
 
-
+        
 
         if strategy not in ["WallGrasp"]:
             return 1
@@ -323,6 +323,7 @@ class multi_object_params:
         wall_fac = self.black_list_walls(current_ec_index, all_ec_frames, strategy)
         corner_fac = self.black_list_corners(current_ec_index, all_ec_frames, strategy)
 
+        print("\n \n  ******** zone {}, bw: {}  bc: {}".format(zone_fac, wall_fac, corner_fac))
         return zone_fac * wall_fac * corner_fac
 
     def basic_pile_heuristic(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames):
@@ -341,7 +342,11 @@ class multi_object_params:
         object = objects[current_object_idx]
         ec_frame = all_ec_frames[current_ec_index]
 
-        # print("bl w:{} bl c:{} c_dist:{}, w_dist:{}, ")
+        print("bl w:{} bl c:{} c_dist:{}, w_dist:{}, s:{}".format(self.black_list_walls(current_ec_index, all_ec_frames, strategy),
+            self.black_list_corners(current_ec_index, all_ec_frames, strategy),
+            self.cornerGrasp_distant_object(object, objects, strategy, ec_frame),
+            self.wallGrasp_distant_object(object, objects, strategy, ec_frame) ,
+            self.surfaceGrasp_hihgest_object(object, objects, strategy)))
 
         return self.black_list_walls(current_ec_index, all_ec_frames, strategy) * \
             self.black_list_corners(current_ec_index, all_ec_frames, strategy) * \
@@ -392,7 +397,7 @@ class multi_object_params:
             # self.pdf_object_ec(object_params, ec_frame, strategy) * \
             # self.pdf_object_strategy(object_params) * \
 
-        # print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
+        #print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames, strategy)))
         return q_val
 
     # --------------------------------------------------------- #
