@@ -103,7 +103,7 @@
         PISAHand: 1.0
         PISAGripper: 1.0
         ClashHand: 1.0
-      min: [11110.05, -1110.045]
+      min: [-11110.05, -1110.045]
       max: [1000.0, 1110.075]
       #min: [-1000.0, -0.075] # values if ifco y-axis is pointing towards the robot
       #max: [-0.05, 0.045] # values if ifco y-axis is pointing towards the robot
