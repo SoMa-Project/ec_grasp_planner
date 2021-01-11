@@ -30,9 +30,10 @@ pkg_path = rospack.get_path('ec_grasp_planner')
 sys.path.append(pkg_path + '/../hybrid-automaton-tools-py/')
 import hatools.components as ha
 import hatools.cookbook as cookbook
-import tf_conversions.posemath as pm
+#import tf_conversions.posemath as pm
 
 import handarm_parameters
+import math
 
 import PISAHandRecipes
 import RBOHandRecipesKUKA
@@ -44,6 +45,8 @@ import TransportRecipesKUKA
 import PlacementRecipes
 import multi_object_params as mop
 from GraspFrameRecipes import get_derived_corner_grasp_frames
+
+from planner_utils import *
 
 markers_rviz = MarkerArray()
 frames_rviz = []
@@ -129,6 +132,8 @@ class GraspPlanner:
         print('Handling grasp planner service call')
         self.object_type = req.object_type
         self.grasp_type = req.grasp_type
+        angleOfAttack_req = req.angle_of_attack
+        wristAngle_req = req.wrist_angle
 
         # Check for bad service parameters (we don't have to check for object since we always have a default 'object')
         grasp_choices = ["Any", "WallGrasp", "SurfaceGrasp", "EdgeGrasp", "CornerGrasp"]
@@ -170,12 +175,12 @@ class GraspPlanner:
             return plan_srv.RunGraspPlannerResponse(success=False,
                                                     hybrid_automaton_xml="Vision: No object was detected",
                                                     chosen_object_idx=-1)
-
+        
         robot_base_frame = self.args.robot_base_frame       
 
         time = rospy.Time(0)
         graph.header.stamp = time
-        
+
         self.tf_listener.waitForTransform(robot_base_frame, "/ifco", time, rospy.Duration(2.0))
         ifco_in_base = self.tf_listener.asMatrix(robot_base_frame, Header(0, time, "ifco"))
         print(ifco_in_base)
@@ -219,8 +224,9 @@ class GraspPlanner:
                                                                                     req.object_heuristic_function,
                                                                                     self.grasp_type,                                                                                    
                                                                                     object_list_msg,
-                                                                                    self.handarm_params
-                                                                                    )
+                                                                                    self.handarm_params,
+                                                                                    angleOfAttack_req,
+                                                                                    wristAngle_req )
 
         if pre_grasp_pose_in_base is None:
             # No grasp found
@@ -241,7 +247,7 @@ class GraspPlanner:
                                                                      req.handarm_type,
                                                                      self.multi_object_handler.get_object_params(),
                                                                      self.multi_object_handler.get_alternative_behavior(
-                                                                         chosen_object['index'], chosen_node_idx)
+                                                                         chosen_object['index'], chosen_node_idx),
                                                                      )
 
         # --------------------------------------------------------
@@ -264,7 +270,7 @@ class GraspPlanner:
             #print "Press Ctrl-C to stop sending visualization_msgs/MarkerArray on topic '/planned_grasp_path' ..."
             publish_rviz_markers(self.rviz_frames, robot_base_frame, self.handarm_params)
             # rospy.spin()
-
+            
         ha_as_xml = ha.xml()
         return plan_srv.RunGraspPlannerResponse(success=ha_as_xml != "",
                                                 hybrid_automaton_xml=ha_as_xml,
@@ -278,7 +284,7 @@ def get_hand_recipes(handarm_type, robot_name):
         return PISAHandRecipes
     elif "PISAGripper" in handarm_type:
         return PISAGripperRecipes
-    elif "RBOHand" in handarm_type:
+    elif "RBO" in handarm_type:
         if robot_name == "WAM":
             return RBOHandRecipesWAM
         elif robot_name == "KUKA":
@@ -347,19 +353,23 @@ def homogeneous_tf_to_pose_msg(htf):
 
 # ================================================================================================
 def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_pose, graph_in_base, handarm_params,
-                                          handarm_type, object_params, alternative_behavior=None):
+                                          handarm_type, object_params, alternative_behavior=None,
+                                          ):
 
     print("Creating hybrid automaton for object {} and grasp type {}.".format(chosen_object['type'], chosen_node.label))
 
+
     # Set the frames to visualize with RViz
-    rviz_frames = [chosen_object['frame'], pre_grasp_pose]
+    # rviz_frames = [chosen_object['frame'], pre_grasp_pose]
+    rviz_frames = [pre_grasp_pose]
     grasp_type = chosen_node.label
     robot_name = rospy.get_param('/planner_gui/robot')
+
 
     if grasp_type == 'EdgeGrasp':
         raise ValueError("Edge grasp is not supported yet")
     elif grasp_type == 'WallGrasp':  
-        wall_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))      
+        wall_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))
         grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_wall_grasp(chosen_object, wall_frame,
                                                                                        handarm_params, pre_grasp_pose,
                                                                                        alternative_behavior)
@@ -368,16 +378,19 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
         grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_surface_grasp(chosen_object, handarm_params,
                                                                                           pre_grasp_pose,
                                                                                           alternative_behavior)
+        #rviz_frames.extend(tmpFrames)
+
     elif grasp_type == 'CornerGrasp':
         corner_frame = graph_in_base.dot(transform_msg_to_homogeneous_tf(chosen_node.transform))
         corner_frame_alpha_zero = get_derived_corner_grasp_frames(corner_frame, chosen_object['frame'])[1]
-        grasping_recipe = get_hand_recipes(handarm_type, robot_name).create_corner_grasp(chosen_object,
-                                                                                         corner_frame_alpha_zero,
+        grasping_recipe, tmpFrames  = get_hand_recipes(handarm_type, robot_name).create_corner_grasp(chosen_object,
+                                                                                         corner_frame,
                                                                                          handarm_params,
                                                                                          pre_grasp_pose,
                                                                                          alternative_behavior)
         rviz_frames.append(corner_frame)
         rviz_frames.append(corner_frame_alpha_zero)
+        rviz_frames.extend(tmpFrames)
 
         # rviz_frames.append(pre_approach_transform)
         # rviz_frames.append(ec_frame)
@@ -387,9 +400,12 @@ def hybrid_automaton_from_object_EC_combo(chosen_node, chosen_object, pre_grasp_
     else:
         raise ValueError("Unknown grasp type: {}".format(grasp_type))
 
-    if robot_name == 'WAM':
+    if robot_name == 'WAM':        
         transport_recipe = TransportRecipesWAM.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
         return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe + transport_recipe), rviz_frames
+        # to remove transportation for grasp funnel evaluation comment above line and uncoment the bleow one
+        # return cookbook.sequence_of_modes_and_switches_with_safety_features(grasping_recipe), rviz_frames
+
     elif robot_name == 'KUKA':
         transport_recipe = TransportRecipesKUKA.get_transport_recipe(chosen_object, handarm_params, Reaction(chosen_object['type'], grasp_type, object_params), FailureCases, grasp_type)
         placement_recipe = PlacementRecipes.get_placement_recipe(chosen_object, handarm_params, grasp_type)
@@ -488,13 +504,12 @@ if __name__ == '__main__':
     planner = GraspPlanner(args)
 
     r = rospy.Rate(5)
-
+    
     marker_pub = rospy.Publisher('planned_grasp_path', MarkerArray, queue_size=1, latch=False)
     br = tf.TransformBroadcaster()
 
     while not rospy.is_shutdown():
         marker_pub.publish(markers_rviz)
-
         for i, f in enumerate(frames_rviz):
             br.sendTransform(tra.translation_from_matrix(f),
                              tra.quaternion_from_matrix(f),

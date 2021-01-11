@@ -116,13 +116,29 @@ class multi_object_params:
         return q_val
 
     def black_list_walls(self, current_ec_index, all_ec_frames, strategy):
+        #blacklist all walls except the one toe hte right side of the robot. Note this is relative to the robot orientation!
 
-        if strategy not in ["WallGrasp", "EdgeGrasp"]:
+        
+
+        if strategy not in ["WallGrasp"]:
             return 1
+
+        # #this will blacklist all walls but the norther one is kept
+        # # the x coor is the max
+        #
+        # x_coord_max = np.max([TH[0,3] for i, TH in enumerate(all_ec_frames)])
+        #
+        # print("frame {} coord {}".format(current_ec_index,all_ec_frames[current_ec_index][:,3]))
+        #
+        # if all_ec_frames[current_ec_index][0,3]>.5 and all_ec_frames[current_ec_index][0,3] <0.6:
+        #     return 1.0
+        # else:
+        #     return 0.0
+
+
         # this function will blacklist all walls except
         # the one on the right side of the robot
         # y coord is the smallest
-
         if all_ec_frames[current_ec_index][1, 3] > 0:
                 return 0
 
@@ -143,16 +159,24 @@ class multi_object_params:
 
         if strategy not in ["CornerGrasp"]:
             # print("strategy {} not CG".format(strategy))
-            return 1
+            return 1.
         # this function will blacklist all corners except
         # the one on th right side and further from the robot
         # y coord is negative and x is greater
 
         # print("Corner EC: \n {} \n at x: {} \n at y: {}".format(all_ec_frames[current_ec_index],all_ec_frames[current_ec_index][0,3], all_ec_frames[current_ec_index][1,3]))
 
+        x_coord_max = np.max([TH[0, 3] for i, TH in enumerate(all_ec_frames)])
+
+        if all_ec_frames[current_ec_index][0,3] == x_coord_max:
+            return 1.
+        else:
+            return 0.
+
+
         if all_ec_frames[current_ec_index][1,3] > 0:
             # print("==== F1 ========")
-            return 0
+            return 0.
 
         max_x = -10000.0
         max_x_index = 0
@@ -192,8 +216,8 @@ class multi_object_params:
     def surfaceGrasp_hihgest_object(self, object, objects, strategy):
         # for surface grasp always prefer the hiehest object on the pile
         if strategy not in ["SurfaceGrasp"]:
-            print("Not SG!")
-            return 1
+            # print("Not SG!")
+            return 1.
 
         object_HT = object['frame']
         max_h = -10000
@@ -213,7 +237,7 @@ class multi_object_params:
 
     def wallGrasp_distant_object(self, object, objects, strategy, ec_HT):
         # for surface grasp always prefer the hiehest object on the pile
-        if strategy not in ["WallGrasp", "CornerGrasp"]:
+        if strategy not in ["WallGrasp"]: #], "CornerGrasp"]:
             return 1
 
         object_HT = object['frame']
@@ -299,6 +323,7 @@ class multi_object_params:
         wall_fac = self.black_list_walls(current_ec_index, all_ec_frames, strategy)
         corner_fac = self.black_list_corners(current_ec_index, all_ec_frames, strategy)
 
+        print("\n \n  ******** zone {}, bw: {}  bc: {}".format(zone_fac, wall_fac, corner_fac))
         return zone_fac * wall_fac * corner_fac
 
     def basic_pile_heuristic(self, current_object_idx, objects, current_ec_index, strategy, all_ec_frames):
@@ -316,6 +341,12 @@ class multi_object_params:
 
         object = objects[current_object_idx]
         ec_frame = all_ec_frames[current_ec_index]
+
+        print("bl w:{} bl c:{} c_dist:{}, w_dist:{}, s:{}".format(self.black_list_walls(current_ec_index, all_ec_frames, strategy),
+            self.black_list_corners(current_ec_index, all_ec_frames, strategy),
+            self.cornerGrasp_distant_object(object, objects, strategy, ec_frame),
+            self.wallGrasp_distant_object(object, objects, strategy, ec_frame) ,
+            self.surfaceGrasp_hihgest_object(object, objects, strategy)))
 
         return self.black_list_walls(current_ec_index, all_ec_frames, strategy) * \
             self.black_list_corners(current_ec_index, all_ec_frames, strategy) * \
@@ -362,11 +393,11 @@ class multi_object_params:
 
         q_val = 1
         q_val = q_val * \
-            self.pdf_object_strategy(object_params) * \
-            self.pdf_object_ec(object_params, ec_frame, strategy) * \
             feasibility_fun()
+            # self.pdf_object_ec(object_params, ec_frame, strategy) * \
+            # self.pdf_object_strategy(object_params) * \
 
-        # print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames)))
+        #print(" ** q_val = {} blaklisted={}".format(q_val, self.black_list_walls(current_ec_index, all_ec_frames, strategy)))
         return q_val
 
     # --------------------------------------------------------- #
@@ -469,7 +500,7 @@ class multi_object_params:
             objects = [self.object_from_object_list_msg(object_type, o, graph_in_base) for o in object_list_msg.objects]
 
             Q_matrix = np.zeros((len(objects), len(ecs)))
-
+            
             # iterate through all objects
             for i, o in enumerate(objects):
 
@@ -518,7 +549,9 @@ class multi_object_params:
                             WG_pre_grasp_in_object_frame=tra.identity_matrix(),
                             CG_pre_grasp_in_object_frame=tra.identity_matrix(),
                             h_process_type="Deterministic", grasp_type="Any", object_list_msg=ObjectList(),
-                            handarm_parameters=None):
+                            handarm_parameters=None,
+                            angleOfAttack=float("nan"),
+                            wristAngle=float("nan")):
 
         # print("object: {}, \n ecs: {} \n graphTF: {}, h_process: {}".format(objects, ecs, graph_in_base, h_process_type))
         # print("ec type: {}".format(type(ecs[0])))
@@ -575,12 +608,128 @@ class multi_object_params:
                     SG_pre_grasp_in_object_frame, object_pose)
 
             elif chosen_node.label == 'WallGrasp':
-                pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_wall_pregrasp_pose_in_base_frame(
-                    chosen_node, WG_pre_grasp_in_object_frame, object_pose, graph_in_base)
+                if angleOfAttack is float("nan"):
+                    pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_wall_pregrasp_pose_in_base_frame(
+                        chosen_node, WG_pre_grasp_in_object_frame, object_pose, graph_in_base)
+                elif not angleOfAttack is float("nan"):
+
+                    rotMX = tra.concatenate_matrices(
+                        tra.translation_matrix([0.0, 0.0, 0.0]),
+                        tra.concatenate_matrices(
+                            tra.rotation_matrix(
+                                # math.radians(angleOfAttack), [0,1,0]),
+                                math.radians(angleOfAttack), [0, 1, 0]),
+                        ))
+
+                    EC_frame = graph_in_base.dot(
+                        convert_transform_msg_to_homogeneous_tf(chosen_node.transform))
+
+                    EC_frame_ = EC_frame.dot(rotMX)
+                    # print("=== === EC_f' {}".format(EC_frame_))
+
+                    object_pose = chosen_object['frame']
+                    # compute distance using object
+                    # distance_from_EC = np.linalg.norm(EC_frame[:3, 3] - tra.translation_from_matrix(object_pose)) + 0.14
+
+                    # fixed distance from Wall Frame (wich is aligned with pile centroid)
+                    distance_from_EC = .32#0.25 + 0.25
+
+                    # print("=== === distance: {}".format(distance_from_EC))
+
+                    pregrasp_HT_inEC_frame = np.eye(4, 4)
+                    pregrasp_HT_inEC_frame[2, 3] = distance_from_EC
+
+                    pregrasp_HT_world_frame = (EC_frame_).dot(pregrasp_HT_inEC_frame)
+
+                    rotMX2 = tra.concatenate_matrices(
+                        tra.translation_matrix([0., 0, 0.]),
+                        tra.concatenate_matrices(
+                            tra.rotation_matrix(
+                                math.radians(180.), [1, 0, 0]),
+                            tra.rotation_matrix(
+                                math.radians(0.0), [0, 1, 0]),
+                            tra.rotation_matrix(
+                                math.radians(90.0), [0, 0, 1]),
+                        ))
+
+                    if np.isnan(wristAngle):
+                        wristAngle = 0.0
+                    rotMX3 = tra.concatenate_matrices(
+                        tra.translation_matrix([-0.23, 0, 0.]),
+                        tra.concatenate_matrices(
+                            tra.rotation_matrix(
+                                math.radians(wristAngle), [1, 0, 0]),
+                            tra.rotation_matrix(
+                                math.radians(25.0), [0, 1, 0]), #TODO load param from handarm_param to avoide hardcoding
+                            #TODO if RBOHand_p24pulpy is used, set above angle to 15 when IFCO is not tilted
+                            tra.rotation_matrix(
+                                math.radians(0.0), [0, 0, 1]),
+                        ))
+
+                    pregrasp_HT_world_frame = pregrasp_HT_world_frame.dot(rotMX2).dot(rotMX3)
+
+                    pre_grasp_pose_in_base_frame = pregrasp_HT_world_frame
 
             elif chosen_node.label == 'CornerGrasp':
-                pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_corner_pregrasp_pose_in_base_frame(
-                    chosen_node, CG_pre_grasp_in_object_frame, object_pose, graph_in_base)
+                if angleOfAttack is float("nan"):
+                    pre_grasp_pose_in_base_frame = GraspFrameRecipes.get_corner_pregrasp_pose_in_base_frame(
+                        chosen_node, CG_pre_grasp_in_object_frame, object_pose, graph_in_base)
+                else:
+                    # TODO test if it is working:
+
+                    rotMX = tra.concatenate_matrices(
+                        tra.translation_matrix([0.0, 0.0, 0.0]),
+                        tra.concatenate_matrices(
+                            tra.rotation_matrix(
+                                # math.radians(angleOfAttack), [0,1,0]),
+                                math.radians(angleOfAttack), [0, 1, 0]),
+                        ))
+
+                    EC_frame = graph_in_base.dot(
+                        convert_transform_msg_to_homogeneous_tf(chosen_node.transform))
+
+                    EC_frame_ = EC_frame.dot(rotMX)
+                    # print("=== === EC_f' {}".format(EC_frame_))
+
+                    object_pose = chosen_object['frame']
+                    # distance_from_EC = np.linalg.norm(EC_frame[:3, 3] - tra.translation_from_matrix(object_pose)) + 0.14
+
+                    distance_from_EC = 0.35
+
+                    # print("=== === distance: {}".format(distance_from_EC))
+
+                    pregrasp_HT_inEC_frame = np.eye(4, 4)
+                    pregrasp_HT_inEC_frame[2, 3] = distance_from_EC
+
+                    pregrasp_HT_world_frame = (EC_frame_).dot(pregrasp_HT_inEC_frame)
+
+                    rotMX2 = tra.concatenate_matrices(
+                        tra.translation_matrix([0., 0, 0.]),
+                        tra.concatenate_matrices(
+                            tra.rotation_matrix(
+                                math.radians(180.), [1, 0, 0]),
+                            tra.rotation_matrix(
+                                math.radians(0.0), [0, 1, 0]),
+                            tra.rotation_matrix(
+                                math.radians(90.0), [0, 0, 1]),
+                        ))
+                    if np.isnan(wristAngle):
+                        wristAngle = 0.0
+                    rotMX3 = tra.concatenate_matrices(
+                        tra.translation_matrix([-0.23, 0, 0.]),
+                        tra.concatenate_matrices(
+                            tra.rotation_matrix(
+                                math.radians(wristAngle), [1, 0, 0]),
+                            tra.rotation_matrix(
+                                math.radians(35.0), [0, 1, 0]), #TODO load param from handarm_param to avoide hardcoding
+                            #TODO if RBOHand_p24pulpy is used, set above angle to 15
+                            tra.rotation_matrix(
+                                math.radians(0.0), [0, 0, 1]),
+                        ))
+
+                    pregrasp_HT_world_frame = pregrasp_HT_world_frame.dot(rotMX2).dot(rotMX3)
+
+                    pre_grasp_pose_in_base_frame = pregrasp_HT_world_frame
 
             else:
                 raise ValueError("Unknown grasp type: {}".format(chosen_node.label))       

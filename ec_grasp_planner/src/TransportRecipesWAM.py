@@ -41,7 +41,7 @@ def get_transport_recipe(chosen_object, handarm_params, reaction, FailureCases, 
                                                                  reference_frame="world"))
 
     # 1b. Switch when joint configuration (half way up) is reached
-    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'PrepareForEstimationMassMeasurement',
+    control_sequence.append(ha.FramePoseSwitch('GoUp_1', 'GoDropOff',
                                                controller='GoUpHTransform', epsilon='0.01', goal_is_relative='1',
                                                reference_frame="world"))
 
